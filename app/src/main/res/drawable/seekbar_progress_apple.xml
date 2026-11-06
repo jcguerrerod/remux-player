@@ -10,6 +10,18 @@
         </shape>
     </item>
 
+    <!-- Barra de buffer cargado en RAM (Deep Buffer Engine Apple TV, 50% blanco translúcido) -->
+    <item android:id="@android:id/secondaryProgress"
+        android:gravity="center_vertical">
+        <scale android:scaleWidth="100%">
+            <shape android:shape="rectangle">
+                <corners android:radius="2.5dp" />
+                <size android:height="5dp" />
+                <solid android:color="#70FFFFFF" />
+            </shape>
+        </scale>
+    </item>
+
     <!-- Barra activa blanco puro Apple TV (5dp de grosor) -->
     <item android:id="@android:id/progress"
         android:gravity="center_vertical">

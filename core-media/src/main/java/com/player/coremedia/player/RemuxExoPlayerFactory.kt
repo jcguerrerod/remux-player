@@ -358,27 +358,30 @@ object RemuxExoPlayerFactory {
             }
         }
 
+        // Pipeline de red optimizado para transmisiones de ultra-alta tasa de bits (150+ Mbps)
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(30000)
+            .setUserAgent("RemuxPlayer-tvOS/2.0 (AndroidTV; Linux; DirectPlay)")
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Connection" to "keep-alive",
+                    "Accept-Encoding" to "identity"
+                )
+            )
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(context)
-            .setDataSourceFactory(httpDataSourceFactory)
+        val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(defaultDataSourceFactory)
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
-        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15000, // minBufferMs
-                50000, // maxBufferMs
-                1000,  // bufferForPlaybackMs
-                2000   // bufferForPlaybackAfterRebufferMs
-            )
-            .build()
+        // Motor de Buffer Profundo para Picos de 150+ Mbps (Deep RAM Ring-Buffer)
+        val loadControl = RemuxLoadControlFactory.create(context)
 
         return ExoPlayer.Builder(context, renderersFactory)
             .setTrackSelector(trackSelector)

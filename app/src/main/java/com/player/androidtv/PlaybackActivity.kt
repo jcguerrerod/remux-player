@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LruCache
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -37,6 +38,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import com.player.coremedia.player.DolbyVisionProcessingMode
 import com.player.coremedia.player.RemuxExoPlayerFactory
+import com.player.coremedia.player.RemuxLoadControlFactory
 import java.util.Locale
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -140,10 +142,14 @@ class PlaybackActivity : Activity() {
                     if (duration > 0) {
                         val progress = ((current * 1000) / duration).toInt()
                         timelineSeekBar.progress = progress
+                        val buffered = p.bufferedPosition
+                        val secondary = ((buffered * 1000) / duration).toInt()
+                        timelineSeekBar.secondaryProgress = secondary
                         tvCurrentTime.text = formatTimeMs(current)
                         val remaining = (duration - current).coerceAtLeast(0)
                         tvRemainingTime.text = "-${formatTimeMs(remaining)}"
                     } else {
+                        timelineSeekBar.secondaryProgress = 0
                         tvCurrentTime.text = formatTimeMs(current)
                         tvRemainingTime.text = "--:--:--"
                     }
@@ -1108,26 +1114,34 @@ class PlaybackActivity : Activity() {
         }
     }
 
-    private fun setModalCardMarginEnd(marginEndDp: Int) {
+    private fun setModalCardPosition(gravity: Int, marginHorizontalDp: Int) {
         val density = resources.displayMetrics.density
-        val targetMargin = (marginEndDp * density).toInt()
-        (modalCard.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
-            if (modalOverlay.visibility == View.VISIBLE && lp.marginEnd != targetMargin) {
-                val startMargin = lp.marginEnd
-                modalCard.animate().cancel()
-                modalCard.translationX = (startMargin - targetMargin).toFloat()
-                lp.marginEnd = targetMargin
-                modalCard.layoutParams = lp
-                modalCard.animate()
-                    .translationX(0f)
-                    .setDuration(160)
-                    .setInterpolator(android.view.animation.DecelerateInterpolator())
-                    .start()
+        val targetMargin = (marginHorizontalDp * density).toInt()
+        (modalCard.layoutParams as? FrameLayout.LayoutParams)?.let { lp ->
+            lp.gravity = gravity or Gravity.BOTTOM
+            if ((gravity and Gravity.START) == Gravity.START) {
+                lp.marginStart = targetMargin
+                lp.marginEnd = 0
             } else {
+                if (modalOverlay.visibility == View.VISIBLE && lp.marginEnd != targetMargin) {
+                    val startMargin = lp.marginEnd
+                    modalCard.animate().cancel()
+                    modalCard.translationX = (startMargin - targetMargin).toFloat()
+                    lp.marginEnd = targetMargin
+                    lp.marginStart = 0
+                    modalCard.layoutParams = lp
+                    modalCard.animate()
+                        .translationX(0f)
+                        .setDuration(160)
+                        .setInterpolator(android.view.animation.DecelerateInterpolator())
+                        .start()
+                    return
+                }
                 lp.marginEnd = targetMargin
-                modalCard.translationX = 0f
-                modalCard.layoutParams = lp
+                lp.marginStart = 0
             }
+            modalCard.translationX = 0f
+            modalCard.layoutParams = lp
         }
     }
 
@@ -1135,7 +1149,7 @@ class PlaybackActivity : Activity() {
     private fun openAudioModal() {
         val exo = player ?: return
         activeModalType = ModalType.AUDIO
-        setModalCardMarginEnd(38)
+        setModalCardPosition(Gravity.END, 38)
 
         showModal(
             title = "Audio",
@@ -1278,7 +1292,7 @@ class PlaybackActivity : Activity() {
     private fun openSubtitlesModal() {
         val exo = player ?: return
         activeModalType = ModalType.SUBTITLES
-        setModalCardMarginEnd(90)
+        setModalCardPosition(Gravity.END, 90)
 
         showModal(
             title = "Subtitles",
@@ -1453,7 +1467,7 @@ class PlaybackActivity : Activity() {
 
     private fun openDvModeModal() {
         activeModalType = ModalType.DV_MODE
-        setModalCardMarginEnd(48)
+        setModalCardPosition(Gravity.START, 114)
 
         val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true)
@@ -1559,7 +1573,7 @@ class PlaybackActivity : Activity() {
 
     private fun openInfoModal() {
         activeModalType = ModalType.INFO
-        setModalCardMarginEnd(48)
+        setModalCardPosition(Gravity.START, 48)
 
         showModal(
             title = "Info",
@@ -1572,9 +1586,14 @@ class PlaybackActivity : Activity() {
         val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true)
 
+        val bufferProfile = RemuxLoadControlFactory.getBufferProfile(this)
+        val bufferAheadMs = ((player?.bufferedPosition ?: 0L) - (player?.currentPosition ?: 0L)).coerceAtLeast(0L)
+        val bufferSec = String.format(Locale.US, "%.1f", bufferAheadMs / 1000f)
+
         val specs = listOf(
             Triple("Película", "$movieTitle ($movieYear)", if (isSdr) "1080P REMUX" else "4K REMUX"),
             Triple("Direct Play", "Transmisión nativa sin transcodificar desde Jellyfin", "STATIC"),
+            Triple("Buffer RAM", "${bufferProfile.targetBufferBytes / (1024 * 1024)} MB Ring-Buffer (Cargado: ${bufferSec}s)", "${bufferProfile.maxBufferMs / 1000}s MAX"),
             Triple("Video", if (isSdr) "H.264 High@L4.1 SDR Rec.709" else "Dolby Vision RPU transmute NAL 62", if (isSdr) "BT.709" else currentDvMode.badgeText),
             Triple("Subtítulos", "Motor cinematográfico estilo PGS Blu-ray (SMPTE)", "CINEMA"),
             Triple("Audio", "Bitstream Passthrough directo al hardware (HW_AV_SYNC)", badgeAudio.text.toString())
