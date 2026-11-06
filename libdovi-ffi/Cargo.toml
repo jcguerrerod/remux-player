@@ -1,0 +1,22 @@
+[package]
+name = "dovi_ffi"
+version = "0.1.0"
+edition = "2021"
+authors = ["Principal Multimedia Systems Engineer"]
+description = "Zero-copy C-ABI wrapper around dolby_vision for on-the-fly P7 to P8.1 transmute"
+
+[lib]
+name = "dovi_ffi"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+dolby_vision = { version = "3.3.0", default-features = false }
+libc = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = false

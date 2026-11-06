@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/llTrackItemRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_apple_tv_sheet_item"
+    android:focusable="true"
+    android:clickable="true"
+    android:paddingStart="16dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="10dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginBottom="2dp">
+
+    <!-- Checkmark Icon (Visible when active) -->
+    <ImageView
+        android:id="@+id/ivTrackCheck"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_check"
+        android:tint="@color/apple_sheet_text_selector"
+        android:layout_marginEnd="10dp"
+        android:duplicateParentState="true"
+        android:visibility="invisible"
+        android:contentDescription="Seleccionado" />
+
+    <!-- Track Title and Info -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:duplicateParentState="true"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvTrackTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Nombre de Pista"
+            android:textColor="@color/apple_sheet_text_selector"
+            android:textSize="13sp"
+            android:duplicateParentState="true"
+            android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/tvTrackSubtext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Detalle técnico"
+            android:textColor="@color/apple_sheet_subtext_selector"
+            android:textSize="11sp"
+            android:duplicateParentState="true"
+            android:fontFamily="sans-serif"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Badge o etiqueta derecha (ej. [CC], [AD], Atmos) -->
+    <TextView
+        android:id="@+id/tvTrackBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_apple_tv_sheet_badge"
+        android:text="7.1"
+        android:textColor="@color/apple_sheet_text_selector"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif-medium"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:duplicateParentState="true"
+        android:visibility="gone" />
+</LinearLayout>

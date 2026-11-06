@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Focused thumb: Apple TV bright glowing white dot (12dp) -->
+    <item android:state_focused="true">
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF" />
+            <size
+                android:width="12dp"
+                android:height="12dp" />
+        </shape>
+    </item>
+    <!-- Normal idle thumb (10dp) -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#E6FFFFFF" />
+            <size
+                android:width="10dp"
+                android:height="10dp" />
+        </shape>
+    </item>
+</selector>

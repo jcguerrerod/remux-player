@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Barra inactiva Apple TV (5dp de grosor, bordes redondeados tipo cápsula) -->
+    <item android:id="@android:id/background"
+        android:gravity="center_vertical">
+        <shape android:shape="rectangle">
+            <corners android:radius="2.5dp" />
+            <size android:height="5dp" />
+            <solid android:color="#40FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Barra activa blanco puro Apple TV (5dp de grosor) -->
+    <item android:id="@android:id/progress"
+        android:gravity="center_vertical">
+        <scale android:scaleWidth="100%">
+            <shape android:shape="rectangle">
+                <corners android:radius="2.5dp" />
+                <size android:height="5dp" />
+                <solid android:color="#FFFFFF" />
+            </shape>
+        </scale>
+    </item>
+</layer-list>

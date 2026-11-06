@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">REMUX Player</string>
+    <string name="connecting">Conectando con Jellyfin...</string>
+    <string name="direct_play_active">Direct Play Activo: Dolby Vision P8.1 + Bitstream</string>
+</resources>
