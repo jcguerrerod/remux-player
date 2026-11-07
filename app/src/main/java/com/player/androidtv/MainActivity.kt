@@ -461,7 +461,7 @@ class MainActivity : Activity() {
 
     private fun launchPlayback(movie: RemuxMovie) {
         val streamUrl = if (isEmulator() && (movie.videoCodec.contains("HEVC") || movie.videoCodec.contains("DOLBY VISION"))) {
-            "$serverBaseUrl/Videos/${movie.itemId}/stream.mp4?VideoCodec=h264&AudioCodec=aac"
+            "$serverBaseUrl/Videos/${movie.itemId}/stream.mp4?VideoCodec=h264&AudioCodec=aac&VideoBitrate=60000000&AudioBitrate=384000&MaxWidth=1920&MaxHeight=1080"
         } else {
             "$serverBaseUrl/Videos/${movie.itemId}/stream.mkv?Static=true"
         }

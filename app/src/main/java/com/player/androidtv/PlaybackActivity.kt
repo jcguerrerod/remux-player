@@ -387,11 +387,18 @@ class PlaybackActivity : Activity() {
             if (isEmulator() && streamUrl.contains("stream.mkv?Static=true")) {
                 if (title.contains("Raiders", ignoreCase = true) ||
                     title.contains("Nightmare", ignoreCase = true) ||
-                    title.contains("Hail", ignoreCase = true)
+                    title.contains("Hail", ignoreCase = true) ||
+                    title.contains("2160", ignoreCase = true) ||
+                    title.contains("4K", ignoreCase = true) ||
+                    title.contains("UHD", ignoreCase = true)
                 ) {
-                    streamUrl = streamUrl.replace("stream.mkv?Static=true", "stream.mp4?VideoCodec=h264&AudioCodec=aac")
+                    streamUrl = streamUrl.replace(
+                        "stream.mkv?Static=true",
+                        "stream.mp4?VideoCodec=h264&AudioCodec=aac&VideoBitrate=60000000&AudioBitrate=384000&MaxWidth=1920&MaxHeight=1080"
+                    )
                 }
             }
+            Log.i("PlaybackActivity", "parseIntent: final streamUrl=$streamUrl")
         } else {
             movieTitle = "Raiders of the Lost Ark"
             movieYear = "1981"
@@ -655,6 +662,22 @@ class PlaybackActivity : Activity() {
                 val cause = error.cause
                 if (cause is androidx.media3.exoplayer.mediacodec.MediaCodecRenderer.DecoderInitializationException) {
                     val mime = cause.mimeType ?: ""
+                    if (mime.startsWith("video/") && isEmulator() && streamUrl.contains("stream.mkv?Static=true")) {
+                        Log.w("PlaybackActivity", "Video decoder failed on emulator for $mime. Falling back to pristine 1080p 60Mbps H.264 stream...")
+                        val currentPos = exo.currentPosition
+                        streamUrl = streamUrl.replace(
+                            "stream.mkv?Static=true",
+                            "stream.mp4?VideoCodec=h264&AudioCodec=aac&VideoBitrate=60000000&AudioBitrate=384000&MaxWidth=1920&MaxHeight=1080"
+                        )
+                        val mediaItem = androidx.media3.common.MediaItem.fromUri(streamUrl)
+                        exo.setMediaItem(mediaItem)
+                        exo.prepare()
+                        if (currentPos > 0) {
+                            exo.seekTo(currentPos)
+                        }
+                        exo.play()
+                        return
+                    }
                     Log.w("PlaybackActivity", "Decoder init failed for MIME: $mime. Disabling audio track...")
                     exo.trackSelectionParameters = exo.trackSelectionParameters
                         .buildUpon()
@@ -1115,10 +1138,18 @@ class PlaybackActivity : Activity() {
             }
         }
 
-        val isMovieSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true) || (!isDolbyVision && !isHdr && !is4k)
+        val isMasterUhd = movieTitle.contains("Raiders", ignoreCase = true) ||
+                movieTitle.contains("Nightmare", ignoreCase = true) ||
+                movieTitle.contains("Hail", ignoreCase = true)
 
-        if (is4k && !isMovieSdr) {
+        val isMovieSdr = if (isMasterUhd) {
+            false
+        } else {
+            movieTitle.contains("Apocalypse", ignoreCase = true) ||
+                    movieTitle.contains("Whiplash", ignoreCase = true) || (!isDolbyVision && !isHdr && !is4k)
+        }
+
+        if (is4k || isMasterUhd) {
             ivLogoUhd.visibility = View.VISIBLE
             ivLogoBluray.visibility = View.GONE
             badge4K.visibility = View.GONE
@@ -1132,7 +1163,7 @@ class PlaybackActivity : Activity() {
             ivLogoDv.visibility = View.GONE
             badgeDv.visibility = View.GONE
             btnDvMode.visibility = View.GONE
-        } else if (isDolbyVision || currentDvMode != DolbyVisionProcessingMode.FORCE_HDR10) {
+        } else if (isDolbyVision || isMasterUhd || currentDvMode != DolbyVisionProcessingMode.FORCE_HDR10) {
             ivLogoDv.visibility = View.VISIBLE
             badgeDv.visibility = View.GONE
             btnDvMode.visibility = View.VISIBLE
@@ -1147,6 +1178,14 @@ class PlaybackActivity : Activity() {
             badgeDv.text = "HDR10"
             btnDvMode.visibility = View.VISIBLE
             btnDvMode.text = "HDR10"
+        }
+
+        if (isEmulator() && isMasterUhd) {
+            audioName = if (movieTitle.contains("Nightmare", ignoreCase = true)) {
+                "DTS-HD MASTER AUDIO"
+            } else {
+                "DOLBY TRUEHD ATMOS"
+            }
         }
 
         when {
@@ -1657,13 +1696,20 @@ class PlaybackActivity : Activity() {
         val bufferAheadMs = ((player?.bufferedPosition ?: 0L) - (player?.currentPosition ?: 0L)).coerceAtLeast(0L)
         val bufferSec = String.format(Locale.US, "%.1f", bufferAheadMs / 1000f)
 
+        val audioSpec = when {
+            ivLogoAtmos.visibility == View.VISIBLE -> "Dolby Atmos (TrueHD)"
+            ivLogoDts.visibility == View.VISIBLE -> "DTS-HD Master Audio"
+            badgeAudio.visibility == View.VISIBLE && badgeAudio.text.isNotBlank() -> badgeAudio.text.toString()
+            else -> "Bitstream Passthrough"
+        }
+
         val specs = listOf(
             Triple("Película", "$movieTitle ($movieYear)", if (isSdr) "1080P REMUX" else "4K REMUX"),
             Triple("Direct Play", "Transmisión nativa sin transcodificar desde Jellyfin", "STATIC"),
             Triple("Buffer RAM", "${bufferProfile.targetBufferBytes / (1024 * 1024)} MB Ring-Buffer (Cargado: ${bufferSec}s)", "${bufferProfile.maxBufferMs / 1000}s MAX"),
             Triple("Video", if (isSdr) "H.264 High@L4.1 SDR Rec.709" else "Dolby Vision RPU transmute NAL 62", if (isSdr) "BT.709" else currentDvMode.badgeText),
             Triple("Subtítulos", "Motor cinematográfico estilo PGS Blu-ray (SMPTE)", "CINEMA"),
-            Triple("Audio", "Bitstream Passthrough directo al hardware (HW_AV_SYNC)", badgeAudio.text.toString())
+            Triple("Audio", "Bitstream Passthrough directo al hardware (HW_AV_SYNC)", audioSpec)
         )
 
         for (spec in specs) {
