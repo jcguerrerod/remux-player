@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Focused thumb: Apple TV bright glowing white dot (12dp) -->
+    <!-- Focused/Active seekbar thumb: cursor de línea vertical blanco puro Apple TV -->
     <item android:state_focused="true">
-        <shape android:shape="oval">
-            <solid android:color="#FFFFFF" />
+        <shape android:shape="rectangle">
             <size
-                android:width="12dp"
-                android:height="12dp" />
+                android:width="3dp"
+                android:height="22dp" />
+            <solid android:color="#FFFFFF" />
+            <corners android:radius="1.5dp" />
         </shape>
     </item>
-    <!-- Normal idle thumb (10dp) -->
+    <!-- Normal idle seekbar thumb: cursor de línea vertical blanco puro Apple TV -->
     <item>
-        <shape android:shape="oval">
-            <solid android:color="#E6FFFFFF" />
+        <shape android:shape="rectangle">
             <size
-                android:width="10dp"
-                android:height="10dp" />
+                android:width="2.5dp"
+                android:height="18dp" />
+            <solid android:color="#FFFFFF" />
+            <corners android:radius="1.25dp" />
         </shape>
     </item>
 </selector>

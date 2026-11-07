@@ -1,7 +1,9 @@
 package com.player.coremedia.player
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
@@ -61,13 +63,37 @@ object RemuxExoPlayerFactory {
         context: Context,
         dvMode: DolbyVisionProcessingMode = DolbyVisionProcessingMode.P8_TRANSMUTE
     ): ExoPlayer {
-        val audioCapabilities = AudioCapabilities.getCapabilities(context)
-        val supportsTrueHd = audioCapabilities.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)
-        val supportsDtsHd = audioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS_HD_MA)
-        val supportsDts = audioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS)
-        val supportsEac3 = audioCapabilities.supportsEncoding(AudioFormat.ENCODING_E_AC3)
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val hasHdmiOutput = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.any {
+                it.type == AudioDeviceInfo.TYPE_HDMI ||
+                it.type == AudioDeviceInfo.TYPE_HDMI_ARC ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_HDMI_EARC)
+            } == true
+        } else false
 
-        Log.d(TAG, "Audio Passthrough: TrueHD=$supportsTrueHd, DTS-HD=$supportsDtsHd, DTS=$supportsDts, E-AC3=$supportsEac3")
+        val effectiveAudioCapabilities = if (!hasHdmiOutput) {
+            Log.i(TAG, "Salida de audio: Altavoces de TV detectados (Sin receptor HDMI/eARC). Decodificando DTS/DTS-HD a PCM por hardware.")
+            AudioCapabilities(
+                intArrayOf(
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    AudioFormat.ENCODING_PCM_FLOAT,
+                    AudioFormat.ENCODING_AC3,
+                    AudioFormat.ENCODING_E_AC3
+                ),
+                8
+            )
+        } else {
+            Log.i(TAG, "Salida de audio: Receptor HDMI/eARC externo detectado. Habilitando Passthrough completo.")
+            AudioCapabilities.getCapabilities(context)
+        }
+
+        val supportsTrueHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)
+        val supportsDtsHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS_HD_MA)
+        val supportsDts = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS)
+        val supportsEac3 = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_E_AC3)
+
+        Log.d(TAG, "Audio Passthrough (hasHdmi=$hasHdmiOutput): TrueHD=$supportsTrueHd, DTS-HD=$supportsDtsHd, DTS=$supportsDts, E-AC3=$supportsEac3")
 
         val trackSelector = DefaultTrackSelector(context)
         val paramsBuilder = trackSelector.buildUponParameters()
@@ -352,7 +378,7 @@ object RemuxExoPlayerFactory {
                 enableAudioTrackPlaybackParams: Boolean
             ): androidx.media3.exoplayer.audio.AudioSink {
                 return DefaultAudioSink.Builder(context)
-                    .setAudioCapabilities(audioCapabilities)
+                    .setAudioCapabilities(effectiveAudioCapabilities)
                     .setEnableFloatOutput(false)
                     .build()
             }

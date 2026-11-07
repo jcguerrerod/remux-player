@@ -68,8 +68,11 @@ class PlaybackActivity : Activity() {
     private lateinit var llScrubPreviewContainer: LinearLayout
     private lateinit var cvScrubCard: CardView
     private lateinit var ivScrubThumbnail: ImageView
+    private lateinit var vScrubPinLine: View
+    private lateinit var llScrubTimeBadgeContainer: LinearLayout
     private lateinit var tvScrubTime: TextView
-    private lateinit var tvScrubSpeed: TextView
+    private lateinit var tvScrubSpeedLeft: TextView
+    private lateinit var tvScrubSpeedRight: TextView
 
     // Apple TV Transport and Actions Buttons
     private lateinit var btnBack: ImageButton
@@ -143,6 +146,14 @@ class PlaybackActivity : Activity() {
                         tvCurrentTime.text = formatTimeMs(current)
                         val remaining = (duration - current).coerceAtLeast(0)
                         tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+
+                        // Alinear contenedor de tiempo exactamente debajo del cursor vertical de la barra
+                        val ratio = (current.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                        val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
+                        val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
+                        val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (50 * resources.displayMetrics.density).toInt()
+                        val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
+                        llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
                     } else {
                         tvCurrentTime.text = formatTimeMs(current)
                         tvRemainingTime.text = "--:--:--"
@@ -198,7 +209,8 @@ class PlaybackActivity : Activity() {
                 1 -> 1000L * sign
                 2 -> 4000L * sign
                 3 -> 12000L * sign
-                else -> 30000L * sign
+                4 -> 30000L * sign
+                else -> 60000L * sign // 5x
             }
 
             scrubTargetMs = (scrubTargetMs + stepMs).coerceIn(0L, duration)
@@ -224,7 +236,8 @@ class PlaybackActivity : Activity() {
         isSeeking = true
         player?.seekTo(target)
         player?.play()
-        tvScrubSpeed.visibility = View.GONE
+        tvScrubSpeedLeft.visibility = View.GONE
+        tvScrubSpeedRight.visibility = View.GONE
         llScrubPreviewContainer.animate().alpha(0f).setDuration(160).withEndAction {
             isScrubbing = false
             scrubSpeed = 0
@@ -236,7 +249,8 @@ class PlaybackActivity : Activity() {
     private fun cancelScrubbing() {
         if (!isScrubbing) return
         handler.removeCallbacks(scrubTickerRunnable)
-        tvScrubSpeed.visibility = View.GONE
+        tvScrubSpeedLeft.visibility = View.GONE
+        tvScrubSpeedRight.visibility = View.GONE
         llScrubPreviewContainer.animate().alpha(0f).setDuration(160).withEndAction {
             isScrubbing = false
             scrubSpeed = 0
@@ -361,7 +375,7 @@ class PlaybackActivity : Activity() {
         llPlayerHeaderRow = findViewById(R.id.llPlayerHeaderRow)
         tvPlayerYear = findViewById(R.id.tvPlayerYear)
         tvPlayerTitle = findViewById(R.id.tvPlayerTitle)
-        tvCurrentTime = findViewById(R.id.tvCurrentTime)
+        tvCurrentTime = findViewById(R.id.tvScrubTime)
         tvRemainingTime = findViewById(R.id.tvRemainingTime)
         timelineSeekBar = findViewById(R.id.timelineSeekBar)
         tvCenterStatusIndicator = findViewById(R.id.tvCenterStatusIndicator)
@@ -370,8 +384,11 @@ class PlaybackActivity : Activity() {
         llScrubPreviewContainer = findViewById(R.id.llScrubPreviewContainer)
         cvScrubCard = findViewById(R.id.cvScrubCard)
         ivScrubThumbnail = findViewById(R.id.ivScrubThumbnail)
+        vScrubPinLine = findViewById(R.id.vScrubPinLine)
+        llScrubTimeBadgeContainer = findViewById(R.id.llScrubTimeBadgeContainer)
         tvScrubTime = findViewById(R.id.tvScrubTime)
-        tvScrubSpeed = findViewById(R.id.tvScrubSpeed)
+        tvScrubSpeedLeft = findViewById(R.id.tvScrubSpeedLeft)
+        tvScrubSpeedRight = findViewById(R.id.tvScrubSpeedRight)
 
         btnBack = findViewById(R.id.btnBack)
         btnInfo = findViewById(R.id.btnInfo)
@@ -471,6 +488,15 @@ class PlaybackActivity : Activity() {
                         if (duration > 0) {
                             val newPos = (duration * progress) / 1000
                             tvCurrentTime.text = formatTimeMs(newPos)
+                            val remaining = (duration - newPos).coerceAtLeast(0)
+                            tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+
+                            val ratio = (progress.toFloat() / 1000f).coerceIn(0f, 1f)
+                            val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
+                            val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
+                            val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (50 * resources.displayMetrics.density).toInt()
+                            val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
+                            llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
                         }
                     }
                 }
@@ -491,6 +517,8 @@ class PlaybackActivity : Activity() {
                 }
                 isScrubbing = false
                 scrubSpeed = 0
+                tvScrubSpeedLeft.visibility = View.GONE
+                tvScrubSpeedRight.visibility = View.GONE
                 setHudScrubbingMode(false)
                 scheduleHudHide()
             }
@@ -529,9 +557,7 @@ class PlaybackActivity : Activity() {
     }
 
     private fun initExoPlayer(seekToPos: Long = C.TIME_UNSET, autoPlay: Boolean = true) {
-        val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true)
-        val effectiveDvMode = if (isSdr) DolbyVisionProcessingMode.FORCE_HDR10 else currentDvMode
+        val effectiveDvMode = currentDvMode
 
         val exo = RemuxExoPlayerFactory.create(this, effectiveDvMode)
         player = exo
@@ -843,12 +869,12 @@ class PlaybackActivity : Activity() {
             scrubSpeed = if (direction > 0) 1 else -1
             setHudScrubbingMode(true)
         } else {
-            // Ya en modo scrubbing: acelerar o desacelerar
+            // Ya en modo scrubbing: acelerar o desacelerar de 1x hasta 5x
             if (direction > 0) {
                 if (scrubSpeed < 0) {
                     scrubSpeed++
                     if (scrubSpeed == 0) scrubSpeed = 1
-                } else if (scrubSpeed in 1..3) {
+                } else if (scrubSpeed in 1..4) {
                     scrubSpeed++
                 }
             } else {
@@ -856,32 +882,34 @@ class PlaybackActivity : Activity() {
                     scrubSpeed--
                 } else if (scrubSpeed == 1) {
                     scrubSpeed = -1
-                } else if (scrubSpeed in -3..-1) {
+                } else if (scrubSpeed in -4..-1) {
                     scrubSpeed--
                 }
             }
         }
 
-        val speedText = when (scrubSpeed) {
-            1 -> "1x"
-            2 -> "2x"
-            3 -> "3x"
-            4 -> "4x"
-            -1 -> "-1x"
-            -2 -> "-2x"
-            -3 -> "-3x"
-            -4 -> "-4x"
-            else -> "1x"
+        val speedMagnitude = Math.abs(scrubSpeed)
+        val speedBadgeText = "${speedMagnitude}x"
+
+        if (scrubSpeed > 0) {
+            // Adelantar: badge a la DERECHA según sketch del usuario: xx:xx:xx (yx)
+            tvScrubSpeedLeft.visibility = View.GONE
+            tvScrubSpeedRight.text = speedBadgeText
+            tvScrubSpeedRight.visibility = View.VISIBLE
+        } else {
+            // Retroceder: badge a la IZQUIERDA según sketch del usuario: (yx) xx:xx:xx
+            tvScrubSpeedRight.visibility = View.GONE
+            tvScrubSpeedLeft.text = speedBadgeText
+            tvScrubSpeedLeft.visibility = View.VISIBLE
         }
-        tvScrubSpeed.text = speedText
-        tvScrubSpeed.visibility = View.VISIBLE
 
         val sign = if (scrubSpeed > 0) 1 else -1
-        val instantStep = when (Math.abs(scrubSpeed)) {
+        val instantStep = when (speedMagnitude) {
             1 -> 1000L * sign
             2 -> 4000L * sign
             3 -> 12000L * sign
-            else -> 30000L * sign
+            4 -> 30000L * sign
+            else -> 60000L * sign // 5x
         }
         scrubTargetMs = (scrubTargetMs + instantStep).coerceIn(0L, duration)
         timelineSeekBar.progress = ((scrubTargetMs * 1000) / duration).toInt()
@@ -909,17 +937,28 @@ class PlaybackActivity : Activity() {
         val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
         val thumbCenterX = seekbarScreenX + timelineSeekBar.paddingStart + (ratio * usableWidth)
         val cardWidth = llScrubPreviewContainer.width.takeIf { it > 0 } ?: (220 * resources.displayMetrics.density).toInt()
-        val cardHeight = llScrubPreviewContainer.height.takeIf { it > 0 } ?: (152 * resources.displayMetrics.density).toInt()
+        val cardHeight = llScrubPreviewContainer.height.takeIf { it > 0 } ?: (138 * resources.displayMetrics.density).toInt()
         val margin = 48 * resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val clampedX = (thumbCenterX - cardWidth / 2f).coerceIn(margin, screenWidth - cardWidth - margin)
         llScrubPreviewContainer.x = clampedX
 
-        // Anclar verticalmente exactamente a 10dp por encima de la barra de progreso
+        // Anclar verticalmente de modo que la aguja inferior (vScrubPinLine) toque exactamente la barra de progreso
         if (seekbarScreenY > 0) {
-            val targetY = seekbarScreenY - cardHeight - (10 * resources.displayMetrics.density)
+            val targetY = seekbarScreenY - cardHeight + (2 * resources.displayMetrics.density)
             llScrubPreviewContainer.y = targetY
         }
+
+        // Alinear la aguja vertical para que apunte directamente al cursor de la barra
+        val centerCardX = clampedX + cardWidth / 2f
+        val needleOffset = (thumbCenterX - centerCardX).coerceIn(-cardWidth / 2f + 16 * resources.displayMetrics.density, cardWidth / 2f - 16 * resources.displayMetrics.density)
+        vScrubPinLine.translationX = needleOffset
+
+        // Alinear contenedor de tiempo y badges debajo de la barra
+        val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
+        val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (70 * resources.displayMetrics.density).toInt()
+        val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
+        llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
     }
 
     /**
