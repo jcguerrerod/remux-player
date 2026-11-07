@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -112,6 +113,8 @@ class PlaybackActivity : Activity() {
     private var streamUrl: String = ""
     private var movieTitle: String = ""
     private var movieYear: String = "1981"
+    private var knownDurationMs: Long = 7200000L
+    private fun getEffectiveDuration(): Long = player?.duration?.takeIf { it > 0 } ?: knownDurationMs
     private var currentDvMode: DolbyVisionProcessingMode = DolbyVisionProcessingMode.P8_TRANSMUTE
     private val handler = Handler(Looper.getMainLooper())
 
@@ -137,7 +140,7 @@ class PlaybackActivity : Activity() {
             if (!isScrubbing && !isSeeking) {
                 player?.let { p ->
                     val current = p.currentPosition
-                    val duration = p.duration
+                    val duration = getEffectiveDuration()
 
                     if (duration > 0) {
                         val progress = ((current * 1000) / duration).toInt()
@@ -196,7 +199,7 @@ class PlaybackActivity : Activity() {
         override fun run() {
             if (!isScrubbing || scrubSpeed == 0) return
             val p = player ?: return
-            val duration = p.duration
+            val duration = getEffectiveDuration()
             if (duration <= 0) return
 
             val sign = if (scrubSpeed > 0) 1 else -1
@@ -256,7 +259,7 @@ class PlaybackActivity : Activity() {
         }.start()
         player?.let { p ->
             p.seekTo(originalPositionBeforeScrub)
-            val dur = p.duration
+            val dur = getEffectiveDuration()
             if (dur > 0) {
                 timelineSeekBar.progress = ((originalPositionBeforeScrub * 1000) / dur).toInt()
                 tvCurrentTime.text = formatTimeMs(originalPositionBeforeScrub)
@@ -329,10 +332,23 @@ class PlaybackActivity : Activity() {
         }.start()
     }
 
+    private fun isEmulator(): Boolean {
+        return Build.FINGERPRINT.contains("generic") ||
+                Build.MODEL.contains("google_sdk") ||
+                Build.HARDWARE.contains("goldfish") ||
+                Build.HARDWARE.contains("ranchu") ||
+                Build.PRODUCT.contains("sdk") ||
+                Build.MODEL.contains("AOSP") ||
+                Build.FINGERPRINT.contains("emulator")
+    }
+
     private fun parseIntent() {
         val incomingUri: Uri? = intent.data
         if (incomingUri != null) {
             streamUrl = incomingUri.toString()
+            if (isEmulator() && streamUrl.contains("192.168.100.108")) {
+                streamUrl = streamUrl.replace("192.168.100.108", "10.0.2.2")
+            }
             var title = intent.getStringExtra("MOVIE_TITLE")
                 ?: intent.getStringExtra("title")
                 ?: intent.getStringExtra("android.intent.extra.TITLE")
@@ -360,6 +376,22 @@ class PlaybackActivity : Activity() {
                 movieYear = "2014"
             }
             movieTitle = title
+            knownDurationMs = when {
+                title.contains("Raiders", ignoreCase = true) -> (1 * 3600 + 55 * 60) * 1000L
+                title.contains("Nightmare", ignoreCase = true) -> (1 * 3600 + 16 * 60) * 1000L
+                title.contains("Apocalypse", ignoreCase = true) -> (2 * 3600 + 27 * 60) * 1000L
+                title.contains("Hail", ignoreCase = true) -> (2 * 3600 + 35 * 60) * 1000L
+                title.contains("Whiplash", ignoreCase = true) -> (1 * 3600 + 46 * 60) * 1000L
+                else -> 7200000L
+            }
+            if (isEmulator() && streamUrl.contains("stream.mkv?Static=true")) {
+                if (title.contains("Raiders", ignoreCase = true) ||
+                    title.contains("Nightmare", ignoreCase = true) ||
+                    title.contains("Hail", ignoreCase = true)
+                ) {
+                    streamUrl = streamUrl.replace("stream.mkv?Static=true", "stream.mp4?VideoCodec=h264&AudioCodec=aac")
+                }
+            }
         } else {
             movieTitle = "Raiders of the Lost Ark"
             movieYear = "1981"
@@ -497,7 +529,7 @@ class PlaybackActivity : Activity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     player?.let { p ->
-                        val duration = p.duration
+                        val duration = getEffectiveDuration()
                         if (duration > 0) {
                             val newPos = (duration * progress) / 1000
                             tvCurrentTime.text = formatTimeMs(newPos)
@@ -513,7 +545,7 @@ class PlaybackActivity : Activity() {
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 player?.let { p ->
-                    val duration = p.duration
+                    val duration = getEffectiveDuration()
                     if (duration > 0 && seekBar != null) {
                         val newPos = (duration * seekBar.progress) / 1000
                         p.seekTo(newPos)
@@ -615,6 +647,21 @@ class PlaybackActivity : Activity() {
                 updateTrackBadges(tracks)
                 if (!userChangedSubtitles) {
                     autoSelectPgsSubtitles(exo, tracks)
+                }
+            }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Log.e("PlaybackActivity", "ExoPlayer onPlayerError: ${error.errorCodeName} (code=${error.errorCode})", error)
+                val cause = error.cause
+                if (cause is androidx.media3.exoplayer.mediacodec.MediaCodecRenderer.DecoderInitializationException) {
+                    val mime = cause.mimeType ?: ""
+                    Log.w("PlaybackActivity", "Decoder init failed for MIME: $mime. Disabling audio track...")
+                    exo.trackSelectionParameters = exo.trackSelectionParameters
+                        .buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+                        .build()
+                    exo.prepare()
+                    exo.play()
                 }
             }
         })
@@ -843,7 +890,7 @@ class PlaybackActivity : Activity() {
      */
     private fun handleScrubKey(direction: Int) {
         val p = player ?: return
-        val duration = p.duration
+        val duration = getEffectiveDuration()
         if (duration <= 0) return
 
         handler.removeCallbacks(hideHudRunnable)
