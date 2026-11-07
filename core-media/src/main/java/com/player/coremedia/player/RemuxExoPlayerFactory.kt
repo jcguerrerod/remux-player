@@ -88,10 +88,7 @@ object RemuxExoPlayerFactory {
         val isEmulator = Build.FINGERPRINT.contains("generic") ||
                 Build.MODEL.contains("google_sdk") ||
                 Build.HARDWARE.contains("goldfish") ||
-                Build.HARDWARE.contains("ranchu") ||
-                Build.PRODUCT.contains("sdk") ||
-                Build.MODEL.contains("AOSP") ||
-                Build.FINGERPRINT.contains("emulator")
+                Build.HARDWARE.contains("ranchu")
 
         val renderersFactory = object : DefaultRenderersFactory(context) {
             init {
@@ -172,13 +169,16 @@ object RemuxExoPlayerFactory {
                                 format.codecs?.contains("hev1.08") == true ||
                                 format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION
 
-                        val rawDecoders = if (isDv) {
+                        if (isDv) {
                             if (dvMode == DolbyVisionProcessingMode.FORCE_HDR10) {
-                                mediaCodecSelector.getDecoderInfos(
+                                val hevcDecoders = mediaCodecSelector.getDecoderInfos(
                                     MimeTypes.VIDEO_H265,
                                     requiresSecureDecoder,
                                     false
                                 )
+                                if (hevcDecoders.isNotEmpty()) {
+                                    return hevcDecoders.sortedBy { if (it.hardwareAccelerated) 0 else 1 }
+                                }
                             } else {
                                 val dvDecoders = mediaCodecSelector.getDecoderInfos(
                                     MimeTypes.VIDEO_DOLBY_VISION,
@@ -186,30 +186,20 @@ object RemuxExoPlayerFactory {
                                     false
                                 )
                                 if (dvDecoders.isNotEmpty()) {
-                                    dvDecoders
-                                } else {
-                                    mediaCodecSelector.getDecoderInfos(
-                                        MimeTypes.VIDEO_H265,
-                                        requiresSecureDecoder,
-                                        false
-                                    )
+                                    return dvDecoders
+                                }
+
+                                val hevcDecoders = mediaCodecSelector.getDecoderInfos(
+                                    MimeTypes.VIDEO_H265,
+                                    requiresSecureDecoder,
+                                    false
+                                )
+                                if (hevcDecoders.isNotEmpty()) {
+                                    return hevcDecoders.sortedBy { if (it.hardwareAccelerated) 0 else 1 }
                                 }
                             }
-                        } else {
-                            super.getDecoderInfos(mediaCodecSelector, format, requiresSecureDecoder)
                         }
-
-                        // En el emulador Android Studio QEMU, los decodificadores 'goldfish' (c2.goldfish.hevc.decoder)
-                        // fallan con Error 0xe al decodificar cabeceras HEVC Main10/4K.
-                        // Usar el decodificador oficial por software de Google (c2.android.hevc.decoder / c2.android.avc.decoder).
-                        // En la TV real (isEmulator = false), se mantiene el orden nativo acelerado por hardware.
-                        val chosen = if (isEmulator) {
-                            val nonGoldfish = rawDecoders.filterNot { it.name.contains("goldfish", ignoreCase = true) }
-                            if (nonGoldfish.isNotEmpty()) nonGoldfish else rawDecoders
-                        } else {
-                            rawDecoders.sortedBy { if (it.hardwareAccelerated) 0 else 1 }
-                        }
-                        return chosen
+                        return super.getDecoderInfos(mediaCodecSelector, format, requiresSecureDecoder)
                     }
 
                     override fun onInputFormatChanged(formatHolder: FormatHolder): DecoderReuseEvaluation? {
@@ -328,7 +318,7 @@ object RemuxExoPlayerFactory {
                                     mediaFormat.setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
                                 } catch (_: Exception) {}
                                 Log.i(TAG, "Configurado decodificador HEVC para capa base HDR10 PQ (Main 10)")
-                            } else if (!isEmulator) {
+                            } else {
                                 Log.i(TAG, "Decodificador HEVC en modo compatible (Main 8-bit / SDR)")
                                 mediaFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain)
                             }
@@ -356,42 +346,6 @@ object RemuxExoPlayerFactory {
                 out.add(videoRenderer)
             }
 
-            override fun buildAudioRenderers(
-                context: Context,
-                extensionRendererMode: Int,
-                mediaCodecSelector: MediaCodecSelector,
-                enableDecoderFallback: Boolean,
-                audioSink: androidx.media3.exoplayer.audio.AudioSink,
-                eventHandler: Handler,
-                eventListener: androidx.media3.exoplayer.audio.AudioRendererEventListener,
-                out: ArrayList<androidx.media3.exoplayer.Renderer>
-            ) {
-                val audioRenderer = object : androidx.media3.exoplayer.audio.MediaCodecAudioRenderer(
-                    context,
-                    getCodecAdapterFactory(),
-                    mediaCodecSelector,
-                    enableDecoderFallback,
-                    eventHandler,
-                    eventListener,
-                    audioSink
-                ) {
-                    override fun getDecoderInfos(
-                        mediaCodecSelector: MediaCodecSelector,
-                        format: Format,
-                        requiresSecureDecoder: Boolean
-                    ): List<ExoMediaCodecInfo> {
-                        val decoders = super.getDecoderInfos(mediaCodecSelector, format, requiresSecureDecoder)
-                        return if (isEmulator) {
-                            val nonGoldfish = decoders.filterNot { it.name.contains("goldfish", ignoreCase = true) }
-                            if (nonGoldfish.isNotEmpty()) nonGoldfish else decoders
-                        } else {
-                            decoders
-                        }
-                    }
-                }
-                out.add(audioRenderer)
-            }
-
             override fun buildAudioSink(
                 context: Context,
                 enableFloatOutput: Boolean,
@@ -404,30 +358,27 @@ object RemuxExoPlayerFactory {
             }
         }
 
-        // Pipeline de red optimizado para transmisiones de ultra-alta tasa de bits (150+ Mbps)
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(30000)
-            .setUserAgent("RemuxPlayer-tvOS/2.0 (AndroidTV; Linux; DirectPlay)")
-            .setDefaultRequestProperties(
-                mapOf(
-                    "Connection" to "keep-alive",
-                    "Accept-Encoding" to "identity"
-                )
-            )
 
-        val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
-
-        val mediaSourceFactory = DefaultMediaSourceFactory(defaultDataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(httpDataSourceFactory)
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
-        // Motor de Buffer Profundo para Picos de 150+ Mbps (Deep RAM Ring-Buffer)
-        val loadControl = RemuxLoadControlFactory.create(context)
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15000, // minBufferMs
+                50000, // maxBufferMs
+                1000,  // bufferForPlaybackMs
+                2000   // bufferForPlaybackAfterRebufferMs
+            )
+            .build()
 
         return ExoPlayer.Builder(context, renderersFactory)
             .setTrackSelector(trackSelector)

@@ -154,7 +154,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        if (isEmulator()) {
+        if (Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("google_sdk")) {
             serverBaseUrl = "http://10.0.2.2:8096"
         }
 
@@ -449,22 +449,8 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun isEmulator(): Boolean {
-        return Build.FINGERPRINT.contains("generic") ||
-                Build.MODEL.contains("google_sdk") ||
-                Build.HARDWARE.contains("goldfish") ||
-                Build.HARDWARE.contains("ranchu") ||
-                Build.PRODUCT.contains("sdk") ||
-                Build.MODEL.contains("AOSP") ||
-                Build.FINGERPRINT.contains("emulator")
-    }
-
     private fun launchPlayback(movie: RemuxMovie) {
-        val streamUrl = if (isEmulator() && (movie.videoCodec.contains("HEVC") || movie.videoCodec.contains("DOLBY VISION"))) {
-            "$serverBaseUrl/Videos/${movie.itemId}/stream.mp4?VideoCodec=h264&AudioCodec=aac&VideoBitrate=60000000&AudioBitrate=384000&MaxWidth=1920&MaxHeight=1080"
-        } else {
-            "$serverBaseUrl/Videos/${movie.itemId}/stream.mkv?Static=true"
-        }
+        val streamUrl = "$serverBaseUrl/Videos/${movie.itemId}/stream.mkv?Static=true"
         val intent = Intent(this, PlaybackActivity::class.java).apply {
             data = Uri.parse(streamUrl)
             putExtra("title", movie.title)

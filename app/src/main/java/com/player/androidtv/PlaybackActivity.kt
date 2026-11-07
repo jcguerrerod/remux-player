@@ -6,13 +6,11 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LruCache
-import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -39,7 +37,6 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import com.player.coremedia.player.DolbyVisionProcessingMode
 import com.player.coremedia.player.RemuxExoPlayerFactory
-import com.player.coremedia.player.RemuxLoadControlFactory
 import java.util.Locale
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -94,11 +91,11 @@ class PlaybackActivity : Activity() {
     private lateinit var badgeAfr: TextView
 
     // Subtítulos PGS Theatrical Master Reference (Canvas 1920x1080):
-    // Fontsize: 52px (52 / 1080 = 0.0481f)
-    // MarginV: 162px (162 / 1080 = 0.1500f) -> Ubicados justo por encima de la barra negra en 2.40:1 Cinemascope
+    // Fontsize: 50px (50 / 1080 = 0.0463f)
+    // MarginV: 155px (155 / 1080 = 0.1435f) -> Por encima de la barra negra en películas 2.40:1 Cinemascope
     // Luminancia: SMPTE Video White #EBEBEB, Outline negro sólido (sin drop shadow) idéntico a PGS Blu-ray
-    private val subTextSizeFraction = 52f / 1080f
-    private val subBottomPaddingFraction = 162f / 1080f
+    private val subTextSizeFraction = 50f / 1080f
+    private val subBottomPaddingFraction = 155f / 1080f
 
     // Apple TV Floating Popups (Fotos 1 y 3)
     private enum class ModalType { NONE, SUBTITLES, AUDIO, DV_MODE, INFO }
@@ -113,8 +110,6 @@ class PlaybackActivity : Activity() {
     private var streamUrl: String = ""
     private var movieTitle: String = ""
     private var movieYear: String = "1981"
-    private var knownDurationMs: Long = 7200000L
-    private fun getEffectiveDuration(): Long = player?.duration?.takeIf { it > 0 } ?: knownDurationMs
     private var currentDvMode: DolbyVisionProcessingMode = DolbyVisionProcessingMode.P8_TRANSMUTE
     private val handler = Handler(Looper.getMainLooper())
 
@@ -140,19 +135,15 @@ class PlaybackActivity : Activity() {
             if (!isScrubbing && !isSeeking) {
                 player?.let { p ->
                     val current = p.currentPosition
-                    val duration = getEffectiveDuration()
+                    val duration = p.duration
 
                     if (duration > 0) {
                         val progress = ((current * 1000) / duration).toInt()
                         timelineSeekBar.progress = progress
-                        val buffered = p.bufferedPosition
-                        val secondary = ((buffered * 1000) / duration).toInt()
-                        timelineSeekBar.secondaryProgress = secondary
                         tvCurrentTime.text = formatTimeMs(current)
                         val remaining = (duration - current).coerceAtLeast(0)
                         tvRemainingTime.text = "-${formatTimeMs(remaining)}"
                     } else {
-                        timelineSeekBar.secondaryProgress = 0
                         tvCurrentTime.text = formatTimeMs(current)
                         tvRemainingTime.text = "--:--:--"
                     }
@@ -179,19 +170,19 @@ class PlaybackActivity : Activity() {
 
     private fun setHudScrubbingMode(scrubbing: Boolean) {
         if (scrubbing) {
-            topBar.animate().cancel()
-            topBar.animate().alpha(0.2f).setDuration(160).start()
-            llActionsRow.animate().cancel()
-            llActionsRow.animate().alpha(0.2f).setDuration(160).start()
+            topBar.visibility = View.GONE
+            llPlayerHeaderRow.visibility = View.GONE
+            llActionsRow.visibility = View.GONE
             llScrubPreviewContainer.visibility = View.VISIBLE
             llScrubPreviewContainer.alpha = 1f
         } else {
             llScrubPreviewContainer.visibility = View.GONE
-            topBar.animate().cancel()
-            topBar.animate().alpha(1f).setDuration(160).start()
-            llActionsRow.animate().cancel()
-            llActionsRow.animate().alpha(1f).setDuration(160).start()
+            topBar.visibility = View.VISIBLE
+            llPlayerHeaderRow.visibility = View.VISIBLE
+            llActionsRow.visibility = View.VISIBLE
+            topBar.alpha = 1f
             llPlayerHeaderRow.alpha = 1f
+            llActionsRow.alpha = 1f
         }
     }
 
@@ -199,15 +190,15 @@ class PlaybackActivity : Activity() {
         override fun run() {
             if (!isScrubbing || scrubSpeed == 0) return
             val p = player ?: return
-            val duration = getEffectiveDuration()
+            val duration = p.duration
             if (duration <= 0) return
 
             val sign = if (scrubSpeed > 0) 1 else -1
             val stepMs = when (Math.abs(scrubSpeed)) {
                 1 -> 1000L * sign
-                2 -> 2000L * sign
-                3 -> 6000L * sign
-                else -> 15000L * sign
+                2 -> 4000L * sign
+                3 -> 12000L * sign
+                else -> 30000L * sign
             }
 
             scrubTargetMs = (scrubTargetMs + stepMs).coerceIn(0L, duration)
@@ -222,13 +213,7 @@ class PlaybackActivity : Activity() {
             updateScrubPreviewPosition(scrubTargetMs, duration)
             loadScrubThumbnail(movieTitle, scrubTargetMs)
 
-            val delayMs = when (Math.abs(scrubSpeed)) {
-                1 -> 800L
-                2 -> 450L
-                3 -> 250L
-                else -> 150L
-            }
-            handler.postDelayed(this, delayMs)
+            handler.postDelayed(this, 300L)
         }
     }
 
@@ -259,7 +244,7 @@ class PlaybackActivity : Activity() {
         }.start()
         player?.let { p ->
             p.seekTo(originalPositionBeforeScrub)
-            val dur = getEffectiveDuration()
+            val dur = p.duration
             if (dur > 0) {
                 timelineSeekBar.progress = ((originalPositionBeforeScrub * 1000) / dur).toInt()
                 tvCurrentTime.text = formatTimeMs(originalPositionBeforeScrub)
@@ -332,23 +317,10 @@ class PlaybackActivity : Activity() {
         }.start()
     }
 
-    private fun isEmulator(): Boolean {
-        return Build.FINGERPRINT.contains("generic") ||
-                Build.MODEL.contains("google_sdk") ||
-                Build.HARDWARE.contains("goldfish") ||
-                Build.HARDWARE.contains("ranchu") ||
-                Build.PRODUCT.contains("sdk") ||
-                Build.MODEL.contains("AOSP") ||
-                Build.FINGERPRINT.contains("emulator")
-    }
-
     private fun parseIntent() {
         val incomingUri: Uri? = intent.data
         if (incomingUri != null) {
             streamUrl = incomingUri.toString()
-            if (isEmulator() && streamUrl.contains("192.168.100.108")) {
-                streamUrl = streamUrl.replace("192.168.100.108", "10.0.2.2")
-            }
             var title = intent.getStringExtra("MOVIE_TITLE")
                 ?: intent.getStringExtra("title")
                 ?: intent.getStringExtra("android.intent.extra.TITLE")
@@ -376,29 +348,6 @@ class PlaybackActivity : Activity() {
                 movieYear = "2014"
             }
             movieTitle = title
-            knownDurationMs = when {
-                title.contains("Raiders", ignoreCase = true) -> (1 * 3600 + 55 * 60) * 1000L
-                title.contains("Nightmare", ignoreCase = true) -> (1 * 3600 + 16 * 60) * 1000L
-                title.contains("Apocalypse", ignoreCase = true) -> (2 * 3600 + 27 * 60) * 1000L
-                title.contains("Hail", ignoreCase = true) -> (2 * 3600 + 35 * 60) * 1000L
-                title.contains("Whiplash", ignoreCase = true) -> (1 * 3600 + 46 * 60) * 1000L
-                else -> 7200000L
-            }
-            if (isEmulator() && streamUrl.contains("stream.mkv?Static=true")) {
-                if (title.contains("Raiders", ignoreCase = true) ||
-                    title.contains("Nightmare", ignoreCase = true) ||
-                    title.contains("Hail", ignoreCase = true) ||
-                    title.contains("2160", ignoreCase = true) ||
-                    title.contains("4K", ignoreCase = true) ||
-                    title.contains("UHD", ignoreCase = true)
-                ) {
-                    streamUrl = streamUrl.replace(
-                        "stream.mkv?Static=true",
-                        "stream.mp4?VideoCodec=h264&AudioCodec=aac&VideoBitrate=60000000&AudioBitrate=384000&MaxWidth=1920&MaxHeight=1080"
-                    )
-                }
-            }
-            Log.i("PlaybackActivity", "parseIntent: final streamUrl=$streamUrl")
         } else {
             movieTitle = "Raiders of the Lost Ark"
             movieYear = "1981"
@@ -460,36 +409,22 @@ class PlaybackActivity : Activity() {
                 movieTitle.contains("Whiplash", ignoreCase = true)
         if (isSdr) {
             ivLogoUhd.visibility = View.GONE
-            ivLogoBluray.visibility = View.VISIBLE
-            badge4K.visibility = View.GONE
+            badge4K.visibility = View.VISIBLE
+            badge4K.text = "1080P HD"
             ivLogoDv.visibility = View.GONE
             badgeDv.visibility = View.GONE
-            if (movieTitle.contains("Whiplash", ignoreCase = true)) {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.VISIBLE
-                badgeAudio.visibility = View.GONE
-            } else {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.GONE
-                badgeAudio.visibility = View.VISIBLE
-                badgeAudio.text = "DOLBY TRUEHD"
-            }
+            ivLogoAtmos.visibility = View.GONE
+            badgeAudio.visibility = View.VISIBLE
+            badgeAudio.text = "AUDIO BITSTREAM"
             btnDvMode.visibility = View.GONE
         } else {
             ivLogoUhd.visibility = View.VISIBLE
-            ivLogoBluray.visibility = View.GONE
             badge4K.visibility = View.GONE
             ivLogoDv.visibility = View.VISIBLE
             badgeDv.visibility = View.GONE
-            if (movieTitle.contains("Nightmare", ignoreCase = true)) {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.VISIBLE
-                badgeAudio.visibility = View.GONE
-            } else {
-                ivLogoAtmos.visibility = View.VISIBLE
-                ivLogoDts.visibility = View.GONE
-                badgeAudio.visibility = View.GONE
-            }
+            ivLogoAtmos.visibility = View.GONE
+            badgeAudio.visibility = View.VISIBLE
+            badgeAudio.text = "AUDIO BITSTREAM"
             btnDvMode.visibility = View.VISIBLE
             btnDvMode.text = when (currentDvMode) {
                 DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
@@ -528,15 +463,11 @@ class PlaybackActivity : Activity() {
             closeModal()
         }
 
-        modalCard.setOnClickListener {
-            // Consumir el click dentro de la tarjeta para no cerrar el modal accidentalmente
-        }
-
         timelineSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     player?.let { p ->
-                        val duration = getEffectiveDuration()
+                        val duration = p.duration
                         if (duration > 0) {
                             val newPos = (duration * progress) / 1000
                             tvCurrentTime.text = formatTimeMs(newPos)
@@ -552,7 +483,7 @@ class PlaybackActivity : Activity() {
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 player?.let { p ->
-                    val duration = getEffectiveDuration()
+                    val duration = p.duration
                     if (duration > 0 && seekBar != null) {
                         val newPos = (duration * seekBar.progress) / 1000
                         p.seekTo(newPos)
@@ -656,37 +587,6 @@ class PlaybackActivity : Activity() {
                     autoSelectPgsSubtitles(exo, tracks)
                 }
             }
-
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                Log.e("PlaybackActivity", "ExoPlayer onPlayerError: ${error.errorCodeName} (code=${error.errorCode})", error)
-                val cause = error.cause
-                if (cause is androidx.media3.exoplayer.mediacodec.MediaCodecRenderer.DecoderInitializationException) {
-                    val mime = cause.mimeType ?: ""
-                    if (mime.startsWith("video/") && isEmulator() && streamUrl.contains("stream.mkv?Static=true")) {
-                        Log.w("PlaybackActivity", "Video decoder failed on emulator for $mime. Falling back to pristine 1080p 60Mbps H.264 stream...")
-                        val currentPos = exo.currentPosition
-                        streamUrl = streamUrl.replace(
-                            "stream.mkv?Static=true",
-                            "stream.mp4?VideoCodec=h264&AudioCodec=aac&VideoBitrate=60000000&AudioBitrate=384000&MaxWidth=1920&MaxHeight=1080"
-                        )
-                        val mediaItem = androidx.media3.common.MediaItem.fromUri(streamUrl)
-                        exo.setMediaItem(mediaItem)
-                        exo.prepare()
-                        if (currentPos > 0) {
-                            exo.seekTo(currentPos)
-                        }
-                        exo.play()
-                        return
-                    }
-                    Log.w("PlaybackActivity", "Decoder init failed for MIME: $mime. Disabling audio track...")
-                    exo.trackSelectionParameters = exo.trackSelectionParameters
-                        .buildUpon()
-                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-                        .build()
-                    exo.prepare()
-                    exo.play()
-                }
-            }
         })
 
         if (streamUrl.isNotEmpty()) {
@@ -739,6 +639,21 @@ class PlaybackActivity : Activity() {
                         closeModal()
                         targetBtn.requestFocus()
                         return true
+                    }
+                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        val lastChild = (0 until llModalListContainer.childCount).map { llModalListContainer.getChildAt(it) }.lastOrNull()
+                        if (focus == lastChild) {
+                            val targetBtn = if (activeModalType == ModalType.AUDIO) btnAudioTrack else btnSubtitles
+                            closeModal()
+                            targetBtn.requestFocus()
+                            return true
+                        }
+                    }
+                    KeyEvent.KEYCODE_DPAD_UP -> {
+                        val firstChild = llModalListContainer.getChildAt(0)
+                        if (focus == firstChild) {
+                            return true
+                        }
                     }
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
                         if (activeModalType == ModalType.SUBTITLES) {
@@ -913,7 +828,7 @@ class PlaybackActivity : Activity() {
      */
     private fun handleScrubKey(direction: Int) {
         val p = player ?: return
-        val duration = getEffectiveDuration()
+        val duration = p.duration
         if (duration <= 0) return
 
         handler.removeCallbacks(hideHudRunnable)
@@ -948,7 +863,7 @@ class PlaybackActivity : Activity() {
         }
 
         val speedText = when (scrubSpeed) {
-            1 -> ""
+            1 -> "1x"
             2 -> "2x"
             3 -> "3x"
             4 -> "4x"
@@ -956,21 +871,17 @@ class PlaybackActivity : Activity() {
             -2 -> "-2x"
             -3 -> "-3x"
             -4 -> "-4x"
-            else -> ""
+            else -> "1x"
         }
-        if (speedText.isNotEmpty()) {
-            tvScrubSpeed.text = speedText
-            tvScrubSpeed.visibility = View.VISIBLE
-        } else {
-            tvScrubSpeed.visibility = View.GONE
-        }
+        tvScrubSpeed.text = speedText
+        tvScrubSpeed.visibility = View.VISIBLE
 
         val sign = if (scrubSpeed > 0) 1 else -1
         val instantStep = when (Math.abs(scrubSpeed)) {
             1 -> 1000L * sign
-            2 -> 2000L * sign
-            3 -> 6000L * sign
-            else -> 15000L * sign
+            2 -> 4000L * sign
+            3 -> 12000L * sign
+            else -> 30000L * sign
         }
         scrubTargetMs = (scrubTargetMs + instantStep).coerceIn(0L, duration)
         timelineSeekBar.progress = ((scrubTargetMs * 1000) / duration).toInt()
@@ -984,14 +895,8 @@ class PlaybackActivity : Activity() {
         loadScrubThumbnail(movieTitle, scrubTargetMs)
         llScrubPreviewContainer.bringToFront()
 
-        val delayMs = when (Math.abs(scrubSpeed)) {
-            1 -> 800L
-            2 -> 450L
-            3 -> 250L
-            else -> 150L
-        }
         handler.removeCallbacks(scrubTickerRunnable)
-        handler.postDelayed(scrubTickerRunnable, delayMs)
+        handler.postDelayed(scrubTickerRunnable, 300L)
     }
 
     private fun updateScrubPreviewPosition(targetMs: Long, duration: Long) {
@@ -1003,17 +908,16 @@ class PlaybackActivity : Activity() {
         val seekbarScreenY = loc[1]
         val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
         val thumbCenterX = seekbarScreenX + timelineSeekBar.paddingStart + (ratio * usableWidth)
-        val density = resources.displayMetrics.density
-        val cardWidth = llScrubPreviewContainer.width.takeIf { it > 0 } ?: (220 * density).toInt()
-        val cardHeight = llScrubPreviewContainer.height.takeIf { it > 0 } ?: (152 * density).toInt()
-        val margin = 48 * density
+        val cardWidth = llScrubPreviewContainer.width.takeIf { it > 0 } ?: (220 * resources.displayMetrics.density).toInt()
+        val cardHeight = llScrubPreviewContainer.height.takeIf { it > 0 } ?: (152 * resources.displayMetrics.density).toInt()
+        val margin = 48 * resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val clampedX = (thumbCenterX - cardWidth / 2f).coerceIn(margin, screenWidth - cardWidth - margin)
         llScrubPreviewContainer.x = clampedX
 
-        // Anclar verticalmente exactamente a 12dp por encima de la barra de progreso
+        // Anclar verticalmente exactamente a 10dp por encima de la barra de progreso
         if (seekbarScreenY > 0) {
-            val targetY = seekbarScreenY - cardHeight - (12 * density)
+            val targetY = seekbarScreenY - cardHeight - (10 * resources.displayMetrics.density)
             llScrubPreviewContainer.y = targetY
         }
     }
@@ -1138,18 +1042,10 @@ class PlaybackActivity : Activity() {
             }
         }
 
-        val isMasterUhd = movieTitle.contains("Raiders", ignoreCase = true) ||
-                movieTitle.contains("Nightmare", ignoreCase = true) ||
-                movieTitle.contains("Hail", ignoreCase = true)
+        val isMovieSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
+                movieTitle.contains("Whiplash", ignoreCase = true) || (!isDolbyVision && !isHdr && !is4k)
 
-        val isMovieSdr = if (isMasterUhd) {
-            false
-        } else {
-            movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                    movieTitle.contains("Whiplash", ignoreCase = true) || (!isDolbyVision && !isHdr && !is4k)
-        }
-
-        if (is4k || isMasterUhd) {
+        if (is4k && !isMovieSdr) {
             ivLogoUhd.visibility = View.VISIBLE
             ivLogoBluray.visibility = View.GONE
             badge4K.visibility = View.GONE
@@ -1163,7 +1059,7 @@ class PlaybackActivity : Activity() {
             ivLogoDv.visibility = View.GONE
             badgeDv.visibility = View.GONE
             btnDvMode.visibility = View.GONE
-        } else if (isDolbyVision || isMasterUhd || currentDvMode != DolbyVisionProcessingMode.FORCE_HDR10) {
+        } else if (isDolbyVision || currentDvMode != DolbyVisionProcessingMode.FORCE_HDR10) {
             ivLogoDv.visibility = View.VISIBLE
             badgeDv.visibility = View.GONE
             btnDvMode.visibility = View.VISIBLE
@@ -1178,14 +1074,6 @@ class PlaybackActivity : Activity() {
             badgeDv.text = "HDR10"
             btnDvMode.visibility = View.VISIBLE
             btnDvMode.text = "HDR10"
-        }
-
-        if (isEmulator() && isMasterUhd) {
-            audioName = if (movieTitle.contains("Nightmare", ignoreCase = true)) {
-                "DTS-HD MASTER AUDIO"
-            } else {
-                "DOLBY TRUEHD ATMOS"
-            }
         }
 
         when {
@@ -1220,34 +1108,26 @@ class PlaybackActivity : Activity() {
         }
     }
 
-    private fun setModalCardPosition(gravity: Int, marginHorizontalDp: Int) {
+    private fun setModalCardMarginEnd(marginEndDp: Int) {
         val density = resources.displayMetrics.density
-        val targetMargin = (marginHorizontalDp * density).toInt()
-        (modalCard.layoutParams as? FrameLayout.LayoutParams)?.let { lp ->
-            lp.gravity = gravity or Gravity.BOTTOM
-            if ((gravity and Gravity.START) == Gravity.START) {
-                lp.marginStart = targetMargin
-                lp.marginEnd = 0
-            } else {
-                if (modalOverlay.visibility == View.VISIBLE && lp.marginEnd != targetMargin) {
-                    val startMargin = lp.marginEnd
-                    modalCard.animate().cancel()
-                    modalCard.translationX = (startMargin - targetMargin).toFloat()
-                    lp.marginEnd = targetMargin
-                    lp.marginStart = 0
-                    modalCard.layoutParams = lp
-                    modalCard.animate()
-                        .translationX(0f)
-                        .setDuration(160)
-                        .setInterpolator(android.view.animation.DecelerateInterpolator())
-                        .start()
-                    return
-                }
+        val targetMargin = (marginEndDp * density).toInt()
+        (modalCard.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+            if (modalOverlay.visibility == View.VISIBLE && lp.marginEnd != targetMargin) {
+                val startMargin = lp.marginEnd
+                modalCard.animate().cancel()
+                modalCard.translationX = (startMargin - targetMargin).toFloat()
                 lp.marginEnd = targetMargin
-                lp.marginStart = 0
+                modalCard.layoutParams = lp
+                modalCard.animate()
+                    .translationX(0f)
+                    .setDuration(160)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
+            } else {
+                lp.marginEnd = targetMargin
+                modalCard.translationX = 0f
+                modalCard.layoutParams = lp
             }
-            modalCard.translationX = 0f
-            modalCard.layoutParams = lp
         }
     }
 
@@ -1255,7 +1135,7 @@ class PlaybackActivity : Activity() {
     private fun openAudioModal() {
         val exo = player ?: return
         activeModalType = ModalType.AUDIO
-        setModalCardPosition(Gravity.END, 36)
+        setModalCardMarginEnd(38)
 
         showModal(
             title = "Audio",
@@ -1398,7 +1278,7 @@ class PlaybackActivity : Activity() {
     private fun openSubtitlesModal() {
         val exo = player ?: return
         activeModalType = ModalType.SUBTITLES
-        setModalCardPosition(Gravity.END, 88)
+        setModalCardMarginEnd(90)
 
         showModal(
             title = "Subtitles",
@@ -1573,7 +1453,7 @@ class PlaybackActivity : Activity() {
 
     private fun openDvModeModal() {
         activeModalType = ModalType.DV_MODE
-        setModalCardPosition(Gravity.START, 114)
+        setModalCardMarginEnd(48)
 
         val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true)
@@ -1679,7 +1559,7 @@ class PlaybackActivity : Activity() {
 
     private fun openInfoModal() {
         activeModalType = ModalType.INFO
-        setModalCardPosition(Gravity.START, 48)
+        setModalCardMarginEnd(48)
 
         showModal(
             title = "Info",
@@ -1692,24 +1572,12 @@ class PlaybackActivity : Activity() {
         val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true)
 
-        val bufferProfile = RemuxLoadControlFactory.getBufferProfile(this)
-        val bufferAheadMs = ((player?.bufferedPosition ?: 0L) - (player?.currentPosition ?: 0L)).coerceAtLeast(0L)
-        val bufferSec = String.format(Locale.US, "%.1f", bufferAheadMs / 1000f)
-
-        val audioSpec = when {
-            ivLogoAtmos.visibility == View.VISIBLE -> "Dolby Atmos (TrueHD)"
-            ivLogoDts.visibility == View.VISIBLE -> "DTS-HD Master Audio"
-            badgeAudio.visibility == View.VISIBLE && badgeAudio.text.isNotBlank() -> badgeAudio.text.toString()
-            else -> "Bitstream Passthrough"
-        }
-
         val specs = listOf(
             Triple("Película", "$movieTitle ($movieYear)", if (isSdr) "1080P REMUX" else "4K REMUX"),
             Triple("Direct Play", "Transmisión nativa sin transcodificar desde Jellyfin", "STATIC"),
-            Triple("Buffer RAM", "${bufferProfile.targetBufferBytes / (1024 * 1024)} MB Ring-Buffer (Cargado: ${bufferSec}s)", "${bufferProfile.maxBufferMs / 1000}s MAX"),
             Triple("Video", if (isSdr) "H.264 High@L4.1 SDR Rec.709" else "Dolby Vision RPU transmute NAL 62", if (isSdr) "BT.709" else currentDvMode.badgeText),
             Triple("Subtítulos", "Motor cinematográfico estilo PGS Blu-ray (SMPTE)", "CINEMA"),
-            Triple("Audio", "Bitstream Passthrough directo al hardware (HW_AV_SYNC)", audioSpec)
+            Triple("Audio", "Bitstream Passthrough directo al hardware (HW_AV_SYNC)", badgeAudio.text.toString())
         )
 
         for (spec in specs) {
