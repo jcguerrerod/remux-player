@@ -61,20 +61,46 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Badge o etiqueta derecha (ej. [CC], [AD], Atmos) -->
-    <TextView
-        android:id="@+id/tvTrackBadge"
+    <!-- Badges enriquecidos estilo Apple TV (Primario y Secundario) -->
+    <LinearLayout
+        android:id="@+id/llTrackBadges"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_apple_tv_sheet_badge"
-        android:text="7.1"
-        android:textColor="@color/apple_sheet_text_selector"
-        android:textSize="11sp"
-        android:fontFamily="sans-serif-medium"
-        android:paddingStart="8dp"
-        android:paddingTop="2dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="2dp"
-        android:duplicateParentState="true"
-        android:visibility="gone" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:duplicateParentState="true">
+
+        <!-- Badge Secundario (Canales / Rol: 7.1, 5.1, FORZADOS, CC) -->
+        <TextView
+            android:id="@+id/tvTrackBadgeSecondary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_apple_tv_sheet_badge"
+            android:textColor="@color/apple_sheet_text_selector"
+            android:textSize="10.5sp"
+            android:fontFamily="sans-serif-bold"
+            android:paddingStart="7dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="2dp"
+            android:layout_marginEnd="6dp"
+            android:duplicateParentState="true"
+            android:visibility="gone" />
+
+        <!-- Badge Primario (Formato / Códec: DOLBY ATMOS, TRUEHD, DTS-HD, PGS, etc.) -->
+        <TextView
+            android:id="@+id/tvTrackBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_apple_tv_sheet_badge_highlight"
+            android:textColor="@color/apple_sheet_text_selector"
+            android:textSize="10.5sp"
+            android:fontFamily="sans-serif-bold"
+            android:paddingStart="8dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="2dp"
+            android:duplicateParentState="true"
+            android:visibility="gone" />
+    </LinearLayout>
 </LinearLayout>

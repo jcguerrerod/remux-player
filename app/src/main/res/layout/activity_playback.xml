@@ -15,23 +15,25 @@
         app:surface_type="surface_view"
         app:resize_mode="fit" />
 
-    <!-- INDICADOR CENTRAL FLOTANTE APPLE TV (FEEDBACK DE PLAY / PAUSA) -->
-    <TextView
-        android:id="@+id/tvCenterStatusIndicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <!-- ANIMACIÓN CINEMÁTICA DE PLAY / PAUSA ESTILO APPLE TV (Lente circular esmerilado con ícono blanco puro) -->
+    <FrameLayout
+        android:id="@+id/flPlayPauseBadge"
+        android:layout_width="84dp"
+        android:layout_height="84dp"
         android:layout_gravity="center"
-        android:background="@drawable/bg_apple_tv_pill_primary"
-        android:gravity="center"
-        android:textColor="#0A0C13"
-        android:textSize="18sp"
-        android:fontFamily="sans-serif-medium"
-        android:elevation="16dp"
-        android:paddingStart="22dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="22dp"
-        android:paddingBottom="10dp"
-        android:visibility="gone" />
+        android:background="@drawable/bg_apple_tv_play_pause_badge"
+        android:elevation="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivPlayPauseGlyph"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_pause"
+            android:tint="#FFFFFF"
+            android:contentDescription="Estado de reproducción" />
+    </FrameLayout>
 
     <!-- OVERLAY HUD MINIMALISTA EXACTO APPLE TV+ / tvOS -->
     <RelativeLayout
@@ -231,6 +233,17 @@
                         android:textSize="20sp"
                         android:fontFamily="sans-serif-medium"
                         android:layout_marginTop="1dp" />
+
+                    <!-- Nombre del Capítulo actual activo en pantalla -->
+                    <TextView
+                        android:id="@+id/tvPlayerChapter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#A0A0A5"
+                        android:textSize="12sp"
+                        android:fontFamily="sans-serif"
+                        android:layout_marginTop="1dp"
+                        android:visibility="gone" />
                 </LinearLayout>
 
                 <!-- Botones Circulares 40dp de Subtítulos y Audio Sobre la Barra de Progreso -->
@@ -270,25 +283,39 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- FILA 2: BARRA DE PROGRESO ULTRAFINA FULL WIDTH ESTILO APPLE TV (Fotos 1, 4, 5) -->
-            <SeekBar
-                android:id="@+id/timelineSeekBar"
+            <!-- FILA 2: BARRA DE PROGRESO FULL WIDTH CON MUESCAS DE CAPÍTULOS APPLE TV -->
+            <FrameLayout
+                android:id="@+id/flTimelineContainer"
                 android:layout_width="match_parent"
                 android:layout_height="22dp"
-                android:layout_marginTop="8dp"
-                android:max="1000"
-                android:progress="0"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                android:thumbOffset="1.5dp"
-                android:progressDrawable="@drawable/seekbar_progress_apple"
-                android:thumb="@drawable/seekbar_thumb_apple"
-                android:splitTrack="false"
-                android:focusable="true"
-                android:nextFocusDown="@id/btnInfo"
-                android:nextFocusUp="@id/btnSubtitles">
-                <requestFocus />
-            </SeekBar>
+                android:layout_marginTop="8dp">
+
+                <SeekBar
+                    android:id="@+id/timelineSeekBar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:max="1000"
+                    android:progress="0"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    android:thumbOffset="1.5dp"
+                    android:progressDrawable="@drawable/seekbar_progress_apple"
+                    android:thumb="@drawable/seekbar_thumb_apple"
+                    android:splitTrack="false"
+                    android:focusable="true"
+                    android:nextFocusDown="@id/btnInfo"
+                    android:nextFocusUp="@id/btnSubtitles">
+                    <requestFocus />
+                </SeekBar>
+
+                <!-- Marcas de separación de capítulos sobre la barra -->
+                <com.player.androidtv.ChapterTicksView
+                    android:id="@+id/chapterTicksView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clickable="false"
+                    android:focusable="false" />
+            </FrameLayout>
 
             <!-- FILA DE TIEMPOS DEBAJO DE LA BARRA (Sketch usuario) -->
             <RelativeLayout
@@ -437,6 +464,23 @@
             android:gravity="center_horizontal"
             android:elevation="28dp"
             android:visibility="gone">
+
+            <!-- Píldora con nombre de capítulo sobre la tarjeta de previsualización -->
+            <TextView
+                android:id="@+id/tvScrubChapterTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_apple_tv_chapter_pill"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp"
+                android:fontFamily="sans-serif-medium"
+                android:paddingStart="12dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="3dp"
+                android:text="Capítulo 1"
+                android:visibility="gone" />
 
             <!-- Ventana con esquinas redondeadas 12dp y formato panorámico 16:9 (220x124dp) estilo Apple TV -->
             <androidx.cardview.widget.CardView

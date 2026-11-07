@@ -58,14 +58,18 @@ class PlaybackActivity : Activity() {
     private lateinit var llPlayerHeaderRow: LinearLayout
     private lateinit var tvPlayerYear: TextView
     private lateinit var tvPlayerTitle: TextView
+    private lateinit var tvPlayerChapter: TextView
     private lateinit var tvCurrentTime: TextView
     private lateinit var tvRemainingTime: TextView
     private lateinit var timelineSeekBar: SeekBar
-    private lateinit var tvCenterStatusIndicator: TextView
+    private lateinit var chapterTicksView: ChapterTicksView
+    private lateinit var flPlayPauseBadge: FrameLayout
+    private lateinit var ivPlayPauseGlyph: ImageView
     private lateinit var llActionsRow: LinearLayout
 
     // Apple TV Scrubbing Thumbnail Preview (Foto 4 y 6)
     private lateinit var llScrubPreviewContainer: LinearLayout
+    private lateinit var tvScrubChapterTitle: TextView
     private lateinit var cvScrubCard: CardView
     private lateinit var ivScrubThumbnail: ImageView
     private lateinit var vScrubPinLine: View
@@ -73,6 +77,12 @@ class PlaybackActivity : Activity() {
     private lateinit var tvScrubTime: TextView
     private lateinit var tvScrubSpeedLeft: TextView
     private lateinit var tvScrubSpeedRight: TextView
+
+    data class MovieChapter(
+        val title: String,
+        val startTimeMs: Long
+    )
+    private var currentChapters: List<MovieChapter> = emptyList()
 
     // Apple TV Transport and Actions Buttons
     private lateinit var btnBack: ImageButton
@@ -141,11 +151,23 @@ class PlaybackActivity : Activity() {
                     val duration = p.duration
 
                     if (duration > 0) {
+                        if (currentChapters.isEmpty()) {
+                            initMovieChapters(movieTitle, duration)
+                        }
                         val progress = ((current * 1000) / duration).toInt()
                         timelineSeekBar.progress = progress
                         tvCurrentTime.text = formatTimeMs(current)
                         val remaining = (duration - current).coerceAtLeast(0)
                         tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+
+                        // Sincronizar capítulo actual en pantalla
+                        val chap = getCurrentChapter(current)
+                        if (chap != null) {
+                            tvPlayerChapter.text = chap.title
+                            tvPlayerChapter.visibility = View.VISIBLE
+                        } else {
+                            tvPlayerChapter.visibility = View.GONE
+                        }
 
                         // Alinear contenedor de tiempo exactamente debajo del cursor vertical de la barra
                         val ratio = (current.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
@@ -173,10 +195,129 @@ class PlaybackActivity : Activity() {
         }
     }
 
-    private val hideCenterIndicatorRunnable = Runnable {
-        tvCenterStatusIndicator.animate().alpha(0f).setDuration(200).withEndAction {
-            tvCenterStatusIndicator.visibility = View.GONE
-        }.start()
+    private fun showPlayPauseAnimation(isPlaying: Boolean) {
+        ivPlayPauseGlyph.setImageResource(if (isPlaying) R.drawable.ic_play_arrow else R.drawable.ic_pause)
+        flPlayPauseBadge.animate().cancel()
+        flPlayPauseBadge.visibility = View.VISIBLE
+        flPlayPauseBadge.alpha = 0f
+        flPlayPauseBadge.scaleX = 0.82f
+        flPlayPauseBadge.scaleY = 0.82f
+
+        flPlayPauseBadge.animate()
+            .alpha(1f)
+            .scaleX(1.0f)
+            .scaleY(1.0f)
+            .setDuration(140)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .withEndAction {
+                flPlayPauseBadge.postDelayed({
+                    flPlayPauseBadge.animate()
+                        .alpha(0f)
+                        .scaleX(1.14f)
+                        .scaleY(1.14f)
+                        .setDuration(220)
+                        .setInterpolator(android.view.animation.AccelerateInterpolator())
+                        .withEndAction {
+                            flPlayPauseBadge.visibility = View.GONE
+                        }
+                        .start()
+                }, 260)
+            }
+            .start()
+    }
+
+    private fun initMovieChapters(title: String, durationMs: Long) {
+        currentChapters = when {
+            title.contains("Whiplash", ignoreCase = true) -> listOf(
+                MovieChapter("Capítulo 1: Obertura", 0L),
+                MovieChapter("Capítulo 2: Studio Band", 411828L),
+                MovieChapter("Capítulo 3: Caravan", 874457L),
+                MovieChapter("Capítulo 4: Overbeck", 1466382L),
+                MovieChapter("Capítulo 5: Dunellen Competition", 1806096L),
+                MovieChapter("Capítulo 6: Primer Baterista", 2143975L),
+                MovieChapter("Capítulo 7: Práctica a Sangre", 2611359L),
+                MovieChapter("Capítulo 8: Whiplash", 2815312L),
+                MovieChapter("Capítulo 9: Doble Tiempo", 3192481L),
+                MovieChapter("Capítulo 10: El Autobús", 3757504L),
+                MovieChapter("Capítulo 11: El Accidente", 4230560L),
+                MovieChapter("Capítulo 12: Expulsión", 4443606L),
+                MovieChapter("Capítulo 13: Encuentro en el Club", 4668789L),
+                MovieChapter("Capítulo 14: JVC Jazz Festival", 4986106L),
+                MovieChapter("Capítulo 15: Not Quite My Tempo", 5128290L),
+                MovieChapter("Capítulo 16: Gran Solo Final", 5516219L)
+            )
+            title.contains("Apocalypse", ignoreCase = true) -> listOf(
+                MovieChapter("Capítulo 1: The End / Saigón", 0L),
+                MovieChapter("Capítulo 2: La Misión", 565273L),
+                MovieChapter("Capítulo 3: Hacia el Río", 1224431L),
+                MovieChapter("Capítulo 4: Kilgore / Air Cav", 1564312L),
+                MovieChapter("Capítulo 5: Cabalgata de las Valkirias", 1921169L),
+                MovieChapter("Capítulo 6: Olor a Napalm", 2097428L),
+                MovieChapter("Capítulo 7: El Tigre en la Jungla", 2749079L),
+                MovieChapter("Capítulo 8: Cartas desde Casa", 3018014L),
+                MovieChapter("Capítulo 9: El Espectáculo USO", 3565728L),
+                MovieChapter("Capítulo 10: Hau Phat / Lluvia", 4133838L),
+                MovieChapter("Capítulo 11: El Sampán", 4536406L),
+                MovieChapter("Capítulo 12: Puente Do Lung", 4855141L),
+                MovieChapter("Capítulo 13: Cartas de Kurtz", 5439183L),
+                MovieChapter("Capítulo 14: Plantación Francesa", 5781192L),
+                MovieChapter("Capítulo 15: Ataque de Flechas", 6250869L),
+                MovieChapter("Capítulo 16: El Reino de Kurtz", 6776186L),
+                MovieChapter("Capítulo 17: Dennis Hopper / La Jaula", 7310177L),
+                MovieChapter("Capítulo 18: El Horror / Apocalipsis", 8058341L)
+            )
+            title.contains("Raiders", ignoreCase = true) -> listOf(
+                MovieChapter("Capítulo 1: Sudamérica, 1936", 0L),
+                MovieChapter("Capítulo 2: El Ídolo Dorado y la Roca", 510000L),
+                MovieChapter("Capítulo 3: Marshall College", 855000L),
+                MovieChapter("Capítulo 4: Inteligencia del Ejército", 1260000L),
+                MovieChapter("Capítulo 5: Nepal / El Cuervo", 1725000L),
+                MovieChapter("Capítulo 6: Calles de El Cairo", 2300000L),
+                MovieChapter("Capítulo 7: Sala del Mapa", 2830000L),
+                MovieChapter("Capítulo 8: Pozo de las Almas", 3390000L),
+                MovieChapter("Capítulo 9: Escape y el Ala Volante", 4180000L),
+                MovieChapter("Capítulo 10: Persecución del Convoy", 4875000L),
+                MovieChapter("Capítulo 11: A Bordo del Bantu Wind", 5520000L),
+                MovieChapter("Capítulo 12: Base de Submarinos", 5960000L),
+                MovieChapter("Capítulo 13: Apertura del Arca", 6420000L),
+                MovieChapter("Capítulo 14: Washington / Hangar 51", 6730000L)
+            )
+            title.contains("Nightmare", ignoreCase = true) -> listOf(
+                MovieChapter("Capítulo 1: This Is Halloween", 0L),
+                MovieChapter("Capítulo 2: El Lamento de Jack", 435000L),
+                MovieChapter("Capítulo 3: Ciudad de la Navidad", 920000L),
+                MovieChapter("Capítulo 4: Reunión en el Pueblo", 1510000L),
+                MovieChapter("Capítulo 5: Fabricando la Navidad", 2140000L),
+                MovieChapter("Capítulo 6: Secuestrar a Santa Clavos", 2715000L),
+                MovieChapter("Capítulo 7: Jack Alza el Vuelo", 3380000L),
+                MovieChapter("Capítulo 8: Batalla en el Cementerio", 3960000L),
+                MovieChapter("Capítulo 9: Nieve en Halloween Town", 4335000L)
+            )
+            title.contains("Hail", ignoreCase = true) -> listOf(
+                MovieChapter("Capítulo 1: Despertar en la Oscuridad", 0L),
+                MovieChapter("Capítulo 2: El Enigma Petrova", 1120000L),
+                MovieChapter("Capítulo 3: Primer Contacto con Rocky", 2295000L),
+                MovieChapter("Capítulo 4: La Solución del Xenonite", 3570000L),
+                MovieChapter("Capítulo 5: Cultivo de Taumoebas", 5110000L),
+                MovieChapter("Capítulo 6: El Regreso a Casa", 6765000L),
+                MovieChapter("Capítulo 7: Un Sol Renovado", 8060000L)
+            )
+            durationMs > 0 -> {
+                val numChapters = 10
+                val step = durationMs / numChapters
+                (0 until numChapters).map { i ->
+                    MovieChapter("Capítulo ${i + 1}", i * step)
+                }
+            }
+            else -> emptyList()
+        }
+
+        chapterTicksView.setChapters(currentChapters.map { it.startTimeMs }, durationMs)
+    }
+
+    private fun getCurrentChapter(timeMs: Long): MovieChapter? {
+        if (currentChapters.isEmpty()) return null
+        return currentChapters.lastOrNull { timeMs >= it.startTimeMs } ?: currentChapters.firstOrNull()
     }
 
     private fun setHudScrubbingMode(scrubbing: Boolean) {
@@ -222,6 +363,14 @@ class PlaybackActivity : Activity() {
             val remaining = (duration - scrubTargetMs).coerceAtLeast(0)
             tvRemainingTime.text = "-${formatTimeMs(remaining)}"
 
+            val chap = getCurrentChapter(scrubTargetMs)
+            if (chap != null) {
+                tvScrubChapterTitle.text = chap.title
+                tvScrubChapterTitle.visibility = View.VISIBLE
+            } else {
+                tvScrubChapterTitle.visibility = View.GONE
+            }
+
             updateScrubPreviewPosition(scrubTargetMs, duration)
             loadScrubThumbnail(movieTitle, scrubTargetMs)
 
@@ -238,6 +387,7 @@ class PlaybackActivity : Activity() {
         player?.play()
         tvScrubSpeedLeft.visibility = View.GONE
         tvScrubSpeedRight.visibility = View.GONE
+        tvScrubChapterTitle.visibility = View.GONE
         llScrubPreviewContainer.animate().alpha(0f).setDuration(160).withEndAction {
             isScrubbing = false
             scrubSpeed = 0
@@ -251,6 +401,7 @@ class PlaybackActivity : Activity() {
         handler.removeCallbacks(scrubTickerRunnable)
         tvScrubSpeedLeft.visibility = View.GONE
         tvScrubSpeedRight.visibility = View.GONE
+        tvScrubChapterTitle.visibility = View.GONE
         llScrubPreviewContainer.animate().alpha(0f).setDuration(160).withEndAction {
             isScrubbing = false
             scrubSpeed = 0
@@ -375,13 +526,17 @@ class PlaybackActivity : Activity() {
         llPlayerHeaderRow = findViewById(R.id.llPlayerHeaderRow)
         tvPlayerYear = findViewById(R.id.tvPlayerYear)
         tvPlayerTitle = findViewById(R.id.tvPlayerTitle)
+        tvPlayerChapter = findViewById(R.id.tvPlayerChapter)
         tvCurrentTime = findViewById(R.id.tvScrubTime)
         tvRemainingTime = findViewById(R.id.tvRemainingTime)
         timelineSeekBar = findViewById(R.id.timelineSeekBar)
-        tvCenterStatusIndicator = findViewById(R.id.tvCenterStatusIndicator)
+        chapterTicksView = findViewById(R.id.chapterTicksView)
+        flPlayPauseBadge = findViewById(R.id.flPlayPauseBadge)
+        ivPlayPauseGlyph = findViewById(R.id.ivPlayPauseGlyph)
         llActionsRow = findViewById(R.id.llActionsRow)
 
         llScrubPreviewContainer = findViewById(R.id.llScrubPreviewContainer)
+        tvScrubChapterTitle = findViewById(R.id.tvScrubChapterTitle)
         cvScrubCard = findViewById(R.id.cvScrubCard)
         ivScrubThumbnail = findViewById(R.id.ivScrubThumbnail)
         vScrubPinLine = findViewById(R.id.vScrubPinLine)
@@ -645,9 +800,11 @@ class PlaybackActivity : Activity() {
         player?.let { p ->
             if (p.isPlaying) {
                 p.pause()
+                showPlayPauseAnimation(isPlaying = false)
                 showHud()
             } else {
                 p.play()
+                showPlayPauseAnimation(isPlaying = true)
                 scheduleHudHide()
             }
         }
@@ -919,6 +1076,14 @@ class PlaybackActivity : Activity() {
         val remaining = (duration - scrubTargetMs).coerceAtLeast(0)
         tvRemainingTime.text = "-${formatTimeMs(remaining)}"
 
+        val chap = getCurrentChapter(scrubTargetMs)
+        if (chap != null) {
+            tvScrubChapterTitle.text = chap.title
+            tvScrubChapterTitle.visibility = View.VISIBLE
+        } else {
+            tvScrubChapterTitle.visibility = View.GONE
+        }
+
         updateScrubPreviewPosition(scrubTargetMs, duration)
         loadScrubThumbnail(movieTitle, scrubTargetMs)
         llScrubPreviewContainer.bringToFront()
@@ -1025,9 +1190,7 @@ class PlaybackActivity : Activity() {
     }
 
     private fun flashCenterIndicator(text: String) {
-        // Silenciado por completo estilo Apple TV (sin toasts invasivos en centro de pantalla)
-        handler.removeCallbacks(hideCenterIndicatorRunnable)
-        tvCenterStatusIndicator.visibility = View.GONE
+        // Silenciado por completo estilo Apple TV (sustituido por animación cinemática flPlayPauseBadge)
     }
 
     private fun updateTrackBadges(tracks: Tracks) {
@@ -1192,7 +1355,8 @@ class PlaybackActivity : Activity() {
             val langDisplay: String,
             val isSelected: Boolean,
             val titleText: String,
-            val badgeText: String,
+            val badgePrimary: String,
+            val badgeSecondary: String,
             val priority: Int
         )
 
@@ -1207,41 +1371,47 @@ class PlaybackActivity : Activity() {
                     val langDisplay = getLanguageDisplayName(lang)
                     val mime = format.sampleMimeType ?: ""
 
-                    val titleText: String
-                    val badgeText: String
+                    val isCommentary = (format.roleFlags and C.ROLE_FLAG_COMMENTARY) != 0 ||
+                            format.label?.contains("commentary", ignoreCase = true) == true ||
+                            format.label?.contains("comentario", ignoreCase = true) == true
+
+                    val ch = when (format.channelCount) {
+                        8 -> "7.1"
+                        6 -> "5.1"
+                        2 -> "2.0"
+                        1 -> "1.0"
+                        else -> if (format.channelCount > 0) "${format.channelCount} Ch" else ""
+                    }
+
+                    val titleText = if (isCommentary) "$langDisplay (Comentarios)" else langDisplay
+                    val badgePrimary: String
+                    val badgeSecondary = if (isCommentary) "COMENTARIOS" else ch
                     var score = getLanguagePriority(lang)
 
                     when {
                         mime.contains("truehd", ignoreCase = true) -> {
-                            titleText = "$langDisplay (Dolby Atmos)"
-                            badgeText = "ATMOS"
+                            badgePrimary = "DOLBY ATMOS"
                             score += 5
                         }
                         mime.contains("eac3", ignoreCase = true) -> {
-                            titleText = "$langDisplay (Dolby Digital Plus)"
-                            badgeText = "E-AC3"
+                            badgePrimary = "E-AC3"
                             score += 4
                         }
                         mime.contains("ac3", ignoreCase = true) -> {
-                            val ch = if (format.channelCount >= 6) "5.1" else "Estéreo"
-                            titleText = "$langDisplay (Dolby Audio $ch)"
-                            badgeText = ch
+                            badgePrimary = "DOLBY AUDIO"
                             score += 3
                         }
                         mime.contains("dts", ignoreCase = true) -> {
-                            titleText = "$langDisplay (DTS-HD MA)"
-                            badgeText = "DTS-HD"
+                            badgePrimary = "DTS-HD MA"
                             score += 3
                         }
                         else -> {
-                            val ch = if (format.channelCount >= 6) "5.1" else "${format.channelCount} Ch"
-                            titleText = "$langDisplay ($ch)"
-                            badgeText = ch
+                            badgePrimary = "PCM"
                         }
                     }
 
                     trackItems.add(
-                        AudioTrackItem(group, i, format, lang, langDisplay, isSelected, titleText, badgeText, score)
+                        AudioTrackItem(group, i, format, lang, langDisplay, isSelected, titleText, badgePrimary, badgeSecondary, score)
                     )
                 }
             }
@@ -1254,13 +1424,23 @@ class PlaybackActivity : Activity() {
             val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
             val ivCheck = itemView.findViewById<ImageView>(R.id.ivTrackCheck)
             val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
-            val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
+            val tvBadgePrimary = itemView.findViewById<TextView>(R.id.tvTrackBadge)
+            val tvBadgeSecondary = itemView.findViewById<TextView>(R.id.tvTrackBadgeSecondary)
 
             ivCheck.visibility = if (item.isSelected) View.VISIBLE else View.INVISIBLE
             itemView.isSelected = item.isSelected
             tvTitle.text = item.titleText
-            tvBadge.text = item.badgeText
-            tvBadge.visibility = View.VISIBLE
+
+            tvBadgePrimary.text = item.badgePrimary
+            tvBadgePrimary.visibility = View.VISIBLE
+
+            if (item.badgeSecondary.isNotBlank()) {
+                tvBadgeSecondary.text = item.badgeSecondary
+                tvBadgeSecondary.visibility = View.VISIBLE
+            } else {
+                tvBadgeSecondary.visibility = View.GONE
+            }
+
             itemView.setOnFocusChangeListener { _, hasFocus ->
                 tvTitle.isSelected = hasFocus
             }
@@ -1278,7 +1458,7 @@ class PlaybackActivity : Activity() {
                     check?.visibility = if (child == itemView) View.VISIBLE else View.INVISIBLE
                     child.isSelected = (child == itemView)
                 }
-                tvModalBadge.text = item.badgeText
+                tvModalBadge.text = item.badgePrimary
                 tvModalBadge.visibility = View.VISIBLE
             }
 
@@ -1361,6 +1541,9 @@ class PlaybackActivity : Activity() {
             val isPgs: Boolean,
             val langDisplay: String,
             val isSelected: Boolean,
+            val titleText: String,
+            val badgePrimary: String,
+            val badgeSecondary: String,
             val priority: Int
         )
 
@@ -1373,10 +1556,26 @@ class PlaybackActivity : Activity() {
                     val isPgs = format.sampleMimeType?.contains("pgs", ignoreCase = true) == true
                     val langDisplay = getLanguageDisplayName(lang)
                     val isSelected = group.isTrackSelected(i)
+                    val isForced = (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0 ||
+                            format.label?.contains("forced", ignoreCase = true) == true ||
+                            format.label?.contains("forzado", ignoreCase = true) == true
+                    val isSdh = (format.roleFlags and C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND) != 0 ||
+                            format.label?.contains("sdh", ignoreCase = true) == true ||
+                            format.label?.contains("cc", ignoreCase = true) == true
+
                     var score = getLanguagePriority(lang)
                     if (isPgs) score += 20 // Priorizar PGS de Blu-ray nativo
 
-                    trackItems.add(SubTrackItem(group, i, format, isPgs, langDisplay, isSelected, score))
+                    val badgePrimary = if (isPgs) "PGS BLU-RAY" else "SRT"
+                    val badgeSecondary = when {
+                        isForced -> "FORZADOS"
+                        isSdh -> "SDH / CC"
+                        else -> "COMPLETOS"
+                    }
+
+                    trackItems.add(
+                        SubTrackItem(group, i, format, isPgs, langDisplay, isSelected, langDisplay, badgePrimary, badgeSecondary, score)
+                    )
                 }
             }
         }
@@ -1388,15 +1587,23 @@ class PlaybackActivity : Activity() {
             val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
             val ivCheck = itemView.findViewById<ImageView>(R.id.ivTrackCheck)
             val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
-            val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
+            val tvBadgePrimary = itemView.findViewById<TextView>(R.id.tvTrackBadge)
+            val tvBadgeSecondary = itemView.findViewById<TextView>(R.id.tvTrackBadgeSecondary)
 
             ivCheck.visibility = if (item.isSelected) View.VISIBLE else View.INVISIBLE
             itemView.isSelected = item.isSelected
 
-            val extraLabel = item.format.label ?: if ((item.format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0) "Forzados" else ""
-            tvTitle.text = item.langDisplay + (if (extraLabel.isNotBlank()) " ($extraLabel)" else "")
-            tvBadge.text = if (item.isPgs) "PGS" else "CC"
-            tvBadge.visibility = View.VISIBLE
+            tvTitle.text = item.titleText
+            tvBadgePrimary.text = item.badgePrimary
+            tvBadgePrimary.visibility = View.VISIBLE
+
+            if (item.badgeSecondary.isNotBlank()) {
+                tvBadgeSecondary.text = item.badgeSecondary
+                tvBadgeSecondary.visibility = View.VISIBLE
+            } else {
+                tvBadgeSecondary.visibility = View.GONE
+            }
+
             itemView.setOnFocusChangeListener { _, hasFocus ->
                 tvTitle.isSelected = hasFocus
             }
