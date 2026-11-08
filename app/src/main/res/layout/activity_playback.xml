@@ -15,66 +15,6 @@
         app:surface_type="surface_view"
         app:resize_mode="fit" />
 
-    <!-- APPLE TV CINEMATIC PLAY / PAUSE ANIMATION (Frosted circular badge with pure white glyph) -->
-    <FrameLayout
-        android:id="@+id/flPlayPauseBadge"
-        android:layout_width="84dp"
-        android:layout_height="84dp"
-        android:layout_gravity="center"
-        android:background="@drawable/bg_apple_tv_play_pause_badge"
-        android:elevation="32dp"
-        android:visibility="gone">
-
-        <ImageView
-            android:id="@+id/ivPlayPauseGlyph"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_pause"
-            android:tint="#FFFFFF"
-            android:contentDescription="Playback Status" />
-    </FrameLayout>
-
-    <!-- APPLE TV QUICK-SKIP -10s BADGE (Left) -->
-    <FrameLayout
-        android:id="@+id/flQuickSkipLeft"
-        android:layout_width="74dp"
-        android:layout_height="74dp"
-        android:layout_gravity="center_vertical|start"
-        android:layout_marginStart="80dp"
-        android:background="@drawable/bg_quick_skip_badge"
-        android:elevation="32dp"
-        android:visibility="gone">
-
-        <ImageView
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_replay_10"
-            android:tint="#FFFFFF"
-            android:contentDescription="Rewind 10 seconds" />
-    </FrameLayout>
-
-    <!-- APPLE TV QUICK-SKIP +10s BADGE (Right) -->
-    <FrameLayout
-        android:id="@+id/flQuickSkipRight"
-        android:layout_width="74dp"
-        android:layout_height="74dp"
-        android:layout_gravity="center_vertical|end"
-        android:layout_marginEnd="80dp"
-        android:background="@drawable/bg_quick_skip_badge"
-        android:elevation="32dp"
-        android:visibility="gone">
-
-        <ImageView
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_forward_10"
-            android:tint="#FFFFFF"
-            android:contentDescription="Fast Forward 10 seconds" />
-    </FrameLayout>
-
     <!-- APPLE TV+ / tvOS MINIMAL HUD OVERLAY -->
     <RelativeLayout
         android:id="@+id/hudOverlay"
@@ -373,21 +313,23 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Rewind speed badge on the LEFT (e.g., (2x) xx:xx:xx) -->
+                    <!-- Rewind speed / quick-skip badge on the LEFT (e.g. -10s or 1x, 2x) -->
                     <TextView
                         android:id="@+id/tvScrubSpeedLeft"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="6dp"
                         android:background="@drawable/bg_scrub_speed_badge"
-                        android:text="2x"
+                        android:text="-10s"
                         android:textColor="#FFFFFF"
                         android:textSize="11sp"
                         android:fontFamily="sans-serif-bold"
+                        android:includeFontPadding="false"
+                        android:gravity="center"
                         android:paddingStart="7dp"
-                        android:paddingTop="1.5dp"
+                        android:paddingTop="2dp"
                         android:paddingEnd="7dp"
-                        android:paddingBottom="1.5dp"
+                        android:paddingBottom="2dp"
                         android:visibility="gone" />
 
                     <!-- Current time / scrub position -->
@@ -401,21 +343,23 @@
                         android:fontFeatureSettings="tnum"
                         android:fontFamily="sans-serif-medium" />
 
-                    <!-- Fast forward speed badge on the RIGHT (e.g., xx:xx:xx (2x)) -->
+                    <!-- Fast forward speed / quick-skip badge on the RIGHT (e.g. +10s or 1x, 2x) -->
                     <TextView
                         android:id="@+id/tvScrubSpeedRight"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_scrub_speed_badge"
-                        android:text="2x"
+                        android:text="+10s"
                         android:textColor="#FFFFFF"
                         android:textSize="11sp"
                         android:fontFamily="sans-serif-bold"
+                        android:includeFontPadding="false"
+                        android:gravity="center"
                         android:paddingStart="7dp"
-                        android:paddingTop="1.5dp"
+                        android:paddingTop="2dp"
                         android:paddingEnd="7dp"
-                        android:paddingBottom="1.5dp"
+                        android:paddingBottom="2dp"
                         android:visibility="gone" />
                 </LinearLayout>
             </RelativeLayout>

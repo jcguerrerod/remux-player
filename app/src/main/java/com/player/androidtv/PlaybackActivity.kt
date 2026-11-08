@@ -63,10 +63,6 @@ class PlaybackActivity : Activity() {
     private lateinit var tvRemainingTime: TextView
     private lateinit var timelineSeekBar: SeekBar
     private lateinit var chapterTicksView: ChapterTicksView
-    private lateinit var flPlayPauseBadge: FrameLayout
-    private lateinit var ivPlayPauseGlyph: ImageView
-    private lateinit var flQuickSkipLeft: FrameLayout
-    private lateinit var flQuickSkipRight: FrameLayout
     private lateinit var llActionsRow: LinearLayout
 
     // Apple TV Scrubbing Thumbnail Preview (Foto 4 y 6)
@@ -79,6 +75,15 @@ class PlaybackActivity : Activity() {
     private lateinit var tvScrubTime: TextView
     private lateinit var tvScrubSpeedLeft: TextView
     private lateinit var tvScrubSpeedRight: TextView
+    private var hideQuickSkipBadgeRunnable: Runnable? = null
+    private var pendingScrubDirection = 0
+    private val scrubTransitionRunnable = Runnable {
+        if (pendingScrubDirection != 0 && !isScrubbing) {
+            hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
+            val dir = pendingScrubDirection
+            handleScrubKey(dir, repeatCount = 0)
+        }
+    }
 
     data class MovieChapter(
         val title: String,
@@ -202,73 +207,6 @@ class PlaybackActivity : Activity() {
         }
     }
 
-    private fun showPlayPauseAnimation(isPlaying: Boolean) {
-        ivPlayPauseGlyph.setImageResource(if (isPlaying) R.drawable.ic_play_arrow else R.drawable.ic_pause)
-        flPlayPauseBadge.animate().cancel()
-        flPlayPauseBadge.visibility = View.VISIBLE
-        flPlayPauseBadge.alpha = 0f
-        flPlayPauseBadge.scaleX = 0.82f
-        flPlayPauseBadge.scaleY = 0.82f
-
-        flPlayPauseBadge.animate()
-            .alpha(1f)
-            .scaleX(1.0f)
-            .scaleY(1.0f)
-            .setDuration(140)
-            .setInterpolator(android.view.animation.DecelerateInterpolator())
-            .withEndAction {
-                flPlayPauseBadge.postDelayed({
-                    flPlayPauseBadge.animate()
-                        .alpha(0f)
-                        .scaleX(1.14f)
-                        .scaleY(1.14f)
-                        .setDuration(220)
-                        .setInterpolator(android.view.animation.AccelerateInterpolator())
-                        .withEndAction {
-                            flPlayPauseBadge.visibility = View.GONE
-                        }
-                        .start()
-                }, 260)
-            }
-            .start()
-    }
-
-    private fun showQuickSkipAnimation(isForward: Boolean) {
-        val targetBadge = if (isForward) flQuickSkipRight else flQuickSkipLeft
-        val otherBadge = if (isForward) flQuickSkipLeft else flQuickSkipRight
-        otherBadge.animate().cancel()
-        otherBadge.visibility = View.GONE
-
-        targetBadge.animate().cancel()
-        targetBadge.visibility = View.VISIBLE
-        targetBadge.bringToFront()
-        targetBadge.alpha = 0f
-        targetBadge.scaleX = 0.82f
-        targetBadge.scaleY = 0.82f
-
-        targetBadge.animate()
-            .alpha(1f)
-            .scaleX(1.0f)
-            .scaleY(1.0f)
-            .setDuration(140)
-            .setInterpolator(android.view.animation.DecelerateInterpolator())
-            .withEndAction {
-                targetBadge.postDelayed({
-                    targetBadge.animate()
-                        .alpha(0f)
-                        .scaleX(1.10f)
-                        .scaleY(1.10f)
-                        .setDuration(220)
-                        .setInterpolator(android.view.animation.AccelerateInterpolator())
-                        .withEndAction {
-                            targetBadge.visibility = View.GONE
-                        }
-                        .start()
-                }, 350)
-            }
-            .start()
-    }
-
     private fun executeQuickSkip(direction: Int) {
         val p = player ?: return
         val duration = if (p.duration > 0) p.duration else 6900000L
@@ -276,15 +214,41 @@ class PlaybackActivity : Activity() {
         val currentPos = if (p.currentPosition > 0) p.currentPosition else (timelineSeekBar.progress * duration / 1000L)
         val targetPos = (currentPos + step).coerceIn(0L, duration)
         p.seekTo(targetPos)
-        showQuickSkipAnimation(isForward = direction > 0)
+        showHud()
         timelineSeekBar.progress = ((targetPos * 1000) / duration).toInt()
         tvCurrentTime.text = formatTimeMs(targetPos)
         val remaining = (duration - targetPos).coerceAtLeast(0)
         tvRemainingTime.text = "-${formatTimeMs(remaining)}"
-        savePlaybackProgress()
-        if (hudOverlay.visibility == View.VISIBLE) {
-            scheduleHudHide()
+
+        hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
+        val targetBadge = if (direction > 0) tvScrubSpeedRight else tvScrubSpeedLeft
+        val otherBadge = if (direction > 0) tvScrubSpeedLeft else tvScrubSpeedRight
+        otherBadge.visibility = View.GONE
+        targetBadge.text = if (direction > 0) "+10s" else "-10s"
+        targetBadge.alpha = 1f
+        targetBadge.visibility = View.VISIBLE
+
+        val ratio = (targetPos.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+        val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
+        val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
+        val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (70 * resources.displayMetrics.density).toInt()
+        val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
+        llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
+
+        hideQuickSkipBadgeRunnable = Runnable {
+            if (!isScrubbing) {
+                targetBadge.animate()
+                    .alpha(0f)
+                    .setDuration(220)
+                    .withEndAction {
+                        targetBadge.visibility = View.GONE
+                    }
+                    .start()
+            }
         }
+        handler.postDelayed(hideQuickSkipBadgeRunnable!!, 1200)
+        savePlaybackProgress()
+        scheduleHudHide()
     }
 
     private fun initMovieChapters(title: String, durationMs: Long) {
@@ -542,6 +506,8 @@ class PlaybackActivity : Activity() {
     private fun commitScrubSeek() {
         if (!isScrubbing) return
         handler.removeCallbacks(scrubTickerRunnable)
+        handler.removeCallbacks(scrubTransitionRunnable)
+        hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
         chapterTicksView.setOriginalPositionRatio(null)
         val target = scrubTargetMs
         isSeeking = true
@@ -562,6 +528,8 @@ class PlaybackActivity : Activity() {
     private fun cancelScrubbing() {
         if (!isScrubbing) return
         handler.removeCallbacks(scrubTickerRunnable)
+        handler.removeCallbacks(scrubTransitionRunnable)
+        hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
         chapterTicksView.setOriginalPositionRatio(null)
         tvScrubSpeedLeft.visibility = View.GONE
         tvScrubSpeedRight.visibility = View.GONE
@@ -765,10 +733,6 @@ class PlaybackActivity : Activity() {
             timelineSeekBar.defaultFocusHighlightEnabled = false
         }
         chapterTicksView = findViewById(R.id.chapterTicksView)
-        flPlayPauseBadge = findViewById(R.id.flPlayPauseBadge)
-        ivPlayPauseGlyph = findViewById(R.id.ivPlayPauseGlyph)
-        flQuickSkipLeft = findViewById(R.id.flQuickSkipLeft)
-        flQuickSkipRight = findViewById(R.id.flQuickSkipRight)
         llActionsRow = findViewById(R.id.llActionsRow)
 
         llScrubPreviewContainer = findViewById(R.id.llScrubPreviewContainer)
@@ -909,6 +873,8 @@ class PlaybackActivity : Activity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
                 isScrubbing = true
                 handler.removeCallbacks(scrubTickerRunnable)
+        handler.removeCallbacks(scrubTransitionRunnable)
+        hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
                 player?.let { p ->
                     wasPlayingBeforeScrub = p.isPlaying
                     originalPositionBeforeScrub = p.currentPosition
@@ -1066,17 +1032,17 @@ class PlaybackActivity : Activity() {
         handler.removeCallbacks(updateProgressRunnable)
         handler.removeCallbacks(hideHudRunnable)
         handler.removeCallbacks(scrubTickerRunnable)
+        handler.removeCallbacks(scrubTransitionRunnable)
+        hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
     }
 
     private fun togglePlayPause() {
         player?.let { p ->
             if (p.isPlaying) {
                 p.pause()
-                showPlayPauseAnimation(isPlaying = false)
                 showHud()
             } else {
                 p.play()
-                showPlayPauseAnimation(isPlaying = true)
                 scheduleHudHide()
             }
         }
@@ -1084,6 +1050,13 @@ class PlaybackActivity : Activity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         Log.d("PlaybackActivity", "dispatchKeyEvent: code=${event.keyCode}, action=${event.action}, focus=${currentFocus?.javaClass?.simpleName}")
+        if (event.action == KeyEvent.ACTION_UP) {
+            if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                handler.removeCallbacks(scrubTransitionRunnable)
+                pendingScrubDirection = 0
+            }
+            return super.dispatchKeyEvent(event)
+        }
         if (event.action == KeyEvent.ACTION_DOWN) {
             val focus = currentFocus
 
@@ -1214,41 +1187,45 @@ class PlaybackActivity : Activity() {
                         handleScrubKey(-1, event.repeatCount)
                         return true
                     }
-                    if (event.repeatCount >= 2) {
-                        timelineSeekBar.requestFocus()
-                        handleScrubKey(-1, event.repeatCount)
-                        return true
-                    }
                     val focus = currentFocus
-                    if (hudOverlay.visibility == View.VISIBLE) {
+                    if (hudOverlay.visibility == View.VISIBLE && focus != null && focus != timelineSeekBar) {
                         when (focus) {
                             btnAudioTrack -> { btnSubtitles.requestFocus(); return true }
-                            btnSubtitles -> { executeQuickSkip(-1); return true }
+                            btnSubtitles -> { /* edge of top icons row, allow skip */ }
                             btnLibrary -> {
                                 if (btnDvMode.visibility == View.VISIBLE) btnDvMode.requestFocus() else btnChapters.requestFocus()
                                 return true
                             }
                             btnDvMode -> { btnChapters.requestFocus(); return true }
                             btnChapters -> { btnInfo.requestFocus(); return true }
-                            btnInfo -> { executeQuickSkip(-1); return true }
+                            btnInfo -> { /* edge of pills row, allow skip */ }
                             btnBack -> { return true }
                         }
                     }
-                    executeQuickSkip(-1)
-                    return true
+                    if (event.repeatCount == 0) {
+                        pendingScrubDirection = -1
+                        handler.removeCallbacks(scrubTransitionRunnable)
+                        handler.postDelayed(scrubTransitionRunnable, 350)
+                        executeQuickSkip(-1)
+                        return true
+                    } else {
+                        handler.removeCallbacks(scrubTransitionRunnable)
+                        pendingScrubDirection = -1
+                        if (!isScrubbing) {
+                            handleScrubKey(-1, repeatCount = 0)
+                        } else {
+                            handleScrubKey(-1, event.repeatCount)
+                        }
+                        return true
+                    }
                 }
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (isScrubbing) {
                         handleScrubKey(1, event.repeatCount)
                         return true
                     }
-                    if (event.repeatCount >= 2) {
-                        timelineSeekBar.requestFocus()
-                        handleScrubKey(1, event.repeatCount)
-                        return true
-                    }
                     val focus = currentFocus
-                    if (hudOverlay.visibility == View.VISIBLE) {
+                    if (hudOverlay.visibility == View.VISIBLE && focus != null && focus != timelineSeekBar) {
                         when (focus) {
                             btnInfo -> { btnChapters.requestFocus(); return true }
                             btnChapters -> {
@@ -1256,14 +1233,28 @@ class PlaybackActivity : Activity() {
                                 return true
                             }
                             btnDvMode -> { btnLibrary.requestFocus(); return true }
-                            btnLibrary -> { executeQuickSkip(1); return true }
+                            btnLibrary -> { /* edge of pills row, allow skip */ }
                             btnSubtitles -> { btnAudioTrack.requestFocus(); return true }
-                            btnAudioTrack -> { executeQuickSkip(1); return true }
+                            btnAudioTrack -> { /* edge of top icons row, allow skip */ }
                             btnBack -> { return true }
                         }
                     }
-                    executeQuickSkip(1)
-                    return true
+                    if (event.repeatCount == 0) {
+                        pendingScrubDirection = 1
+                        handler.removeCallbacks(scrubTransitionRunnable)
+                        handler.postDelayed(scrubTransitionRunnable, 350)
+                        executeQuickSkip(1)
+                        return true
+                    } else {
+                        handler.removeCallbacks(scrubTransitionRunnable)
+                        pendingScrubDirection = 1
+                        if (!isScrubbing) {
+                            handleScrubKey(1, repeatCount = 0)
+                        } else {
+                            handleScrubKey(1, event.repeatCount)
+                        }
+                        return true
+                    }
                 }
                 KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_STEP_FORWARD -> {
                     executeQuickSkip(1)
@@ -1394,6 +1385,8 @@ class PlaybackActivity : Activity() {
         llScrubPreviewContainer.bringToFront()
 
         handler.removeCallbacks(scrubTickerRunnable)
+        handler.removeCallbacks(scrubTransitionRunnable)
+        hideQuickSkipBadgeRunnable?.let { handler.removeCallbacks(it) }
         handler.postDelayed(scrubTickerRunnable, 280L)
     }
 
