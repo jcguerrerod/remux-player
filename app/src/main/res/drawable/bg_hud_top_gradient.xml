@@ -1,9 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient
-        android:type="linear"
-        android:angle="270"
-        android:startColor="#E6050508"
-        android:centerColor="#73050508"
-        android:endColor="#00000000" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Capa 1: Caída ambiental superior suave -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#8006080E"
+                android:centerColor="#2606080E"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+
+    <!-- Capa 2: Densidad superior para logotipos y botón atrás -->
+    <item android:bottom="30dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#E606080E"
+                android:centerColor="#6606080E"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- SUPERFICIE DE VIDEO NATIVO (MediaCodec Hardware Surface) -->
+    <!-- NATIVE VIDEO SURFACE (MediaCodec Hardware Surface) -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
         android:layout_width="match_parent"
@@ -15,7 +15,7 @@
         app:surface_type="surface_view"
         app:resize_mode="fit" />
 
-    <!-- ANIMACIÓN CINEMÁTICA DE PLAY / PAUSA ESTILO APPLE TV (Lente circular esmerilado con ícono blanco puro) -->
+    <!-- APPLE TV CINEMATIC PLAY / PAUSE ANIMATION (Frosted circular badge with pure white glyph) -->
     <FrameLayout
         android:id="@+id/flPlayPauseBadge"
         android:layout_width="84dp"
@@ -35,13 +35,53 @@
             android:contentDescription="Playback Status" />
     </FrameLayout>
 
-    <!-- OVERLAY HUD MINIMALISTA EXACTO APPLE TV+ / tvOS -->
+    <!-- APPLE TV QUICK-SKIP -10s BADGE (Left) -->
+    <FrameLayout
+        android:id="@+id/flQuickSkipLeft"
+        android:layout_width="74dp"
+        android:layout_height="74dp"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="80dp"
+        android:background="@drawable/bg_quick_skip_badge"
+        android:elevation="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_replay_10"
+            android:tint="#FFFFFF"
+            android:contentDescription="Rewind 10 seconds" />
+    </FrameLayout>
+
+    <!-- APPLE TV QUICK-SKIP +10s BADGE (Right) -->
+    <FrameLayout
+        android:id="@+id/flQuickSkipRight"
+        android:layout_width="74dp"
+        android:layout_height="74dp"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="80dp"
+        android:background="@drawable/bg_quick_skip_badge"
+        android:elevation="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_forward_10"
+            android:tint="#FFFFFF"
+            android:contentDescription="Fast Forward 10 seconds" />
+    </FrameLayout>
+
+    <!-- APPLE TV+ / tvOS MINIMAL HUD OVERLAY -->
     <RelativeLayout
         android:id="@+id/hudOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- CABECERA SUPERIOR SUTIL APPLE TV -->
+        <!-- APPLE TV SUBTLE TOP BAR -->
         <LinearLayout
             android:id="@+id/topBar"
             android:layout_width="match_parent"
@@ -55,7 +95,7 @@
             android:paddingEnd="48dp"
             android:paddingBottom="36dp">
 
-            <!-- Botón Atrás Circular 40dp (Sin zoom) -->
+            <!-- 40dp Circular Back Button (Zero scale zoom) -->
             <ImageButton
                 android:id="@+id/btnBack"
                 android:layout_width="40dp"
@@ -79,14 +119,14 @@
                 android:fontFamily="sans-serif-medium"
                 android:letterSpacing="0.08" />
 
-            <!-- Logos y Badges Tecnológicos Oficiales Apple TV (Top Bar) -->
+            <!-- Official Technology Badges and Logos (Apple TV Top Bar) -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Logo Ultra HD Blu-ray Oficial -->
+                <!-- Official Ultra HD Blu-ray Logo -->
                 <ImageView
                     android:id="@+id/ivLogoUhd"
                     android:layout_width="52dp"
@@ -95,7 +135,7 @@
                     android:scaleType="fitCenter"
                     android:contentDescription="Ultra HD Blu-ray" />
 
-                <!-- Logo Blu-ray Disc Oficial para REMUX 1080p -->
+                <!-- Official Blu-ray Disc Logo for 1080p REMUX -->
                 <ImageView
                     android:id="@+id/ivLogoBluray"
                     android:layout_width="38dp"
@@ -105,7 +145,7 @@
                     android:contentDescription="Blu-ray Disc"
                     android:visibility="gone" />
 
-                <!-- Badge 1080p para SDR -->
+                <!-- 1080p Badge for SDR -->
                 <TextView
                     android:id="@+id/badge4K"
                     android:layout_width="wrap_content"
@@ -117,7 +157,7 @@
                     android:fontFamily="sans-serif-medium"
                     android:visibility="gone" />
 
-                <!-- Logo Dolby Vision Oficial -->
+                <!-- Official Dolby Vision Logo -->
                 <ImageView
                     android:id="@+id/ivLogoDv"
                     android:layout_width="46dp"
@@ -127,7 +167,7 @@
                     android:scaleType="fitCenter"
                     android:contentDescription="Dolby Vision" />
 
-                <!-- Badge Texto Fallback DV / HDR -->
+                <!-- Fallback DV / HDR Text Badge -->
                 <TextView
                     android:id="@+id/badgeDv"
                     android:layout_width="wrap_content"
@@ -140,7 +180,7 @@
                     android:fontFamily="sans-serif-medium"
                     android:visibility="gone" />
 
-                <!-- Logo Dolby Atmos Oficial -->
+                <!-- Official Dolby Atmos Logo -->
                 <ImageView
                     android:id="@+id/ivLogoAtmos"
                     android:layout_width="44dp"
@@ -151,7 +191,7 @@
                     android:visibility="gone"
                     android:contentDescription="Dolby Atmos" />
 
-                <!-- Logo DTS-HD Master Audio Oficial -->
+                <!-- Official DTS-HD Master Audio Logo -->
                 <ImageView
                     android:id="@+id/ivLogoDts"
                     android:layout_width="54dp"
@@ -162,7 +202,7 @@
                     android:contentDescription="DTS-HD Master Audio"
                     android:visibility="gone" />
 
-                <!-- Badge Audio Texto (DTS-HD, Dolby Digital 5.1, etc.) -->
+                <!-- Audio Format Text Badge (DTS-HD, Dolby Digital 5.1, etc.) -->
                 <TextView
                     android:id="@+id/badgeAudio"
                     android:layout_width="wrap_content"
@@ -188,7 +228,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- BARRA INFERIOR APPLE TV CON TIMELINE ULTRAFINA Y ACCIONES -->
+        <!-- APPLE TV BOTTOM BAR WITH ULTRA-SLIM TIMELINE AND ACTIONS -->
         <LinearLayout
             android:id="@+id/bottomControls"
             android:layout_width="match_parent"
@@ -201,7 +241,7 @@
             android:paddingBottom="32dp"
             android:paddingTop="36dp">
 
-            <!-- FILA 1: AÑO Y TÍTULO A LA IZQUIERDA, SUBTÍTULOS Y AUDIO A LA DERECHA (ESTILO EXACTO APPLE TV) -->
+            <!-- ROW 1: YEAR AND TITLE ON LEFT, SUBTITLES AND AUDIO ON RIGHT (EXACT APPLE TV STYLE) -->
             <LinearLayout
                 android:id="@+id/llPlayerHeaderRow"
                 android:layout_width="match_parent"
@@ -222,6 +262,7 @@
                         android:text="1981"
                         android:textColor="#8E8E93"
                         android:textSize="12sp"
+                        android:fontFeatureSettings="tnum"
                         android:fontFamily="sans-serif" />
 
                     <TextView
@@ -234,7 +275,7 @@
                         android:fontFamily="sans-serif-medium"
                         android:layout_marginTop="1dp" />
 
-                    <!-- Nombre del Capítulo actual activo en pantalla -->
+                    <!-- Current active chapter name on screen -->
                     <TextView
                         android:id="@+id/tvPlayerChapter"
                         android:layout_width="wrap_content"
@@ -246,7 +287,7 @@
                         android:visibility="gone" />
                 </LinearLayout>
 
-                <!-- Botones Circulares 40dp de Subtítulos y Audio Sobre la Barra de Progreso -->
+                <!-- 40dp Circular Subtitles and Audio Buttons Above Progress Bar -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -283,7 +324,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- FILA 2: BARRA DE PROGRESO FULL WIDTH CON MUESCAS DE CAPÍTULOS APPLE TV -->
+            <!-- ROW 2: FULL WIDTH PROGRESS BAR WITH APPLE TV CHAPTER TICKS -->
             <FrameLayout
                 android:id="@+id/flTimelineContainer"
                 android:layout_width="match_parent"
@@ -310,7 +351,7 @@
                     <requestFocus />
                 </SeekBar>
 
-                <!-- Marcas de separación de capítulos sobre la barra -->
+                <!-- Chapter notch separators across progress bar -->
                 <com.player.androidtv.ChapterTicksView
                     android:id="@+id/chapterTicksView"
                     android:layout_width="match_parent"
@@ -319,14 +360,14 @@
                     android:focusable="false" />
             </FrameLayout>
 
-            <!-- FILA DE TIEMPOS DEBAJO DE LA BARRA (Sketch usuario) -->
+            <!-- ROW OF TIMESTAMPS BELOW PROGRESS BAR (Apple TV Style) -->
             <RelativeLayout
                 android:id="@+id/rlTimeBelowBar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp">
 
-                <!-- Tiempo restante anclado al extremo derecho debajo de la barra (-xx:xx:xx) -->
+                <!-- Remaining time anchored at far right under progress bar (-xx:xx:xx) -->
                 <TextView
                     android:id="@+id/tvRemainingTime"
                     android:layout_width="wrap_content"
@@ -335,9 +376,10 @@
                     android:text="-00:00:00"
                     android:textColor="#8E8E93"
                     android:textSize="12sp"
+                    android:fontFeatureSettings="tnum"
                     android:fontFamily="sans-serif" />
 
-                <!-- Contenedor dinámico de tiempo actual y badges de velocidad 1x..5x alineado con el cursor de la barra -->
+                <!-- Dynamic current time and speed badge container aligned with timeline needle -->
                 <LinearLayout
                     android:id="@+id/llScrubTimeBadgeContainer"
                     android:layout_width="wrap_content"
@@ -345,7 +387,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Badge de velocidad a la IZQUIERDA para Retroceder (Sketch usuario: (yx) xx:xx:xx) -->
+                    <!-- Rewind speed badge on the LEFT (e.g., (2x) xx:xx:xx) -->
                     <TextView
                         android:id="@+id/tvScrubSpeedLeft"
                         android:layout_width="wrap_content"
@@ -362,7 +404,7 @@
                         android:paddingBottom="1.5dp"
                         android:visibility="gone" />
 
-                    <!-- Tiempo actual / posición de scrub -->
+                    <!-- Current time / scrub position -->
                     <TextView
                         android:id="@+id/tvScrubTime"
                         android:layout_width="wrap_content"
@@ -370,9 +412,10 @@
                         android:text="00:00:00"
                         android:textColor="#FFFFFF"
                         android:textSize="12sp"
+                        android:fontFeatureSettings="tnum"
                         android:fontFamily="sans-serif-medium" />
 
-                    <!-- Badge de velocidad a la DERECHA para Adelantar (Sketch usuario: xx:xx:xx (yx)) -->
+                    <!-- Fast forward speed badge on the RIGHT (e.g., xx:xx:xx (2x)) -->
                     <TextView
                         android:id="@+id/tvScrubSpeedRight"
                         android:layout_width="wrap_content"
@@ -391,7 +434,7 @@
                 </LinearLayout>
             </RelativeLayout>
 
-            <!-- FILA 3: ACCIONES ESTILO APPLE TV (Fotos 1, 3, 5) -->
+            <!-- ROW 3: APPLE TV PILL ACTIONS (Info, Chapters, Dolby Vision, Library) -->
             <LinearLayout
                 android:id="@+id/llActionsRow"
                 android:layout_width="match_parent"
@@ -400,7 +443,7 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Píldoras de la Izquierda: Info, Chapters, Dolby Vision, Library -->
+                <!-- Action Pills on the Left -->
                 <Button
                     android:id="@+id/btnInfo"
                     android:layout_width="wrap_content"
@@ -473,7 +516,7 @@
 
         </LinearLayout>
 
-        <!-- CONTENEDOR FLOTANTE DE PREVISUALIZACIÓN DE FOTOGRAMAS Y AGUJA CONTINUA ESTILO APPLE TV -->
+        <!-- APPLE TV FLOATING FRAME PREVIEW CONTAINER AND CONTINUOUS NEEDLE PIN -->
         <FrameLayout
             android:id="@+id/llScrubPreviewContainer"
             android:layout_width="match_parent"
@@ -483,7 +526,7 @@
             android:elevation="28dp"
             android:visibility="gone">
 
-            <!-- Ventana con esquinas redondeadas 12dp y formato panorámico 16:9 (220x124dp) estilo Apple TV -->
+            <!-- Rounded 12dp widescreen 16:9 preview window (220x124dp) Apple TV style -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/cvScrubCard"
                 android:layout_width="220dp"
@@ -499,7 +542,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent">
 
-                    <!-- Fotograma Real de la Escena de la Película -->
+                    <!-- Real Scene Keyframe Thumbnail -->
                     <ImageView
                         android:id="@+id/ivScrubThumbnail"
                         android:layout_width="match_parent"
@@ -507,7 +550,7 @@
                         android:scaleType="centerCrop"
                         android:contentDescription="Preview Thumbnail" />
 
-                    <!-- Borde estético sutil Apple TV (transparente con contorno 1.5dp) -->
+                    <!-- Subtle aesthetic Apple TV border (transparent with 1.5dp stroke) -->
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -515,7 +558,7 @@
                 </FrameLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Píldora con nombre de capítulo sobre la tarjeta de previsualización -->
+            <!-- Chapter pill above the preview card -->
             <TextView
                 android:id="@+id/tvScrubChapterTitle"
                 android:layout_width="wrap_content"
@@ -531,7 +574,7 @@
                 android:text="Chapter 1"
                 android:visibility="gone" />
 
-            <!-- LÍNEA CONECTORA VERTICAL CONTINUA TIPO AGUJA / PIN (100% Apple TV) -->
+            <!-- CONTINUOUS VERTICAL NEEDLE / PIN LINE (100% Apple TV) -->
             <View
                 android:id="@+id/vScrubPinLine"
                 android:layout_width="2.5dp"
@@ -540,7 +583,7 @@
         </FrameLayout>
     </RelativeLayout>
 
-    <!-- POPUP FLOTANTE ANCLADO EN LA ESQUINA INFERIOR DERECHA (Fotos 1 y 3 de Apple TV) -->
+    <!-- FLOATING POPUP ANCHORED OVER ACTION BUTTONS (Apple TV Style) -->
     <FrameLayout
         android:id="@+id/modalOverlay"
         android:layout_width="match_parent"
@@ -550,7 +593,7 @@
         android:focusable="true"
         android:visibility="gone">
 
-        <!-- Hoja Flotante de Cristal Esmerilado Anclada Sobre los Botones -->
+        <!-- Frosted Liquid Glass Sheet Anchored Over Buttons -->
         <LinearLayout
             android:id="@+id/modalCard"
             android:layout_width="380dp"
@@ -565,7 +608,7 @@
             android:padding="14dp"
             android:elevation="24dp">
 
-            <!-- Cabecera del Popup Apple TV -->
+            <!-- Apple TV Popup Header -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -594,7 +637,7 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- Lista de Pistas en ScrollView (Sin barras de desplazamiento y con tope de altura seguro) -->
+            <!-- Track List in ScrollView (No scrollbars and safe maxHeight limit) -->
             <com.player.androidtv.MaxHeightScrollView
                 android:id="@+id/modalScrollView"
                 android:layout_width="match_parent"
@@ -613,7 +656,7 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- SPINNER DE CARGA MINIMALISTA APPLE TV -->
+    <!-- APPLE TV MINIMAL LOADING SPINNER -->
     <ProgressBar
         android:id="@+id/loadingSpinner"
         android:layout_width="44dp"

@@ -14,12 +14,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Arquitectura B: Extracción de fotogramas reales de la película en el propio dispositivo (Client-side)
- * sin depender de generación en el servidor.
+ * Architecture B: Client-side extraction of real movie frames directly on the device
+ * without relying on server-side pre-generation.
  *
- * Utiliza peticiones HTTP Range automáticas de MediaMetadataRetriever para leer únicamente
- * los paquetes del Keyframe (I-Frame) más cercano en el contenedor Matroska (MKV),
- * decodificando la imagen real en 320x180 a bajo costo de CPU/RAM.
+ * Utilizes automatic HTTP Range requests via MediaMetadataRetriever to fetch only
+ * nearest keyframe (I-Frame) packets from the Matroska container (MKV),
+ * decoding frames at 320x180 with negligible CPU/RAM impact.
  */
 object ClientSideFrameExtractor {
 
@@ -30,7 +30,7 @@ object ClientSideFrameExtractor {
     private var isInitializing = false
     private var activeExtractionJob: Job? = null
 
-    // Caché LRU de 60 fotogramas reales en memoria RAM (~12 MB)
+    // LRU Cache of 60 real frames in RAM (~12 MB)
     private val frameCache = object : LruCache<String, Bitmap>(60) {
         override fun sizeOf(key: String, value: Bitmap): Int = 1
     }
@@ -55,20 +55,20 @@ object ClientSideFrameExtractor {
                 mmr.setDataSource(url, headers)
                 retriever = mmr
                 isInitializing = false
-                Log.i(TAG, "MediaMetadataRetriever inicializado con éxito para $url")
+                Log.i(TAG, "MediaMetadataRetriever successfully initialized for $url")
             } catch (e: Exception) {
                 isInitializing = false
-                Log.w(TAG, "No se pudo inicializar MediaMetadataRetriever para el stream: ${e.message}")
+                Log.w(TAG, "Could not initialize MediaMetadataRetriever for stream: ${e.message}")
             }
         }
     }
 
     /**
-     * Solicita un fotograma real en milisegundos.
-     * Retorna inmediatamente si está en caché RAM, o asíncronamente tan pronto como se decodifique.
+     * Requests a real video frame at given millisecond position.
+     * Returns immediately if cached in RAM, or asynchronously once decoded.
      */
     fun requestFrame(url: String, timeMs: Long, onFrameReady: (Bitmap) -> Unit): Boolean {
-        // Cuantizar a ventanas de 2 segundos para optimizar saltos
+        // Quantize to 2-second windows to optimize skip caching
         val quantizedSec = (timeMs / 2000L) * 2L
         val cacheKey = "$url#$quantizedSec"
 
@@ -78,7 +78,7 @@ object ClientSideFrameExtractor {
             return true
         }
 
-        // Si cambia la URL del stream, reconfigurar
+        // If stream URL changed, reconfigure data source
         if (currentSourceUrl != url) {
             setDataSource(url)
         }
@@ -86,7 +86,7 @@ object ClientSideFrameExtractor {
         activeExtractionJob?.cancel()
         activeExtractionJob = scope.launch {
             try {
-                // Esperar brevemente si se está inicializando la conexión
+                // Wait briefly if connection is initializing
                 var waitCount = 0
                 while (isInitializing && waitCount < 10) {
                     delay(50)
@@ -96,7 +96,7 @@ object ClientSideFrameExtractor {
                 val mmr = retriever ?: return@launch
                 val timeUs = timeMs * 1000L
 
-                // Usar OPTION_CLOSEST_SYNC para leer solo I-Frames sin costo de decodificación masivo
+                // Use OPTION_CLOSEST_SYNC to read only I-Frames without heavy decoding overhead
                 val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                     mmr.getScaledFrameAtTime(
                         timeUs,
@@ -113,11 +113,11 @@ object ClientSideFrameExtractor {
                     withContext(Dispatchers.Main) {
                         onFrameReady(bitmap)
                     }
-                    // Precarga pasiva del siguiente fotograma (+30 seg)
+                    // Passive preloading of next keyframe (+30 sec)
                     preloadOffset(mmr, url, timeUs + 30_000_000L)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Extracción de fotograma en $timeMs ms omitida: ${e.message}")
+                Log.w(TAG, "Frame extraction at $timeMs ms skipped: ${e.message}")
             }
         }
 

@@ -71,7 +71,7 @@ class MainActivity : Activity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingBackdropRunnable: Runnable? = null
 
-    // Cache en RAM de alto rendimiento para navegación 60 FPS sin lag
+    // High-performance RAM cache for fluid 60 FPS navigation without dropped frames
     private val backdropBitmaps = HashMap<String, Bitmap>()
     private val cardBitmaps = HashMap<String, Bitmap>()
 
@@ -205,7 +205,7 @@ class MainActivity : Activity() {
     private fun preloadBitmapsAsync() {
         Thread {
             val options = BitmapFactory.Options().apply {
-                inSampleSize = 2 // Escala 4K a 1080p nativo: 4x menos RAM, decodificación instantánea
+                inSampleSize = 2 // Scale 4K down to native 1080p: 4x lower RAM, instantaneous decoding
                 inPreferredConfig = Bitmap.Config.RGB_565
             }
             for (movie in movies) {
@@ -234,7 +234,7 @@ class MainActivity : Activity() {
                 } catch (ignored: Exception) {}
             }
 
-            // Refrescar el primer backdrop si ya está en RAM
+            // Refresh initial hero backdrop once loaded in RAM
             mainHandler.post {
                 val firstBmp = synchronized(backdropBitmaps) { backdropBitmaps[movies[selectedMovieIndex].backdropAsset] }
                 if (firstBmp != null) {
@@ -359,7 +359,7 @@ class MainActivity : Activity() {
                 isDuplicateParentStateEnabled = true
             }
 
-            // Barra de progreso "Continuar viendo" Apple TV (3.5dp, fondo negro translúcido y relleno blanco puro)
+            // Apple TV "Continue Watching" progress bar (3.5dp, translucent black background with pure white fill)
             val progressBarContainer = FrameLayout(this).apply {
                 val barHeight = (3.5f * density).toInt()
                 val marginH = (14 * density).toInt()
@@ -455,7 +455,7 @@ class MainActivity : Activity() {
         val isSdr = movie.title.contains("Apocalypse", ignoreCase = true) ||
                 movie.title.contains("Whiplash", ignoreCase = true)
 
-        // 1. Actualización instantánea (0ms) de la ficha técnica y sinopsis
+        // 1. Instantaneous (0ms) update of metadata and synopsis
         tvHeroTitle.text = movie.title
         tvHeroGenre.text = "${movie.genre}  ·  ${movie.year}"
         tvHeroSynopsis.text = movie.synopsis
@@ -507,7 +507,7 @@ class MainActivity : Activity() {
         tvHeroCast.text = "Cast  ${movie.actors}"
         tvHeroDirector.text = "Director  ${movie.director}"
 
-        // 2. Debounce del crossfade de fondo para navegación 60 FPS fluida en Android TV
+        // 2. Debounce backdrop crossfade for smooth 60 FPS Android TV browsing
         pendingBackdropRunnable?.let { mainHandler.removeCallbacks(it) }
 
         val crossfadeTask = Runnable {

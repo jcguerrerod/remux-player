@@ -88,7 +88,7 @@
             android:duplicateParentState="true"
             android:visibility="gone" />
 
-        <!-- Badge Primario (Formato / Códec: DOLBY ATMOS, TRUEHD, DTS-HD, PGS, etc.) -->
+        <!-- Primary Badge (Format / Codec: DOLBY ATMOS, TRUEHD, DTS-HD, PGS, etc.) -->
         <TextView
             android:id="@+id/tvTrackBadge"
             android:layout_width="wrap_content"

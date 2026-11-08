@@ -7,11 +7,10 @@ import android.view.Display
 import kotlin.math.abs
 
 /**
- * Pilar 3: Auto Frame Rate (AFR) & HDMI Dynamic Mode Switching
+ * Pillar 3: Auto Frame Rate (AFR) & HDMI Dynamic Mode Switching
  *
- * Conmuta dinámicamente la tasa de refresco del televisor (HDMI) para coincidir con la
- * cadencia cinematográfica original de la película (23.976 fps o 24.000 fps), eliminando
- * el 100% del judder (tirones de conversión 3:2 pulldown).
+ * Dynamically switches TV refresh rate (HDMI) to match native cinematic film cadence
+ * (23.976 fps or 24.000 fps), completely eliminating 100% of 3:2 pulldown judder.
  */
 object AutoFrameRateManager {
 
@@ -39,9 +38,9 @@ object AutoFrameRateManager {
                 originalModeId = currentMode.modeId
             }
 
-            Log.d(TAG, "Contenido a $contentFps FPS. Modo actual: ID ${currentMode.modeId} (${currentMode.refreshRate} Hz)")
+            Log.d(TAG, "Content at $contentFps FPS. Current mode: ID ${currentMode.modeId} (${currentMode.refreshRate} Hz)")
 
-            // Determinar la tasa de refresco objetivo para cine y video
+            // Determine target refresh rate for film and video
             val targetHz = when {
                 abs(contentFps - 23.976f) < 0.1f -> 24.0f
                 abs(contentFps - 24.0f) < 0.1f -> 24.0f
@@ -56,7 +55,7 @@ object AutoFrameRateManager {
             var minDiff = Float.MAX_VALUE
 
             for (mode in supportedModes) {
-                // Conservar la resolución nativa del panel
+                // Preserve native panel resolution
                 if (mode.physicalWidth == currentMode.physicalWidth && mode.physicalHeight == currentMode.physicalHeight) {
                     val diff = abs(mode.refreshRate - targetHz)
                     if (diff < minDiff) {
@@ -67,7 +66,7 @@ object AutoFrameRateManager {
             }
 
             if (bestMode != null && bestMode.modeId != currentMode.modeId && minDiff < 0.6f) {
-                Log.i(TAG, "Conmutando HDMI a Modo ID ${bestMode.modeId} (${bestMode.refreshRate} Hz) para $contentFps fps")
+                Log.i(TAG, "Switching HDMI to Mode ID ${bestMode.modeId} (${bestMode.refreshRate} Hz) for $contentFps fps")
                 val params = activity.window.attributes
                 params.preferredDisplayModeId = bestMode.modeId
                 activity.window.attributes = params
@@ -75,7 +74,7 @@ object AutoFrameRateManager {
                 return "${String.format("%.3f", bestMode.refreshRate)} Hz Match"
             }
 
-            // Si el televisor es panel interno que corre a 60Hz pero procesa cadencia 24p:
+            // Fallback for internal panel running at 60Hz with 24p cadence processing
             if (abs(contentFps - 23.976f) < 0.1f || abs(contentFps - 24.0f) < 0.1f) {
                 return "24p Cinema Cadence"
             }
@@ -83,7 +82,7 @@ object AutoFrameRateManager {
             return "${String.format("%.2f", contentFps)} FPS"
 
         } catch (e: Exception) {
-            Log.w(TAG, "No se pudo conmutar Auto Frame Rate: ${e.message}")
+            Log.w(TAG, "Could not switch Auto Frame Rate: ${e.message}")
             return ""
         }
     }
@@ -95,9 +94,9 @@ object AutoFrameRateManager {
                 params.preferredDisplayModeId = originalModeId
                 activity.window.attributes = params
                 isAfrApplied = false
-                Log.i(TAG, "Modo HDMI original restaurado: $originalModeId")
+                Log.i(TAG, "Restored original HDMI mode: $originalModeId")
             } catch (e: Exception) {
-                Log.w(TAG, "Error restaurando modo HDMI: ${e.message}")
+                Log.w(TAG, "Error restoring HDMI mode: ${e.message}")
             }
         }
     }

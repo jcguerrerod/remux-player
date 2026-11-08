@@ -8,9 +8,9 @@ import android.util.AttributeSet
 import android.view.View
 
 /**
- * Overlay de marcas y muescas de capítulos estilo Apple TV en la barra de progreso.
- * Dibuja cortes físicos sutiles de 2.5dp de ancho para segmentar los capítulos,
- * y la línea fija (ghost pin) en la posición original antes de adelantar/retroceder.
+ * Apple TV style chapter notch and marker overlay for the progress bar.
+ * Draws subtle 2.5dp physical cuts to segment chapters,
+ * and a persistent ghost pin at the original position before scrubbing.
  */
 class ChapterTicksView @JvmOverloads constructor(
     context: Context,
@@ -19,17 +19,17 @@ class ChapterTicksView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private val notchPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#0C0E14") // Fondo idéntico al HUD para segmentar físicamente la barra
+        color = Color.parseColor("#0C0E14") // Exact HUD background color to physically segment progress bar
         style = Paint.Style.FILL
     }
 
     private val tickAccentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#33FFFFFF") // Micro acento sutil en las juntas de capítulos
+        color = Color.parseColor("#33FFFFFF") // Subtle micro accent at chapter junctions
         style = Paint.Style.FILL
     }
 
     private val ghostPinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#B3FFFFFF") // Blanco translúcido 70% idéntico a Apple TV
+        color = Color.parseColor("#B3FFFFFF") // 70% translucent white identical to Apple TV
         style = Paint.Style.FILL
     }
 
@@ -43,7 +43,7 @@ class ChapterTicksView @JvmOverloads constructor(
             return
         }
 
-        // Excluir el inicio en 0ms y el final
+        // Exclude start at 0ms and end of media
         chapterStartRatios = chapters
             .filter { it > 1000L && it < durationMs - 1000L }
             .map { (it.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) }
@@ -62,28 +62,28 @@ class ChapterTicksView @JvmOverloads constructor(
 
         val density = resources.displayMetrics.density
         val usableWidth = width.toFloat()
-        val notchHalfWidth = 1.25f * density // 2.5dp total de ancho para el corte
-        val trackHalfHeight = 3.5f * density // 7dp de alto para cortar completamente la barra de 5dp
+        val notchHalfWidth = 1.25f * density // 2.5dp total width cut
+        val trackHalfHeight = 3.5f * density // 7dp height to cleanly slice the 5dp track
 
         val centerY = height / 2f
         val top = centerY - trackHalfHeight
         val bottom = centerY + trackHalfHeight
 
-        // 1. Marcas de cortes de capítulos (Segmentación Apple TV)
+        // 1. Chapter notch separators (Apple TV segmentation)
         for (ratio in chapterStartRatios) {
             val cx = ratio * usableWidth
-            // Corte físico oscuro
+            // Dark physical slice
             canvas.drawRect(cx - notchHalfWidth, top, cx + notchHalfWidth, bottom, notchPaint)
-            // Micro línea de acento sutil
+            // Subtle micro accent line
             val tickHalfHeight = 4.5f * density
             canvas.drawRect(cx - (0.5f * density), centerY - tickHalfHeight, cx + (0.5f * density), centerY + tickHalfHeight, tickAccentPaint)
         }
 
-        // 2. Línea fija / Ghost Pin de posición original antes del scrub (estilo Apple TV)
+        // 2. Persistent Ghost Pin at original position before scrubbing (Apple TV style)
         originalPositionRatio?.let { origRatio ->
             val origX = origRatio * usableWidth
-            val pinHalfWidth = 1.25f * density // 2.5dp ancho
-            val pinHalfHeight = 10f * density  // 20dp alto (atraviesa la barra de 5dp con holgura)
+            val pinHalfWidth = 1.25f * density // 2.5dp width
+            val pinHalfHeight = 10f * density  // 20dp height (extends smoothly through track)
             val pinTop = centerY - pinHalfHeight
             val pinBottom = centerY + pinHalfHeight
             canvas.drawRoundRect(

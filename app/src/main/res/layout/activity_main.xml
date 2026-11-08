@@ -5,13 +5,13 @@
     android:layout_height="match_parent"
     android:background="#08090E">
 
-    <!-- HERO BACKDROP REAL DE LA PELÍCULA EN PANTALLA COMPLETA (Crossfade suave Apple TV) -->
+    <!-- FULLSCREEN CINEMATIC HERO BACKDROP (Smooth Apple TV Crossfade) -->
     <ImageView
         android:id="@+id/ivHeroBackdrop"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:contentDescription="Fondo Cinemático 1" />
+        android:contentDescription="Cinematic Background 1" />
 
     <ImageView
         android:id="@+id/ivHeroBackdropAlt"
@@ -19,9 +19,9 @@
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:alpha="0"
-        android:contentDescription="Fondo Cinemático 2" />
+        android:contentDescription="Cinematic Background 2" />
 
-    <!-- DEGRADADO CINEMATOGRÁFICO SCRIM ESTILO APPLE TV+ -->
+    <!-- CINEMATIC APPLE TV+ SCRIM GRADIENT -->
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -105,7 +105,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- SECCIÓN DE INFORMACIÓN Y SINOPSIS DE LA PELÍCULA (Estilo Apple TV - Dinámico y Prolijo) -->
+        <!-- MOVIE SYNOPSIS AND INFO SECTION (Apple TV Style) -->
         <LinearLayout
             android:id="@+id/heroContentContainer"
             android:layout_width="match_parent"
@@ -117,14 +117,14 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <!-- Columna Izquierda: Título, Género, Sinopsis, Badges y Botones -->
+            <!-- Left Column: Title, Genre, Synopsis, Badges, and Action Buttons -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1.6"
                 android:orientation="vertical">
 
-                <!-- Título en Mayúsculas Bold Estilo Apple TV -->
+                <!-- Apple TV Bold Uppercase Title -->
                 <TextView
                     android:id="@+id/tvHeroTitle"
                     android:layout_width="match_parent"
@@ -137,7 +137,7 @@
                     android:fontFamily="sans-serif-black"
                     android:letterSpacing="0.03" />
 
-                <!-- Fila de Género y Tipo -->
+                <!-- Genre and Release Year Row -->
                 <TextView
                     android:id="@+id/tvHeroGenre"
                     android:layout_width="wrap_content"
@@ -149,7 +149,7 @@
                     android:textSize="12sp"
                     android:fontFamily="sans-serif" />
 
-                <!-- Sinopsis de 3 líneas -->
+                <!-- 3-line Synopsis -->
                 <TextView
                     android:id="@+id/tvHeroSynopsis"
                     android:layout_width="match_parent"
@@ -271,7 +271,7 @@
                         android:fontFamily="sans-serif-medium" />
                 </LinearLayout>
 
-                <!-- Botones Principales de Acción Apple TV (Foto 2) -->
+                <!-- Main Apple TV Action Buttons -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="44dp"
@@ -279,7 +279,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Píldora Blanca Primaria Apple TV: Reproducir con Icono y Duración -->
+                    <!-- Primary White Apple TV Pill: Play with Icon and Duration -->
                     <Button
                         android:id="@+id/btnPlayDirect"
                         android:layout_width="wrap_content"
@@ -298,7 +298,7 @@
                         android:focusable="true"
                         android:nextFocusDown="@+id/shelfScrollView" />
 
-                    <!-- Botón Circular Checkmark (Foto 2) -->
+                    <!-- Circular Checkmark Button -->
                     <ImageButton
                         android:id="@+id/btnCheck"
                         android:layout_width="38dp"
@@ -309,9 +309,9 @@
                         android:tint="@color/apple_btn_tint_selector"
                         android:focusable="true"
                         android:nextFocusDown="@+id/shelfScrollView"
-                        android:contentDescription="En lista" />
+                        android:contentDescription="In Watchlist" />
 
-                    <!-- Botón Circular Info (Foto 2) -->
+                    <!-- Circular Info Button -->
                     <ImageButton
                         android:id="@+id/btnDetails"
                         android:layout_width="38dp"
@@ -322,11 +322,11 @@
                         android:tint="@color/apple_btn_tint_selector"
                         android:focusable="true"
                         android:nextFocusDown="@+id/shelfScrollView"
-                        android:contentDescription="Información" />
+                        android:contentDescription="More Info" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Columna Derecha: Reparto y Director (Foto 2) -->
+            <!-- Right Column: Cast and Director -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -356,7 +356,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- SHELF HORIZONTAL INFERIOR DE TARJETAS PANORÁMICAS APPLE TV (Foto 2) -->
+        <!-- HORIZONTAL BOTTOM SHELF OF WIDESCREEN APPLE TV POSTER CARDS -->
         <LinearLayout
             android:id="@+id/bottomShelfSection"
             android:layout_width="match_parent"

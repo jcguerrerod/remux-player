@@ -5,8 +5,8 @@ import android.util.AttributeSet
 import android.widget.ScrollView
 
 /**
- * ScrollView con altura máxima configurable para evitar que los menús modales
- * estilo Apple TV se expandan fuera de los márgenes seguros de la pantalla del televisor.
+ * ScrollView with configurable maximum height to prevent Apple TV style
+ * floating modals from extending beyond TV safe display margins.
  */
 class MaxHeightScrollView @JvmOverloads constructor(
     context: Context,
