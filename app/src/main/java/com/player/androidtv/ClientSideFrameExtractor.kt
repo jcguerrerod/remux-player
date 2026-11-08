@@ -218,7 +218,9 @@ object ClientSideFrameExtractor {
                     } ?: break
 
                     extractAndCache(url, targetMs, cb)
-                    prefetchAround(url, targetMs, direction)
+                    if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
+                        prefetchAround(url, targetMs, direction)
+                    }
                 }
             } finally {
                 isWorkerRunning = false
@@ -290,6 +292,10 @@ object ClientSideFrameExtractor {
      * Proactively prefetch neighboring keyframes along the user's scrub direction.
      */
     private fun prefetchAround(url: String, timeMs: Long, direction: Int) {
+        // Strictly prevent random seek storms across remote network media (e.g. 88 GB remuxes on mechanical HDDs)
+        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
+            return
+        }
         scope.launch {
             val offsets = if (direction >= 0) {
                 longArrayOf(10_000L, 30_000L, 60_000L, 120_000L)
@@ -323,33 +329,8 @@ object ClientSideFrameExtractor {
      * Proactively pre-warms keyframes around current playback position and key milestone points.
      */
     fun proactivePrewarm(url: String, currentPositionMs: Long, durationMs: Long) {
-        scope.launch {
-            try {
-                if (currentSourceUrl != url) {
-                    setDataSource(url)
-                }
-
-                val points = mutableListOf<Long>()
-                if (currentPositionMs > 15_000L) points.add(currentPositionMs - 15_000L)
-                points.add(currentPositionMs + 15_000L)
-                points.add(currentPositionMs + 45_000L)
-                points.add(currentPositionMs + 90_000L)
-
-                if (durationMs > 300_000L) {
-                    points.add((durationMs * 0.10f).toLong())
-                    points.add((durationMs * 0.25f).toLong())
-                    points.add((durationMs * 0.50f).toLong())
-                    points.add((durationMs * 0.75f).toLong())
-                }
-
-                for (p in points) {
-                    val qSec = (p / 2000L) * 2L
-                    if (frameCache.get("$url#$qSec") == null) {
-                        extractAndCache(url, p, null)
-                    }
-                }
-            } catch (ignored: Exception) {}
-        }
+        // Intentionally no-op: Proactive seeking to 10%, 25%, 50%, 75% on large network Remux files
+        // causes severe 100% disk thrashing on mechanical hard drives and starves player streaming.
     }
 
     fun release() {

@@ -114,6 +114,10 @@ class PlaybackActivity : Activity() {
     private val subBottomPaddingFraction = 155f / 1080f
 
     // Apple TV Floating Popups
+    enum class VideoDynamicRange { SDR, HDR10, HLG, DOLBY_VISION }
+    private var currentDynamicRange = VideoDynamicRange.SDR
+    private var currentDvProfile = "P8.1"
+
     private enum class ModalType { NONE, SUBTITLES, AUDIO, CHAPTERS, DV_MODE, INFO }
     private var activeModalType = ModalType.NONE
 
@@ -253,6 +257,28 @@ class PlaybackActivity : Activity() {
 
     private fun initMovieChapters(title: String, durationMs: Long) {
         currentChapters = when {
+            title.contains("Odyssey", ignoreCase = true) -> listOf(
+                MovieChapter("Chapter 01: The Sack of Troy", 0L),
+                MovieChapter("Chapter 02: Island of Cicones", 562353L),
+                MovieChapter("Chapter 03: Land of the Lotus-Eaters", 1158824L),
+                MovieChapter("Chapter 04: The Cyclops Polyphemus", 1377960L),
+                MovieChapter("Chapter 05: Aeolus and the Winds", 1909658L),
+                MovieChapter("Chapter 06: The Laestrygonians", 2696027L),
+                MovieChapter("Chapter 07: Circe's Isle of Aeaea", 3181095L),
+                MovieChapter("Chapter 08: Journey to the Underworld", 3553967L),
+                MovieChapter("Chapter 09: Shades of the Dead", 4092130L),
+                MovieChapter("Chapter 10: Song of the Sirens", 4834496L),
+                MovieChapter("Chapter 11: Scylla and Charybdis", 5506376L),
+                MovieChapter("Chapter 12: Cattle of the Sun God", 5921457L),
+                MovieChapter("Chapter 13: The Wrath of Zeus", 6408569L),
+                MovieChapter("Chapter 14: Calypso's Paradise", 7033193L),
+                MovieChapter("Chapter 15: Kingdom of the Phaeacians", 7558760L),
+                MovieChapter("Chapter 16: Return to Ithaca", 7985728L),
+                MovieChapter("Chapter 17: In Disguise as a Beggar", 8254246L),
+                MovieChapter("Chapter 18: Penelope's Challenge of the Bow", 8883875L),
+                MovieChapter("Chapter 19: The Slaughter of the Suitors", 9777977L),
+                MovieChapter("Chapter 20: Peace in Ithaca & Credits", 9941140L)
+            )
             title.contains("Whiplash", ignoreCase = true) -> listOf(
                 MovieChapter("Chapter 1: Overture", 0L),
                 MovieChapter("Chapter 2: Studio Band", 411828L),
@@ -592,11 +618,6 @@ class PlaybackActivity : Activity() {
     private fun preloadScrubbingFramesAsync() {
         val folder = getPreviewFolder()
         if (folder.isEmpty()) {
-            if (streamUrl.isNotEmpty()) {
-                val dur = player?.duration?.takeIf { it > 0 } ?: 7200000L
-                val cur = player?.currentPosition ?: 0L
-                ClientSideFrameExtractor.proactivePrewarm(streamUrl, cur, dur)
-            }
             return
         }
         Thread {
@@ -774,29 +795,69 @@ class PlaybackActivity : Activity() {
         tvPlayerYear.text = movieYear
         tvPlayerTitle.text = movieTitle
 
-        val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true)
-        val is4k = !isSdr && (movieTitle.contains("Raiders", ignoreCase = true) || movieTitle.contains("Nightmare", ignoreCase = true) || movieTitle.contains("Hail", ignoreCase = true))
+        val isExplicitSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
+                movieTitle.contains("Whiplash", ignoreCase = true) ||
+                movieVideoCodec.contains("1080P", ignoreCase = true) ||
+                movieVideoCodec.contains("AVC", ignoreCase = true) ||
+                movieVideoCodec.contains("SDR", ignoreCase = true)
+        val isExplicitHdr10 = movieTitle.contains("Odyssey", ignoreCase = true) ||
+                movieVideoCodec.contains("HDR10", ignoreCase = true) ||
+                (movieVideoCodec.contains("HDR", ignoreCase = true) && !movieVideoCodec.contains("VISION", ignoreCase = true))
+        val isExplicitDv = !isExplicitSdr && !isExplicitHdr10 && (
+                movieTitle.contains("Raiders", ignoreCase = true) ||
+                movieTitle.contains("Nightmare", ignoreCase = true) ||
+                movieTitle.contains("Hail", ignoreCase = true) ||
+                movieVideoCodec.contains("VISION", ignoreCase = true) ||
+                movieVideoCodec.contains("DV", ignoreCase = true)
+        )
+        val is4k = !isExplicitSdr && (
+                movieTitle.contains("Raiders", ignoreCase = true) ||
+                movieTitle.contains("Nightmare", ignoreCase = true) ||
+                movieTitle.contains("Hail", ignoreCase = true) ||
+                movieTitle.contains("Odyssey", ignoreCase = true) ||
+                movieVideoCodec.contains("4K", ignoreCase = true) ||
+                movieVideoCodec.contains("2160", ignoreCase = true)
+        )
 
         badgeResolution.text = if (is4k) "4K" else "HD"
         badgeResolution.visibility = View.VISIBLE
 
-
-        if (isSdr) {
-            badgeHdr.visibility = View.GONE
-            btnDvMode.visibility = View.GONE
-            btnChapters.nextFocusRightId = R.id.btnLibrary
-            btnLibrary.nextFocusLeftId = R.id.btnChapters
-        } else {
-            badgeHdr.visibility = View.VISIBLE
-            badgeHdr.text = if (currentDvMode == DolbyVisionProcessingMode.FORCE_HDR10) "HDR10" else "DOLBY VISION"
-            btnDvMode.visibility = View.VISIBLE
-            btnChapters.nextFocusRightId = R.id.btnDvMode
-            btnLibrary.nextFocusLeftId = R.id.btnDvMode
-            btnDvMode.text = when (currentDvMode) {
-                DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
-                DolbyVisionProcessingMode.P7_MEL_DIRECT -> "Dolby Vision P7"
-                DolbyVisionProcessingMode.FORCE_HDR10 -> "HDR10"
+        when {
+            isExplicitSdr -> {
+                currentDynamicRange = VideoDynamicRange.SDR
+                badgeHdr.visibility = View.GONE
+                btnDvMode.visibility = View.GONE
+                btnChapters.nextFocusRightId = R.id.btnLibrary
+                btnLibrary.nextFocusLeftId = R.id.btnChapters
+            }
+            isExplicitHdr10 -> {
+                currentDynamicRange = VideoDynamicRange.HDR10
+                badgeHdr.visibility = View.VISIBLE
+                badgeHdr.text = "HDR10"
+                btnDvMode.visibility = View.VISIBLE
+                btnDvMode.text = "HDR10"
+                btnChapters.nextFocusRightId = R.id.btnDvMode
+                btnLibrary.nextFocusLeftId = R.id.btnDvMode
+            }
+            isExplicitDv -> {
+                currentDynamicRange = VideoDynamicRange.DOLBY_VISION
+                badgeHdr.visibility = View.VISIBLE
+                badgeHdr.text = if (currentDvMode == DolbyVisionProcessingMode.FORCE_HDR10) "HDR10" else "DOLBY VISION"
+                btnDvMode.visibility = View.VISIBLE
+                btnDvMode.text = when (currentDvMode) {
+                    DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
+                    DolbyVisionProcessingMode.P7_MEL_DIRECT -> "Dolby Vision P7"
+                    DolbyVisionProcessingMode.FORCE_HDR10 -> "HDR10"
+                }
+                btnChapters.nextFocusRightId = R.id.btnDvMode
+                btnLibrary.nextFocusLeftId = R.id.btnDvMode
+            }
+            else -> {
+                // Dynamic unknown: hide until onTracksChanged analyzes stream
+                badgeHdr.visibility = View.GONE
+                btnDvMode.visibility = View.GONE
+                btnChapters.nextFocusRightId = R.id.btnLibrary
+                btnLibrary.nextFocusLeftId = R.id.btnChapters
             }
         }
 
@@ -965,9 +1026,7 @@ class PlaybackActivity : Activity() {
                             val remaining = (duration - exo.currentPosition).coerceAtLeast(0)
                             tvRemainingTime.text = "-${formatTimeMs(remaining)}"
                         }
-                        if (streamUrl.isNotEmpty() && duration > 0) {
-                            ClientSideFrameExtractor.proactivePrewarm(streamUrl, exo.currentPosition, duration)
-                        }
+
                         if (isSeeking) {
                             isSeeking = false
                             if (wasPlayingBeforeScrub && !isScrubbing) {
@@ -1547,7 +1606,9 @@ class PlaybackActivity : Activity() {
         var audioName = "AUDIO BITSTREAM"
         var channelText = ""
         var isDolbyVision = false
-        var isHdr = false
+        var dvProfile = "P8.1"
+        var isHdr10 = false
+        var isHlg = false
         var is4k = false
 
         for (group in tracks.groups) {
@@ -1573,10 +1634,19 @@ class PlaybackActivity : Activity() {
                         codecs.contains("hev1.08", ignoreCase = true)
                     ) {
                         isDolbyVision = true
+                        dvProfile = when {
+                            codecs.contains("07") || codecs.contains(".07.") -> "P7"
+                            codecs.contains("08") || codecs.contains(".08.") -> "P8.1"
+                            codecs.contains("05") || codecs.contains(".05.") -> "P5"
+                            else -> "P8.1"
+                        }
                     }
-                    if (format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 ||
-                        format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG) {
-                        isHdr = true
+
+                    val colorTransfer = format.colorInfo?.colorTransfer
+                    if (colorTransfer == C.COLOR_TRANSFER_ST2084) {
+                        isHdr10 = true
+                    } else if (colorTransfer == C.COLOR_TRANSFER_HLG) {
+                        isHlg = true
                     }
                 }
             } else if (type == C.TRACK_TYPE_AUDIO && group.isSelected) {
@@ -1605,30 +1675,52 @@ class PlaybackActivity : Activity() {
             }
         }
 
-        val isMovieSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true) || (!isDolbyVision && !isHdr && !is4k)
+        currentDynamicRange = when {
+            isDolbyVision -> VideoDynamicRange.DOLBY_VISION
+            isHdr10 -> VideoDynamicRange.HDR10
+            isHlg -> VideoDynamicRange.HLG
+            else -> VideoDynamicRange.SDR
+        }
+        currentDvProfile = dvProfile
 
-        badgeResolution.text = if (is4k && !isMovieSdr) "4K" else "HD"
+        badgeResolution.text = if (is4k) "4K" else "HD"
         badgeResolution.visibility = View.VISIBLE
 
-
-        if (isMovieSdr) {
-            badgeHdr.visibility = View.GONE
-            btnDvMode.visibility = View.GONE
-        } else if (isDolbyVision || currentDvMode != DolbyVisionProcessingMode.FORCE_HDR10) {
-            badgeHdr.visibility = View.VISIBLE
-            badgeHdr.text = "DOLBY VISION"
-            btnDvMode.visibility = View.VISIBLE
-            btnDvMode.text = when {
-                movieTitle.contains("Nightmare", ignoreCase = true) || currentDvMode == DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
-                currentDvMode == DolbyVisionProcessingMode.P7_MEL_DIRECT -> "Dolby Vision P7"
-                else -> "Dolby Vision P8.1"
+        when (currentDynamicRange) {
+            VideoDynamicRange.DOLBY_VISION -> {
+                badgeHdr.visibility = View.VISIBLE
+                badgeHdr.text = if (currentDvMode == DolbyVisionProcessingMode.FORCE_HDR10) "HDR10" else "DOLBY VISION"
+                btnDvMode.visibility = View.VISIBLE
+                btnDvMode.text = when (currentDvMode) {
+                    DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
+                    DolbyVisionProcessingMode.P7_MEL_DIRECT -> "Dolby Vision P7"
+                    DolbyVisionProcessingMode.FORCE_HDR10 -> "HDR10"
+                }
+                btnChapters.nextFocusRightId = R.id.btnDvMode
+                btnLibrary.nextFocusLeftId = R.id.btnDvMode
             }
-        } else {
-            badgeHdr.visibility = View.VISIBLE
-            badgeHdr.text = "HDR10"
-            btnDvMode.visibility = View.VISIBLE
-            btnDvMode.text = "HDR10"
+            VideoDynamicRange.HDR10 -> {
+                badgeHdr.visibility = View.VISIBLE
+                badgeHdr.text = "HDR10"
+                btnDvMode.visibility = View.VISIBLE
+                btnDvMode.text = "HDR10"
+                btnChapters.nextFocusRightId = R.id.btnDvMode
+                btnLibrary.nextFocusLeftId = R.id.btnDvMode
+            }
+            VideoDynamicRange.HLG -> {
+                badgeHdr.visibility = View.VISIBLE
+                badgeHdr.text = "HLG"
+                btnDvMode.visibility = View.VISIBLE
+                btnDvMode.text = "HLG"
+                btnChapters.nextFocusRightId = R.id.btnDvMode
+                btnLibrary.nextFocusLeftId = R.id.btnDvMode
+            }
+            VideoDynamicRange.SDR -> {
+                badgeHdr.visibility = View.GONE
+                btnDvMode.visibility = View.GONE
+                btnChapters.nextFocusRightId = R.id.btnLibrary
+                btnLibrary.nextFocusLeftId = R.id.btnChapters
+            }
         }
 
         badgeAudio.text = audioName
@@ -2049,17 +2141,69 @@ class PlaybackActivity : Activity() {
     }
 
     private fun openDvModeModal() {
+        val exo = player ?: return
         activeModalType = ModalType.DV_MODE
 
-        val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true)
-        val isNativeP8 = movieTitle.contains("Nightmare", ignoreCase = true)
+        if (currentDynamicRange == VideoDynamicRange.HDR10) {
+            showModal(
+                title = "HDR Video",
+                badge = "HDR10 DIRECT",
+                anchorButton = btnDvMode,
+                targetWidthDp = 270
+            )
+            llModalListContainer.removeAllViews()
+            val inflater = LayoutInflater.from(this)
+            val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+            itemView.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.VISIBLE
+            val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
+            val tvSub = itemView.findViewById<TextView>(R.id.tvTrackSubtext)
+            val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
 
-        if (isSdr) {
+            tvTitle.text = "HDR10 Direct Play"
+            tvTitle.isSelected = true
+            tvSub.text = "SMPTE ST 2084 PQ • BT.2020 10-bit\nHardware decoded directly by TV panel"
+            tvSub.visibility = View.VISIBLE
+            tvBadge.text = "ST 2084"
+            tvBadge.visibility = View.VISIBLE
+            itemView.setOnClickListener { closeModal() }
+            llModalListContainer.addView(itemView)
+            itemView.requestFocus()
+            return
+        }
+
+        if (currentDynamicRange == VideoDynamicRange.HLG) {
+            showModal(
+                title = "HDR Video",
+                badge = "HLG DIRECT",
+                anchorButton = btnDvMode,
+                targetWidthDp = 270
+            )
+            llModalListContainer.removeAllViews()
+            val inflater = LayoutInflater.from(this)
+            val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+            itemView.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.VISIBLE
+            val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
+            val tvSub = itemView.findViewById<TextView>(R.id.tvTrackSubtext)
+            val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
+
+            tvTitle.text = "HLG Direct Play"
+            tvTitle.isSelected = true
+            tvSub.text = "Hybrid Log-Gamma • BT.2100\nBroadcast HDR decoded directly by TV panel"
+            tvSub.visibility = View.VISIBLE
+            tvBadge.text = "BT.2100"
+            tvBadge.visibility = View.VISIBLE
+            itemView.setOnClickListener { closeModal() }
+            llModalListContainer.addView(itemView)
+            itemView.requestFocus()
+            return
+        }
+
+        if (currentDynamicRange == VideoDynamicRange.SDR) {
             showModal(
                 title = "Direct Play (SDR)",
                 badge = "SDR BT.709",
-                anchorButton = btnDvMode
+                anchorButton = btnDvMode,
+                targetWidthDp = 270
             )
             llModalListContainer.removeAllViews()
             val inflater = LayoutInflater.from(this)
@@ -2077,11 +2221,13 @@ class PlaybackActivity : Activity() {
             return
         }
 
+        val isNativeP8 = currentDvProfile == "P8.1" && movieTitle.contains("Nightmare", ignoreCase = true)
         if (isNativeP8) {
             showModal(
                 title = "Dolby Vision",
                 badge = "NATIVE DV P8.1",
-                anchorButton = btnDvMode
+                anchorButton = btnDvMode,
+                targetWidthDp = 270
             )
             llModalListContainer.removeAllViews()
             val inflater = LayoutInflater.from(this)
@@ -2287,13 +2433,36 @@ class PlaybackActivity : Activity() {
         val tvVidSub = videoItem.findViewById<TextView>(R.id.tvTrackSubtext)
         val tvVidBadge = videoItem.findViewById<TextView>(R.id.tvTrackBadge)
         val tvVidSec = videoItem.findViewById<TextView>(R.id.tvTrackBadgeSecondary)
-        tvVidTitle.text = if (isSdr) "Video: 1080p SDR Rec.709 Direct Play" else "Video: 4K Dolby Vision Remux Direct Play"
+
+        when (currentDynamicRange) {
+            VideoDynamicRange.DOLBY_VISION -> {
+                tvVidTitle.text = "Video: 4K Dolby Vision Remux Direct Play"
+                tvVidSub.text = "Direct HW decode (HEVC Main 10 / NAL 62 $currentDvProfile)"
+                tvVidSec.text = "HEVC"
+                tvVidBadge.text = currentDvMode.badgeText
+            }
+            VideoDynamicRange.HDR10 -> {
+                tvVidTitle.text = "Video: 4K HDR10 Remux Direct Play"
+                tvVidSub.text = "Direct HW decode (HEVC Main 10 / SMPTE ST 2084 PQ)"
+                tvVidSec.text = "HEVC"
+                tvVidBadge.text = "ST 2084"
+            }
+            VideoDynamicRange.HLG -> {
+                tvVidTitle.text = "Video: 4K HLG Remux Direct Play"
+                tvVidSub.text = "Direct HW decode (HEVC Main 10 / BT.2100 HLG)"
+                tvVidSec.text = "HEVC"
+                tvVidBadge.text = "BT.2100"
+            }
+            VideoDynamicRange.SDR -> {
+                tvVidTitle.text = "Video: 1080p SDR Rec.709 Direct Play"
+                tvVidSub.text = "Direct HW decode (H.264 High@L4.1)"
+                tvVidSec.text = "AVC"
+                tvVidBadge.text = "BT.709"
+            }
+        }
         tvVidTitle.isSelected = true
-        tvVidSub.text = if (isSdr) "Direct HW decode (H.264 High@L4.1)" else "Direct HW decode (HEVC Main 10 / NAL 62 transmute)"
         tvVidSub.visibility = View.VISIBLE
-        tvVidSec.text = if (isSdr) "AVC" else "HEVC"
         tvVidSec.visibility = View.VISIBLE
-        tvVidBadge.text = if (isSdr) "BT.709" else currentDvMode.badgeText
         tvVidBadge.visibility = View.VISIBLE
         videoItem.isFocusable = true
         videoItem.setOnFocusChangeListener { _, hasFocus -> tvVidTitle.isSelected = hasFocus }

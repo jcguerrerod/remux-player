@@ -146,6 +146,21 @@ class MainActivity : Activity() {
             backdropAsset = "backdrops/whiplash.jpg",
             cardAsset = "backdrops/whiplash_card.jpg",
             itemId = "c525a0a9-9404-ceea-8e69-c3ca1565b03a"
+        ),
+        RemuxMovie(
+            title = "THE ODYSSEY",
+            year = "2026",
+            duration = "2h 52m",
+            genre = "Movie  •  Sci-Fi  •  Adventure",
+            size = "88.25 GB Remux",
+            videoCodec = "4K HDR10",
+            audioCodec = "DTS-HD MASTER AUDIO 5.1",
+            synopsis = "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
+            actors = "Anne Hathaway, Charlize Theron, John Leguizamo",
+            director = "Christopher Nolan",
+            backdropAsset = "backdrops/odyssey.jpg",
+            cardAsset = "backdrops/odyssey_card.jpg",
+            itemId = "ca55fa02-6bd1-53a1-7aef-e40294ce8750"
         )
     )
 
