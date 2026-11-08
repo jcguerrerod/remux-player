@@ -215,22 +215,6 @@
                         android:fontFamily="sans-serif-medium"
                         android:letterSpacing="0.05" />
 
-                    <!-- Source Format Pill: BLU-RAY -->
-                    <TextView
-                        android:id="@+id/badgeSource"
-                        android:layout_width="wrap_content"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_apple_tv_badge"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:paddingStart="6dp"
-                        android:paddingEnd="6dp"
-                        android:text="BLU-RAY"
-                        android:textColor="#FFFFFF"
-                        android:textSize="10.5sp"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05" />
 
                     <!-- Audio Codec Pill: DOLBY ATMOS / DTS-HD MA / DOLBY AUDIO / TRUEHD -->
                     <TextView

@@ -51,7 +51,6 @@ class MainActivity : Activity() {
     private lateinit var tvMetadataText: TextView
     private lateinit var badgeResolution: TextView
     private lateinit var badgeHdr: TextView
-    private lateinit var badgeSource: TextView
     private lateinit var badgeAudio: TextView
     private lateinit var badgeChannels: TextView
     private lateinit var btnPlayDirect: Button
@@ -169,7 +168,6 @@ class MainActivity : Activity() {
         tvMetadataText = findViewById(R.id.tvMetadataText)
         badgeResolution = findViewById(R.id.badgeResolution)
         badgeHdr = findViewById(R.id.badgeHdr)
-        badgeSource = findViewById(R.id.badgeSource)
         badgeAudio = findViewById(R.id.badgeAudio)
         badgeChannels = findViewById(R.id.badgeChannels)
         btnPlayDirect = findViewById(R.id.btnPlayDirect)
@@ -467,8 +465,6 @@ class MainActivity : Activity() {
             badgeHdr.text = if (movie.videoCodec.contains("VISION", ignoreCase = true)) "DOLBY VISION" else "HDR10"
         }
 
-        badgeSource.text = "BLU-RAY"
-        badgeSource.visibility = View.VISIBLE
 
         when {
             movie.audioCodec.contains("Atmos", ignoreCase = true) -> {

@@ -97,7 +97,6 @@ class PlaybackActivity : Activity() {
     private lateinit var loadingSpinner: ProgressBar
     private lateinit var badgeResolution: TextView
     private lateinit var badgeHdr: TextView
-    private lateinit var badgeSource: TextView
     private lateinit var badgeAudio: TextView
     private lateinit var badgeChannels: TextView
     private lateinit var badgeAfr: TextView
@@ -793,7 +792,6 @@ class PlaybackActivity : Activity() {
         loadingSpinner = findViewById(R.id.loadingSpinner)
         badgeResolution = findViewById(R.id.badgeResolution)
         badgeHdr = findViewById(R.id.badgeHdr)
-        badgeSource = findViewById(R.id.badgeSource)
         badgeAudio = findViewById(R.id.badgeAudio)
         badgeChannels = findViewById(R.id.badgeChannels)
         badgeAfr = findViewById(R.id.badgeAfr)
@@ -819,8 +817,6 @@ class PlaybackActivity : Activity() {
         badgeResolution.text = if (is4k) "4K" else "HD"
         badgeResolution.visibility = View.VISIBLE
 
-        badgeSource.text = "BLU-RAY"
-        badgeSource.visibility = View.VISIBLE
 
         if (isSdr) {
             badgeHdr.visibility = View.GONE
@@ -1622,8 +1618,6 @@ class PlaybackActivity : Activity() {
         badgeResolution.text = if (is4k && !isMovieSdr) "4K" else "HD"
         badgeResolution.visibility = View.VISIBLE
 
-        badgeSource.text = "BLU-RAY"
-        badgeSource.visibility = View.VISIBLE
 
         if (isMovieSdr) {
             badgeHdr.visibility = View.GONE
