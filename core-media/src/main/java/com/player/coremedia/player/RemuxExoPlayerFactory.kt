@@ -22,6 +22,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.FormatHolder
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioTrackBufferSizeProvider
+import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo as ExoMediaCodecInfo
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
@@ -46,9 +48,9 @@ object RemuxExoPlayerFactory {
     init {
         try {
             System.loadLibrary("native_pipeline")
-            Log.i(TAG, "Librería nativa native_pipeline cargada exitosamente.")
+            Log.i(TAG, "Native library native_pipeline loaded successfully.")
         } catch (e: UnsatisfiedLinkError) {
-            Log.e(TAG, "No se pudo cargar native_pipeline", e)
+            Log.e(TAG, "Could not load native_pipeline", e)
         }
     }
 
@@ -73,7 +75,7 @@ object RemuxExoPlayerFactory {
         } else false
 
         val effectiveAudioCapabilities = if (!hasHdmiOutput) {
-            Log.i(TAG, "Salida de audio: Altavoces de TV detectados (Sin receptor HDMI/eARC). Decodificando DTS/DTS-HD a PCM por hardware.")
+            Log.i(TAG, "Audio output: TV speakers detected (No HDMI/eARC receiver). Decoding DTS/DTS-HD to hardware PCM.")
             AudioCapabilities(
                 intArrayOf(
                     AudioFormat.ENCODING_PCM_16BIT,
@@ -84,7 +86,7 @@ object RemuxExoPlayerFactory {
                 8
             )
         } else {
-            Log.i(TAG, "Salida de audio: Receptor HDMI/eARC externo detectado. Habilitando Passthrough completo.")
+            Log.i(TAG, "Audio output: External HDMI/eARC receiver detected. Enabling full passthrough.")
             AudioCapabilities.getCapabilities(context)
         }
 
@@ -98,8 +100,8 @@ object RemuxExoPlayerFactory {
         val trackSelector = DefaultTrackSelector(context)
         val paramsBuilder = trackSelector.buildUponParameters()
             .setExceedRendererCapabilitiesIfNecessary(false)
-            // Priorizar formatos de audio totalmente compatibles con decodificación de TV por hardware (DD 5.1 / DD+)
-            // para evitar desbordamientos de búfer en altavoces internos cuando no hay AVR TrueHD por HDMI.
+            // Prioritize audio formats fully compatible with TV hardware decoding (DD 5.1 / DD+)
+            // to avoid buffer underruns on internal TV speakers when no TrueHD AVR is on HDMI.
             .setPreferredAudioMimeTypes(
                 MimeTypes.AUDIO_E_AC3_JOC,
                 MimeTypes.AUDIO_E_AC3,
@@ -377,17 +379,35 @@ object RemuxExoPlayerFactory {
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean
             ): androidx.media3.exoplayer.audio.AudioSink {
+                val bufferSizeProvider = DefaultAudioTrackBufferSizeProvider.Builder()
+                    .setMinPcmBufferDurationUs(250_000)      // 250ms minimum buffer
+                    .setMaxPcmBufferDurationUs(1_000_000)    // 1000ms (1s) headroom for multichannel PCM
+                    .setPcmBufferMultiplicationFactor(4)     // 4x buffer multiplier to protect against underruns
+                    .setPassthroughBufferDurationUs(500_000) // 500ms passthrough buffer
+                    .setOffloadBufferDurationUs(10_000_000)  // 10s offload buffer
+                    .build()
+
                 return DefaultAudioSink.Builder(context)
                     .setAudioCapabilities(effectiveAudioCapabilities)
                     .setEnableFloatOutput(false)
+                    .setAudioTrackBufferSizeProvider(bufferSizeProvider)
                     .build()
             }
         }
 
+        // High-Throughput HTTP DataSource Pipeline with persistent Keep-Alive
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(30000)
+            .setKeepPostFor302Redirects(true)
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Connection" to "keep-alive",
+                    "Accept-Encoding" to "identity",
+                    "User-Agent" to "RemuxPlayer-AndroidTV/2.0"
+                )
+            )
 
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
             .setDataSourceFactory(httpDataSourceFactory)
@@ -397,13 +417,19 @@ object RemuxExoPlayerFactory {
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
+        // Ultra-Buffer Allocator: 96 MB dedicated RAM buffer for high-bitrate 4K UHD Blu-ray Remux
+        val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setAllocator(allocator)
+            .setTargetBufferBytes(96 * 1024 * 1024) // 96 MB dedicated buffer
             .setBufferDurationsMs(
-                15000, // minBufferMs
-                50000, // maxBufferMs
-                1000,  // bufferForPlaybackMs
-                2000   // bufferForPlaybackAfterRebufferMs
+                25000, // minBufferMs: buffer at least 25s ahead
+                80000, // maxBufferMs: buffer up to 80s ahead
+                1500,  // bufferForPlaybackMs: quick 1.5s start
+                3000   // bufferForPlaybackAfterRebufferMs: 3.0s after rebuffer
             )
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .setBackBuffer(30000, false) // 30s back buffer for instant -10s quick skips
             .build()
 
         return ExoPlayer.Builder(context, renderersFactory)
@@ -416,9 +442,9 @@ object RemuxExoPlayerFactory {
     }
 
     /**
-     * Filtrado In-Place y Zero-Copy de Unidades NAL HEVC de ultra-alto rendimiento (C++20 SIMD).
-     * Descarta completamente el NAL 63 (FEL - Full Enhancement Layer) del buffer
-     * antes de ser entregado al decodificador MediaCodec por hardware sin copias en espacio Java.
+     * In-Place Zero-Copy HEVC NAL Unit high-performance SIMD C++20 filtering.
+     * Completely discards NAL 63 (FEL - Full Enhancement Layer) from buffer
+     * before handing it to the hardware MediaCodec decoder without Java copies.
      */
     private fun filterHevcNaluInPlace(buffer: java.nio.ByteBuffer): Int {
         if (!buffer.isDirect) return buffer.limit()
@@ -435,7 +461,7 @@ object RemuxExoPlayerFactory {
                 return newLimit
             }
         } catch (e: Throwable) {
-            Log.w(TAG, "Error en filtrado nativo NALU: ${e.message}")
+            Log.w(TAG, "Error in native NALU filtering: ${e.message}")
         }
         return limit
     }

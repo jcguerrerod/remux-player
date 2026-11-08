@@ -51,7 +51,7 @@ object ClientSideFrameExtractor {
                 val mmr = MediaMetadataRetriever()
                 val headers = HashMap<String, String>()
                 headers["Connection"] = "keep-alive"
-                headers["User-Agent"] = "RemuxPlayer-TV/1.0"
+                headers["User-Agent"] = "RemuxPlayer-AndroidTV/2.0"
                 mmr.setDataSource(url, headers)
                 retriever = mmr
                 isInitializing = false
