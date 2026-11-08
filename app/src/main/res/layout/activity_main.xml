@@ -144,7 +144,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:singleLine="true"
-                    android:text="Movie  ·  Acción  ·  Aventura  ·  1981"
+                    android:text="Movie  ·  Action  ·  Adventure  ·  1981"
                     android:textColor="#A1A1A6"
                     android:textSize="12sp"
                     android:fontFamily="sans-serif" />
@@ -158,7 +158,7 @@
                     android:maxLines="3"
                     android:ellipsize="end"
                     android:lineSpacingExtra="2dp"
-                    android:text="El arqueólogo y aventurero Indiana Jones es contratado por el gobierno estadounidense para localizar el Arca de la Alianza antes de que los nazis se apoderen de sus extraordinarios poderes."
+                    android:text="Archaeology professor Indiana Jones ventures across the globe to uncover the legendary Ark of the Covenant before insidious Nazi forces can seize its ancient power."
                     android:textColor="#C7C7CC"
                     android:textSize="12sp"
                     android:fontFamily="sans-serif" />

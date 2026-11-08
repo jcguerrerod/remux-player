@@ -1,16 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
-        <shape android:shape="rectangle">
-            <corners android:radius="16dp" />
-            <stroke android:width="2.5dp" android:color="#FFFFFF" />
-            <solid android:color="@android:color/transparent" />
-        </shape>
+        <layer-list>
+            <!-- Borde exterior blanco puro Apple TV -->
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="16dp" />
+                    <stroke android:width="2.5dp" android:color="#FFFFFF" />
+                    <solid android:color="@android:color/transparent" />
+                </shape>
+            </item>
+            <!-- Reflejo especular Liquid Glass en la mitad superior -->
+            <item android:bottom="45dp">
+                <shape android:shape="rectangle">
+                    <corners
+                        android:topLeftRadius="15dp"
+                        android:topRightRadius="15dp"
+                        android:bottomLeftRadius="0dp"
+                        android:bottomRightRadius="0dp" />
+                    <gradient
+                        android:angle="270"
+                        android:startColor="#30FFFFFF"
+                        android:endColor="#00FFFFFF" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="16dp" />
-            <stroke android:width="1dp" android:color="#26FFFFFF" />
+            <stroke android:width="1dp" android:color="#20FFFFFF" />
             <solid android:color="@android:color/transparent" />
         </shape>
     </item>

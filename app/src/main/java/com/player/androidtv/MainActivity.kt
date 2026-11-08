@@ -2,6 +2,7 @@ package com.player.androidtv
 
 import android.app.Activity
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -36,6 +37,10 @@ data class RemuxMovie(
 )
 
 class MainActivity : Activity() {
+
+    companion object {
+        private const val PREFS_NAME = "remux_player_prefs"
+    }
 
     private lateinit var ivHeroBackdrop: ImageView
     private lateinit var ivHeroBackdropAlt: ImageView
@@ -240,6 +245,57 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    private val cardProgressBars = HashMap<String, Pair<View, View>>()
+
+    private fun getSavedProgress(prefs: SharedPreferences, title: String): Pair<Long, Long> {
+        val normPKey = "progress_" + title.lowercase().trim()
+        val normDKey = "duration_" + title.lowercase().trim()
+        var pos = prefs.getLong(normPKey, 0L)
+        var dur = prefs.getLong(normDKey, 0L)
+        if (pos == 0L) pos = prefs.getLong("progress_$title", 0L)
+        if (dur == 0L) dur = prefs.getLong("duration_$title", 0L)
+        if (pos == 0L) {
+            val all = prefs.all
+            for ((k, v) in all) {
+                if (k.startsWith("progress_") && k.substring(9).equals(title, ignoreCase = true) && v is Long) {
+                    pos = v
+                    val matchedDur = all["duration_" + k.substring(9)] as? Long
+                    if (matchedDur != null && matchedDur > 0L) dur = matchedDur
+                    break
+                }
+            }
+        }
+        return Pair(pos, dur)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshShelfProgress()
+        updateHeroMovie(selectedMovieIndex, animate = false)
+    }
+
+    private fun refreshShelfProgress() {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        for (movie in movies) {
+            val pair = cardProgressBars[movie.title] ?: continue
+            val (container, fill) = pair
+            val (pos, dur) = getSavedProgress(prefs, movie.title)
+            if (dur > 0L && pos > 5000L && pos < dur - 30000L) {
+                container.visibility = View.VISIBLE
+                val ratio = (pos.toFloat() / dur.toFloat()).coerceIn(0.02f, 1f)
+                container.post {
+                    val totalW = container.width
+                    if (totalW > 0) {
+                        fill.layoutParams.width = (totalW * ratio).toInt()
+                        fill.requestLayout()
+                    }
+                }
+            } else {
+                container.visibility = View.GONE
+            }
+        }
+    }
+
     private fun buildMovieShelf() {
         llCardShelf.removeAllViews()
         val density = resources.displayMetrics.density
@@ -293,7 +349,7 @@ class MainActivity : Activity() {
                 } catch (ignored: Exception) {}
             }
 
-            // Borde luminoso blanco puro de Apple TV (2.5dp)
+            // Borde luminoso blanco puro de Apple TV (2.5dp) con efecto Liquid Glass
             val borderOverlay = View(this).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -303,19 +359,53 @@ class MainActivity : Activity() {
                 isDuplicateParentStateEnabled = true
             }
 
+            // Barra de progreso "Continuar viendo" Apple TV (3.5dp, fondo negro translúcido y relleno blanco puro)
+            val progressBarContainer = FrameLayout(this).apply {
+                val barHeight = (3.5f * density).toInt()
+                val marginH = (14 * density).toInt()
+                val marginB = (10 * density).toInt()
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    barHeight
+                ).apply {
+                    gravity = android.view.Gravity.BOTTOM
+                    marginStart = marginH
+                    marginEnd = marginH
+                    bottomMargin = marginB
+                }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = 2f * density
+                    setColor(android.graphics.Color.parseColor("#80000000"))
+                }
+                visibility = View.GONE
+            }
+
+            val progressBarFill = View(this).apply {
+                layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = 2f * density
+                    setColor(android.graphics.Color.parseColor("#FFFFFF"))
+                }
+            }
+            progressBarContainer.addView(progressBarFill)
+            cardProgressBars[movie.title] = Pair(progressBarContainer, progressBarFill)
+
             frameLayout.addView(imageView)
+            frameLayout.addView(progressBarContainer)
             frameLayout.addView(borderOverlay)
             cardView.addView(frameLayout)
 
-            // Zoom suave estilo Apple TV (1.06x), borde blanco y auto-scroll centrado suave
+            // Zoom suave estilo Apple TV (1.08x), borde blanco y auto-scroll centrado suave
             cardView.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     v.animate().cancel()
                     v.animate()
-                        .scaleX(1.06f)
-                        .scaleY(1.06f)
-                        .translationZ(12 * density)
-                        .setDuration(150)
+                        .scaleX(1.08f)
+                        .scaleY(1.08f)
+                        .translationZ(16 * density)
+                        .setDuration(180)
                         .setInterpolator(android.view.animation.DecelerateInterpolator())
                         .start()
                     selectedMovieIndex = index
@@ -332,7 +422,7 @@ class MainActivity : Activity() {
                         .scaleX(1.0f)
                         .scaleY(1.0f)
                         .translationZ(0f)
-                        .setDuration(150)
+                        .setDuration(180)
                         .setInterpolator(android.view.animation.DecelerateInterpolator())
                         .start()
                 }
@@ -403,7 +493,17 @@ class MainActivity : Activity() {
                 badgeAudio.text = movie.audioCodec
             }
         }
-        btnPlayDirect.text = movie.duration
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val (pos, dur) = getSavedProgress(prefs, movie.title)
+        if (dur > 0L && pos > 5000L && pos < dur - 30000L) {
+            val remainingMs = dur - pos
+            val remainingHours = remainingMs / (1000 * 60 * 60)
+            val remainingMinutes = (remainingMs / (1000 * 60)) % 60
+            val remainingText = if (remainingHours > 0) "${remainingHours}h ${remainingMinutes}m" else "${remainingMinutes}m"
+            btnPlayDirect.text = "Resume · $remainingText left"
+        } else {
+            btnPlayDirect.text = movie.duration
+        }
         tvHeroCast.text = "Cast  ${movie.actors}"
         tvHeroDirector.text = "Director  ${movie.director}"
 
@@ -450,9 +550,16 @@ class MainActivity : Activity() {
     }
 
     private fun launchPlayback(movie: RemuxMovie) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val (pos, dur) = getSavedProgress(prefs, movie.title)
+        val seekPos = if (dur > 0L && pos > 5000L && pos < dur - 30000L) pos else androidx.media3.common.C.TIME_UNSET
+
         val streamUrl = "$serverBaseUrl/Videos/${movie.itemId}/stream.mkv?Static=true"
         val intent = Intent(this, PlaybackActivity::class.java).apply {
             data = Uri.parse(streamUrl)
+            if (seekPos != androidx.media3.common.C.TIME_UNSET) {
+                putExtra("seek", seekPos)
+            }
             putExtra("title", movie.title)
             putExtra("MOVIE_TITLE", movie.title)
             putExtra("MOVIE_YEAR", movie.year)

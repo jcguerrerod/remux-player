@@ -329,6 +329,87 @@ class PlaybackActivity : Activity() {
         return currentChapters.lastOrNull { timeMs >= it.startTimeMs } ?: currentChapters.firstOrNull()
     }
 
+    private fun jumpToPreviousChapter() {
+        if (currentChapters.isEmpty()) return
+        val current = if (isScrubbing) scrubTargetMs else (player?.currentPosition ?: 0L)
+        val activeIndex = currentChapters.indexOfLast { current >= it.startTimeMs }
+        val targetChapter = if (activeIndex > 0) {
+            val currentChap = currentChapters[activeIndex]
+            if (current - currentChap.startTimeMs > 3000L) {
+                currentChap
+            } else {
+                currentChapters[activeIndex - 1]
+            }
+        } else {
+            currentChapters.firstOrNull()
+        } ?: return
+
+        executeChapterSeek(targetChapter)
+    }
+
+    private fun jumpToNextChapter() {
+        if (currentChapters.isEmpty()) return
+        val current = if (isScrubbing) scrubTargetMs else (player?.currentPosition ?: 0L)
+        val activeIndex = currentChapters.indexOfLast { current >= it.startTimeMs }
+        if (activeIndex in 0 until currentChapters.size - 1) {
+            executeChapterSeek(currentChapters[activeIndex + 1])
+        }
+    }
+
+    private fun executeChapterSeek(targetChapter: MovieChapter) {
+        val p = player ?: return
+        val duration = p.duration.takeIf { it > 0 } ?: return
+        val targetMs = targetChapter.startTimeMs.coerceIn(0L, duration)
+
+        if (isScrubbing) {
+            scrubTargetMs = targetMs
+            timelineSeekBar.progress = ((scrubTargetMs * 1000) / duration).toInt()
+            tvScrubTime.text = formatTimeMs(scrubTargetMs)
+            tvCurrentTime.text = formatTimeMs(scrubTargetMs)
+            val remaining = (duration - scrubTargetMs).coerceAtLeast(0)
+            tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+            tvScrubChapterTitle.text = targetChapter.title
+            tvScrubChapterTitle.visibility = View.VISIBLE
+            updateScrubPreviewPosition(scrubTargetMs, duration)
+            loadScrubThumbnail(movieTitle, scrubTargetMs)
+        } else {
+            isSeeking = true
+            p.seekTo(targetMs)
+            timelineSeekBar.progress = ((targetMs * 1000) / duration).toInt()
+            tvCurrentTime.text = formatTimeMs(targetMs)
+            val remaining = (duration - targetMs).coerceAtLeast(0)
+            tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+            tvPlayerChapter.text = targetChapter.title
+            tvPlayerChapter.visibility = View.VISIBLE
+            showHud()
+        }
+    }
+
+    private fun savePlaybackProgress() {
+        val p = player ?: return
+        val pos = p.currentPosition
+        val dur = p.duration
+        if (dur > 0L && movieTitle.isNotEmpty()) {
+            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            val normTitle = movieTitle.lowercase().trim()
+            if (pos > dur - 30000L) {
+                prefs.edit()
+                    .remove("progress_${movieTitle}")
+                    .remove("duration_${movieTitle}")
+                    .remove("progress_${normTitle}")
+                    .remove("duration_${normTitle}")
+                    .apply()
+            } else if (pos > 5000L) {
+                prefs.edit()
+                    .putLong("progress_${movieTitle}", pos)
+                    .putLong("duration_${movieTitle}", dur)
+                    .putLong("progress_${normTitle}", pos)
+                    .putLong("duration_${normTitle}", dur)
+                    .apply()
+            }
+        }
+    }
+
     private fun setHudScrubbingMode(scrubbing: Boolean) {
         if (scrubbing) {
             topBar.visibility = View.GONE
@@ -338,6 +419,10 @@ class PlaybackActivity : Activity() {
             llScrubPreviewContainer.alpha = 1f
             timelineSeekBar.thumb = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
         } else {
+            cvScrubCard.animate().cancel()
+            vScrubPinLine.animate().cancel()
+            tvScrubChapterTitle.animate().cancel()
+            llScrubTimeBadgeContainer.animate().cancel()
             llScrubPreviewContainer.visibility = View.GONE
             topBar.visibility = View.VISIBLE
             llPlayerHeaderRow.visibility = View.VISIBLE
@@ -398,6 +483,7 @@ class PlaybackActivity : Activity() {
         isSeeking = true
         player?.seekTo(target)
         player?.play()
+        savePlaybackProgress()
         tvScrubSpeedLeft.visibility = View.GONE
         tvScrubSpeedRight.visibility = View.GONE
         tvScrubChapterTitle.visibility = View.GONE
@@ -853,6 +939,11 @@ class PlaybackActivity : Activity() {
                     }
                     Player.STATE_ENDED -> {
                         loadingSpinner.visibility = View.GONE
+                        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        prefs.edit()
+                            .remove("progress_${movieTitle}")
+                            .remove("duration_${movieTitle}")
+                            .apply()
                         showHud()
                     }
                     else -> {}
@@ -899,6 +990,7 @@ class PlaybackActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
+        savePlaybackProgress()
         handler.removeCallbacks(updateProgressRunnable)
         handler.removeCallbacks(hideHudRunnable)
         handler.removeCallbacks(scrubTickerRunnable)
@@ -986,6 +1078,10 @@ class PlaybackActivity : Activity() {
 
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> {
+                    if (isScrubbing) {
+                        jumpToPreviousChapter()
+                        return true
+                    }
                     if (focus == btnBack) {
                         return true
                     }
@@ -1004,7 +1100,7 @@ class PlaybackActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (isScrubbing) {
-                        cancelScrubbing()
+                        jumpToNextChapter()
                         return true
                     }
                     if (focus == btnBack) {
@@ -1019,6 +1115,14 @@ class PlaybackActivity : Activity() {
                         btnInfo.requestFocus()
                         return true
                     }
+                }
+                KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_PAGE_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                    jumpToNextChapter()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
+                    jumpToPreviousChapter()
+                    return true
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (isScrubbing) {
@@ -1225,7 +1329,16 @@ class PlaybackActivity : Activity() {
         val maxCardLeft = screenWidth - margin - cardWidth
         val idealCardLeft = thumbCenterX - cardWidth / 2f
         val clampedCardLeft = idealCardLeft.coerceIn(minCardLeft, maxCardLeft)
-        cvScrubCard.translationX = clampedCardLeft
+        val animDuration = 90L
+        val interpolator = android.view.animation.DecelerateInterpolator()
+
+        // Amortiguación suave e inercia estilo Apple TV
+        cvScrubCard.animate().cancel()
+        cvScrubCard.animate()
+            .translationX(clampedCardLeft)
+            .setDuration(animDuration)
+            .setInterpolator(interpolator)
+            .start()
 
         val seekbarCenterY = seekbarScreenY + (timelineSeekBar.height / 2f)
         val gap = 14f * density
@@ -1238,13 +1351,23 @@ class PlaybackActivity : Activity() {
             tvScrubChapterTitle.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
             val chapWidth = tvScrubChapterTitle.measuredWidth.takeIf { it > 0 } ?: (80 * density).toInt()
             val chapHeight = tvScrubChapterTitle.measuredHeight.takeIf { it > 0 } ?: (24 * density).toInt()
-            tvScrubChapterTitle.translationX = clampedCardLeft + (cardWidth - chapWidth) / 2f
+            tvScrubChapterTitle.animate().cancel()
+            tvScrubChapterTitle.animate()
+                .translationX(clampedCardLeft + (cardWidth - chapWidth) / 2f)
+                .setDuration(animDuration)
+                .setInterpolator(interpolator)
+                .start()
             tvScrubChapterTitle.translationY = cardTop - chapHeight - (8 * density)
         }
 
         // Single continuous vertical needle line from card bottom down through progress bar
         val lineWidth = 2.5f * density
-        vScrubPinLine.translationX = thumbCenterX - (lineWidth / 2f)
+        vScrubPinLine.animate().cancel()
+        vScrubPinLine.animate()
+            .translationX(thumbCenterX - (lineWidth / 2f))
+            .setDuration(animDuration)
+            .setInterpolator(interpolator)
+            .start()
         vScrubPinLine.translationY = cardBottom
         val targetLineHeight = ((seekbarCenterY + 10 * density) - cardBottom).toInt()
         if (vScrubPinLine.layoutParams.height != targetLineHeight) {
@@ -1257,7 +1380,13 @@ class PlaybackActivity : Activity() {
         val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
         val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (70 * density).toInt()
         val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * density).coerceAtLeast(0f)
-        llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
+        val targetBadgeX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
+        llScrubTimeBadgeContainer.animate().cancel()
+        llScrubTimeBadgeContainer.animate()
+            .translationX(targetBadgeX)
+            .setDuration(animDuration)
+            .setInterpolator(interpolator)
+            .start()
     }
 
     /**
@@ -2485,6 +2614,7 @@ class PlaybackActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        savePlaybackProgress()
         handler.removeCallbacksAndMessages(null)
         AutoFrameRateManager.restoreDefaultMode(this)
         ClientSideFrameExtractor.release()
