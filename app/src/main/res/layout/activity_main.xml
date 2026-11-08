@@ -31,6 +31,8 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:paddingStart="48dp"
         android:paddingEnd="48dp"
         android:paddingTop="32dp"
@@ -342,6 +344,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="vertical">
 
             <TextView
@@ -364,8 +368,10 @@
                 android:requiresFadingEdge="none"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:paddingTop="8dp"
-                android:paddingBottom="12dp">
+                android:paddingStart="6dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="16dp">
 
                 <LinearLayout
                     android:id="@+id/llCardShelf"

@@ -294,17 +294,19 @@ class MainActivity : Activity() {
 
         for ((index, movie) in movies.withIndex()) {
             val cardView = CardView(this).apply {
+                val marginStartDp = if (index == 0) 16 else 8
                 layoutParams = LinearLayout.LayoutParams(
                     (240 * density).toInt(),
                     (135 * density).toInt()
                 ).apply {
-                    marginStart = (6 * density).toInt()
+                    marginStart = (marginStartDp * density).toInt()
                     marginEnd = (18 * density).toInt()
-                    topMargin = (6 * density).toInt()
-                    bottomMargin = (6 * density).toInt()
+                    topMargin = (12 * density).toInt()
+                    bottomMargin = (12 * density).toInt()
                 }
                 radius = 16 * density
                 cardElevation = 6 * density
+                preventCornerOverlap = false
                 setCardBackgroundColor(android.graphics.Color.parseColor("#1C1C1E"))
                 isFocusable = true
                 isClickable = true
@@ -405,7 +407,7 @@ class MainActivity : Activity() {
 
                     // Centrar suavemente la tarjeta seleccionada en el scrollview
                     v.post {
-                        val targetScrollX = (v.left - (shelfScrollView.width / 2) + (v.width / 2)).coerceAtLeast(0)
+                        val targetScrollX = if (index == 0) 0 else (v.left - (shelfScrollView.width / 2) + (v.width / 2)).coerceAtLeast(0)
                         shelfScrollView.smoothScrollTo(targetScrollX, 0)
                     }
                 } else {
