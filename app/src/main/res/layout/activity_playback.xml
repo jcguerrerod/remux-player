@@ -535,11 +535,11 @@
         <!-- Hoja Flotante de Cristal Esmerilado Anclada Sobre los Botones -->
         <LinearLayout
             android:id="@+id/modalCard"
-            android:layout_width="265dp"
+            android:layout_width="350dp"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_marginEnd="48dp"
-            android:layout_marginBottom="145dp"
+            android:layout_marginBottom="186dp"
             android:clickable="true"
             android:focusable="false"
             android:background="@drawable/bg_apple_tv_sheet"
@@ -576,23 +576,22 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- Lista de Pistas en ScrollView (Sin barras de desplazamiento) -->
-            <ScrollView
+            <!-- Lista de Pistas en ScrollView (Sin barras de desplazamiento y con tope de altura seguro) -->
+            <com.player.androidtv.MaxHeightScrollView
                 android:id="@+id/modalScrollView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:scrollbars="none"
                 android:fadeScrollbars="false"
                 android:overScrollMode="never"
-                android:requiresFadingEdge="none"
-                android:maxHeight="320dp">
+                android:requiresFadingEdge="none">
 
                 <LinearLayout
                     android:id="@+id/llModalListContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
-            </ScrollView>
+            </com.player.androidtv.MaxHeightScrollView>
         </LinearLayout>
     </FrameLayout>
 

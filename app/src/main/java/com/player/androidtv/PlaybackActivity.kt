@@ -1299,13 +1299,18 @@ class PlaybackActivity : Activity() {
     }
 
     private fun getLanguagePriority(lang: String): Int {
-        val l = lang.uppercase(Locale.ROOT)
+        val l = lang.trim().uppercase(Locale.ROOT)
         return when {
-            l.contains("SPA") || l.contains("ES") || l.contains("LAT") -> 100
-            l.contains("ENG") || l.contains("EN") -> 90
-            l.contains("FRA") || l.contains("FR") -> 50
-            l.contains("DEU") || l.contains("GER") -> 40
-            l.contains("ITA") || l.contains("IT") -> 30
+            l == "SPA" || l == "ES" || l == "LAT" || l == "ES-419" || l == "SPANISH" -> 100
+            l == "ENG" || l == "EN" || l == "ENGLISH" -> 90
+            l == "FRA" || l == "FR" || l == "FRE" || l == "FRENCH" -> 50
+            l == "DEU" || l == "GER" || l == "DE" || l == "GERMAN" -> 40
+            l == "ITA" || l == "IT" || l == "ITALIAN" -> 35
+            l == "POR" || l == "PT" || l == "PORTUGUESE" -> 30
+            l == "JPN" || l == "JA" || l == "JAPANESE" -> 25
+            l == "ZHO" || l == "ZH" || l == "CHI" || l == "CHINESE" -> 20
+            l == "KOR" || l == "KO" || l == "KOREAN" -> 18
+            l == "DAN" || l == "DA" || l == "DANISH" -> 15
             else -> 10
         }
     }
@@ -1337,7 +1342,7 @@ class PlaybackActivity : Activity() {
     private fun openAudioModal() {
         val exo = player ?: return
         activeModalType = ModalType.AUDIO
-        setModalCardMarginEnd(38)
+        setModalCardMarginEnd(48)
 
         showModal(
             title = "Audio",
@@ -1497,7 +1502,7 @@ class PlaybackActivity : Activity() {
     private fun openSubtitlesModal() {
         val exo = player ?: return
         activeModalType = ModalType.SUBTITLES
-        setModalCardMarginEnd(90)
+        setModalCardMarginEnd(48)
 
         showModal(
             title = "Subtitles",
@@ -1566,11 +1571,11 @@ class PlaybackActivity : Activity() {
                     var score = getLanguagePriority(lang)
                     if (isPgs) score += 20 // Priorizar PGS de Blu-ray nativo
 
-                    val badgePrimary = if (isPgs) "PGS BLU-RAY" else "SRT"
+                    val badgePrimary = if (isPgs) "PGS" else "SRT"
                     val badgeSecondary = when {
                         isForced -> "FORZADOS"
                         isSdh -> "SDH / CC"
-                        else -> "COMPLETOS"
+                        else -> "" // Subtítulos completos normales van limpios sin tag redundante
                     }
 
                     trackItems.add(
@@ -1849,6 +1854,26 @@ class PlaybackActivity : Activity() {
         } else {
             tvModalBadge.visibility = View.GONE
         }
+
+        // Posicionar el modal flotante exactamente por encima de la fila de botones (Subtítulos / Audio)
+        // dejando un espacio de 14dp limpio sin solaparse jamás con los círculos
+        val density = resources.displayMetrics.density
+        val loc = IntArray(2)
+        btnSubtitles.getLocationOnScreen(loc)
+        val screenH = resources.displayMetrics.heightPixels
+        val btnTopFromBottom = screenH - loc[1]
+        val targetBottomMargin = if (btnTopFromBottom in 80..420) {
+            btnTopFromBottom + (14 * density).toInt()
+        } else {
+            (186 * density).toInt()
+        }
+
+        (modalCard.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+            lp.bottomMargin = targetBottomMargin
+            lp.marginEnd = (48 * density).toInt()
+            modalCard.layoutParams = lp
+        }
+
         topBar.animate().cancel()
         topBar.animate().alpha(0f).setDuration(160).start()
         modalOverlay.bringToFront()
@@ -1905,18 +1930,45 @@ class PlaybackActivity : Activity() {
     }
 
     private fun getLanguageDisplayName(code: String): String {
-        return when (code.uppercase(Locale.ROOT)) {
-            "SPA", "ES", "SPANISH" -> "Español"
-            "ENG", "EN", "ENGLISH" -> "English"
-            "LAT", "ES-419" -> "Español (Latinoamérica)"
-            "FRA", "FR", "FRENCH" -> "Français"
-            "DEU", "GER", "DE", "GERMAN" -> "Deutsch"
-            "ITA", "IT", "ITALIAN" -> "Italiano"
-            "JPN", "JA", "JAPANESE" -> "Japonés"
-            "POR", "PT", "PORTUGUESE" -> "Português"
-            "RUS", "RU", "RUSSIAN" -> "Ruso"
-            else -> code
+        val clean = code.trim().lowercase(Locale.ROOT)
+        when (clean) {
+            "lat", "es-419" -> return "Español (Latinoamérica)"
+            "spa", "es", "spanish" -> return "Español"
+            "eng", "en", "english" -> return "English"
+            "fra", "fre", "fr", "french" -> return "Français"
+            "deu", "ger", "de", "german" -> return "Deutsch"
+            "ita", "it", "italian" -> return "Italiano"
+            "jpn", "ja", "japanese" -> return "Japonés"
+            "por", "pt", "portuguese" -> return "Português"
+            "rus", "ru", "russian" -> return "Ruso"
+            "zho", "chi", "zh", "chinese" -> return "Chino"
+            "kor", "ko", "korean" -> return "Coreano"
+            "dan", "da", "danish" -> return "Danés"
+            "nld", "dut", "nl", "dutch" -> return "Holandés"
+            "swe", "sv", "swedish" -> return "Sueco"
+            "nor", "no", "norwegian" -> return "Noruego"
+            "fin", "fi", "finnish" -> return "Finlandés"
+            "pol", "pl", "polish" -> return "Polaco"
+            "ces", "cze", "cs", "czech" -> return "Checo"
+            "hun", "hu", "hungarian" -> return "Húngaro"
+            "ell", "gre", "el", "greek" -> return "Griego"
+            "ara", "ar", "arabic" -> return "Árabe"
+            "heb", "he", "hebrew" -> return "Hebreo"
+            "hin", "hi", "hindi" -> return "Hindi"
+            "tha", "th", "thai" -> return "Tailandés"
+            "tur", "tr", "turkish" -> return "Turco"
+            "vie", "vi", "vietnamese" -> return "Vietnamita"
+            "und" -> return "Desconocido"
         }
+        try {
+            val loc = Locale.forLanguageTag(clean).takeIf { it.displayLanguage.isNotBlank() }
+                ?: Locale(clean)
+            val name = loc.getDisplayLanguage(Locale("es"))
+            if (name.isNotBlank()) {
+                return name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            }
+        } catch (_: Exception) {}
+        return code.uppercase(Locale.ROOT)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
