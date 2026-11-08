@@ -600,6 +600,7 @@ class PlaybackActivity : Activity() {
         )
 
         parseIntent()
+        ClientSideFrameExtractor.init(applicationContext)
         if (streamUrl.isNotEmpty()) {
             ClientSideFrameExtractor.setDataSource(streamUrl)
         }
@@ -626,7 +627,14 @@ class PlaybackActivity : Activity() {
 
     private fun preloadScrubbingFramesAsync() {
         val folder = getPreviewFolder()
-        if (folder.isEmpty()) return
+        if (folder.isEmpty()) {
+            if (streamUrl.isNotEmpty()) {
+                val dur = player?.duration?.takeIf { it > 0 } ?: 7200000L
+                val cur = player?.currentPosition ?: 0L
+                ClientSideFrameExtractor.proactivePrewarm(streamUrl, cur, dur)
+            }
+            return
+        }
         Thread {
             val maxFrames = 60
             val frames = arrayOfNulls<Bitmap>(maxFrames)
@@ -643,10 +651,11 @@ class PlaybackActivity : Activity() {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("PlaybackActivity", "Error precargando frame $i para $folder", e)
+                    Log.e("PlaybackActivity", "Error preloading frame $i for $folder", e)
                 }
             }
-            Log.d("PlaybackActivity", "Precargados $maxFrames fotogramas para $folder en RAM")
+            preloadedFrames = frames
+            Log.d("PlaybackActivity", "Preloaded $maxFrames thumbnail frames for $folder into RAM")
         }.start()
     }
 
@@ -999,6 +1008,9 @@ class PlaybackActivity : Activity() {
                         if (duration > 0 && !isScrubbing) {
                             val remaining = (duration - exo.currentPosition).coerceAtLeast(0)
                             tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+                        }
+                        if (streamUrl.isNotEmpty() && duration > 0) {
+                            ClientSideFrameExtractor.proactivePrewarm(streamUrl, exo.currentPosition, duration)
                         }
                         if (isSeeking) {
                             isSeeking = false
@@ -1530,7 +1542,11 @@ class PlaybackActivity : Activity() {
 
         // 3. Fallback: extract exact video frame via ClientSideFrameExtractor
         if (streamUrl.isNotEmpty()) {
-            ClientSideFrameExtractor.requestFrame(streamUrl, targetMs) { bmp ->
+            val closest = ClientSideFrameExtractor.getClosestCachedFrame(streamUrl, targetMs)
+            if (closest != null && ivScrubThumbnail.drawable == null) {
+                ivScrubThumbnail.setImageBitmap(closest)
+            }
+            ClientSideFrameExtractor.requestFrame(streamUrl, targetMs, scrubSpeed) { bmp ->
                 runOnUiThread {
                     if (isScrubbing) {
                         ivScrubThumbnail.setImageBitmap(bmp)

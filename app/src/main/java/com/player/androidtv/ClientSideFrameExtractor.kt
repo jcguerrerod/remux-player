@@ -1,6 +1,8 @@
 package com.player.androidtv
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.util.Log
@@ -11,28 +13,92 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Architecture B: Client-side extraction of real movie frames directly on the device
- * without relying on server-side pre-generation.
- *
- * Utilizes automatic HTTP Range requests via MediaMetadataRetriever to fetch only
- * nearest keyframe (I-Frame) packets from the Matroska container (MKV),
- * decoding frames at 320x180 with negligible CPU/RAM impact.
+ * High-performance client-side video keyframe and thumbnail extraction engine.
+ * Features:
+ * 1. Multi-tier caching: Tier 1 RAM LRU (120 bitmaps), Tier 2 Disk Cache (SSD/Flash).
+ * 2. Direction-aware lookahead pre-extraction (10s, 30s, 60s, 120s along scrub trajectory).
+ * 3. Proactive timeline pre-warming during idle and playback states.
+ * 4. Thread-safe serialized MediaMetadataRetriever access with native mutex.
+ * 5. Instant nearest-neighbor frame retrieval to eliminate blank scrub cards.
  */
 object ClientSideFrameExtractor {
 
     private const val TAG = "ClientSideExtractor"
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val retrieverMutex = Mutex()
+
     private var retriever: MediaMetadataRetriever? = null
     private var currentSourceUrl: String? = null
     private var isInitializing = false
-    private var activeExtractionJob: Job? = null
+    private var cacheDir: File? = null
 
-    // LRU Cache of 60 real frames in RAM (~12 MB)
-    private val frameCache = object : LruCache<String, Bitmap>(60) {
+    // Tier 1: LRU Memory Cache (120 keyframe thumbnails ~20 MB RAM)
+    private val frameCache = object : LruCache<String, Bitmap>(120) {
         override fun sizeOf(key: String, value: Bitmap): Int = 1
+    }
+
+    // Fast timestamp index for nearest-neighbor fallback
+    private val cachedTimestamps = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Request queue management
+    private var pendingRequestTimeMs: Long? = null
+    private var pendingRequestCallback: ((Bitmap) -> Unit)? = null
+    private var isWorkerRunning = false
+
+    fun init(context: Context) {
+        if (cacheDir == null) {
+            val dir = File(context.cacheDir, "scrub_thumbnails")
+            if (!dir.exists()) {
+                dir.mkdirs()
+            }
+            cacheDir = dir
+
+            // Background prune: clean thumbnails older than 7 days
+            scope.launch {
+                try {
+                    val cutoff = System.currentTimeMillis() - (7L * 24 * 3600 * 1000L)
+                    dir.listFiles()?.forEach { file ->
+                        if (file.lastModified() < cutoff) {
+                            file.delete()
+                        }
+                    }
+                } catch (ignored: Exception) {}
+            }
+        }
+    }
+
+    private fun hashUrl(url: String): String {
+        return try {
+            val digest = MessageDigest.getInstance("MD5")
+            val bytes = digest.digest(url.toByteArray())
+            bytes.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            url.hashCode().toString()
+        }
+    }
+
+    private fun getDiskFile(url: String, quantizedSec: Long): File? {
+        val dir = cacheDir ?: return null
+        val hash = hashUrl(url)
+        return File(dir, "thumb_${hash}_${quantizedSec}.jpg")
+    }
+
+    private fun trackTimestamp(url: String, quantizedSec: Long) {
+        val list = cachedTimestamps.getOrPut(url) { mutableListOf() }
+        synchronized(list) {
+            if (!list.contains(quantizedSec)) {
+                list.add(quantizedSec)
+            }
+        }
     }
 
     @Synchronized
@@ -44,60 +110,142 @@ object ClientSideFrameExtractor {
 
         scope.launch {
             try {
-                val old = retriever
-                retriever = null
-                old?.release()
+                retrieverMutex.withLock {
+                    val old = retriever
+                    retriever = null
+                    old?.release()
 
-                val mmr = MediaMetadataRetriever()
-                val headers = HashMap<String, String>()
-                headers["Connection"] = "keep-alive"
-                headers["User-Agent"] = "RemuxPlayer-AndroidTV/2.0"
-                mmr.setDataSource(url, headers)
-                retriever = mmr
-                isInitializing = false
-                Log.i(TAG, "MediaMetadataRetriever successfully initialized for $url")
+                    val mmr = MediaMetadataRetriever()
+                    val headers = HashMap<String, String>()
+                    headers["Connection"] = "keep-alive"
+                    headers["Accept-Encoding"] = "identity"
+                    headers["User-Agent"] = "RemuxPlayer-AndroidTV/2.0"
+                    mmr.setDataSource(url, headers)
+                    retriever = mmr
+                    isInitializing = false
+                    Log.i(TAG, "MediaMetadataRetriever initialized for stream")
+                }
             } catch (e: Exception) {
                 isInitializing = false
-                Log.w(TAG, "Could not initialize MediaMetadataRetriever for stream: ${e.message}")
+                Log.w(TAG, "Could not initialize MediaMetadataRetriever: ${e.message}")
             }
         }
     }
 
     /**
-     * Requests a real video frame at given millisecond position.
-     * Returns immediately if cached in RAM, or asynchronously once decoded.
+     * Instant nearest-neighbor frame retrieval from RAM cache.
+     * Prevents empty/black scrub preview cards while the exact keyframe is being decoded.
      */
-    fun requestFrame(url: String, timeMs: Long, onFrameReady: (Bitmap) -> Unit): Boolean {
-        // Quantize to 2-second windows to optimize skip caching
+    fun getClosestCachedFrame(url: String, timeMs: Long): Bitmap? {
+        val targetSec = (timeMs / 2000L) * 2L
+        val exactKey = "$url#$targetSec"
+        val exact = frameCache.get(exactKey)
+        if (exact != null) return exact
+
+        val list = cachedTimestamps[url] ?: return null
+        synchronized(list) {
+            var closestSec: Long? = null
+            var minDiff = Long.MAX_VALUE
+            for (sec in list) {
+                val diff = Math.abs(sec - targetSec)
+                if (diff < minDiff && diff <= 120) { // Within 2 minutes
+                    minDiff = diff
+                    closestSec = sec
+                }
+            }
+            if (closestSec != null) {
+                return frameCache.get("$url#$closestSec")
+            }
+        }
+        return null
+    }
+
+    /**
+     * Request a keyframe thumbnail for the given time.
+     * Checks RAM (0ms), then Disk (2ms), and finally enqueues MediaMetadataRetriever.
+     */
+    fun requestFrame(url: String, timeMs: Long, direction: Int = 1, onFrameReady: (Bitmap) -> Unit): Boolean {
         val quantizedSec = (timeMs / 2000L) * 2L
         val cacheKey = "$url#$quantizedSec"
 
-        val cached = frameCache.get(cacheKey)
-        if (cached != null) {
-            onFrameReady(cached)
+        // Tier 1: In-Memory RAM Cache (Instant 0ms)
+        val ramBitmap = frameCache.get(cacheKey)
+        if (ramBitmap != null) {
+            onFrameReady(ramBitmap)
+            prefetchAround(url, timeMs, direction)
             return true
         }
 
-        // If stream URL changed, reconfigure data source
+        // Tier 2: Local Disk Cache (2-4ms)
+        val diskFile = getDiskFile(url, quantizedSec)
+        if (diskFile != null && diskFile.exists()) {
+            scope.launch {
+                val bmp = BitmapFactory.decodeFile(diskFile.absolutePath)
+                if (bmp != null) {
+                    frameCache.put(cacheKey, bmp)
+                    trackTimestamp(url, quantizedSec)
+                    withContext(Dispatchers.Main) {
+                        onFrameReady(bmp)
+                    }
+                    prefetchAround(url, timeMs, direction)
+                }
+            }
+            return false
+        }
+
+        // Tier 3: Asynchronous Hardware/Stream Extraction
+        synchronized(this) {
+            pendingRequestTimeMs = timeMs
+            pendingRequestCallback = onFrameReady
+        }
+        triggerWorker(url, direction)
+        return false
+    }
+
+    private fun triggerWorker(url: String, direction: Int) {
+        if (isWorkerRunning) return
+        isWorkerRunning = true
+
+        scope.launch {
+            try {
+                while (true) {
+                    val (targetMs, cb) = synchronized(this@ClientSideFrameExtractor) {
+                        val t = pendingRequestTimeMs
+                        val c = pendingRequestCallback
+                        pendingRequestTimeMs = null
+                        pendingRequestCallback = null
+                        if (t != null) Pair(t, c) else null
+                    } ?: break
+
+                    extractAndCache(url, targetMs, cb)
+                    prefetchAround(url, targetMs, direction)
+                }
+            } finally {
+                isWorkerRunning = false
+            }
+        }
+    }
+
+    private suspend fun extractAndCache(url: String, timeMs: Long, callback: ((Bitmap) -> Unit)?) {
+        val quantizedSec = (timeMs / 2000L) * 2L
+        val cacheKey = "$url#$quantizedSec"
+
         if (currentSourceUrl != url) {
             setDataSource(url)
         }
 
-        activeExtractionJob?.cancel()
-        activeExtractionJob = scope.launch {
+        var waitCount = 0
+        while (isInitializing && waitCount < 15) {
+            delay(50)
+            waitCount++
+        }
+
+        val mmr = retriever ?: return
+        val timeUs = timeMs * 1000L
+
+        val bitmap = retrieverMutex.withLock {
             try {
-                // Wait briefly if connection is initializing
-                var waitCount = 0
-                while (isInitializing && waitCount < 10) {
-                    delay(50)
-                    waitCount++
-                }
-
-                val mmr = retriever ?: return@launch
-                val timeUs = timeMs * 1000L
-
-                // Use OPTION_CLOSEST_SYNC to read only I-Frames without heavy decoding overhead
-                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                     mmr.getScaledFrameAtTime(
                         timeUs,
                         MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
@@ -107,41 +255,97 @@ object ClientSideFrameExtractor {
                 } else {
                     mmr.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 }
-
-                if (bitmap != null) {
-                    frameCache.put(cacheKey, bitmap)
-                    withContext(Dispatchers.Main) {
-                        onFrameReady(bitmap)
-                    }
-                    // Passive preloading of next keyframe (+30 sec)
-                    preloadOffset(mmr, url, timeUs + 30_000_000L)
-                }
             } catch (e: Exception) {
-                Log.w(TAG, "Frame extraction at $timeMs ms skipped: ${e.message}")
+                Log.w(TAG, "Frame extraction error at $timeMs ms: ${e.message}")
+                null
             }
         }
 
-        return false
+        if (bitmap != null) {
+            frameCache.put(cacheKey, bitmap)
+            trackTimestamp(url, quantizedSec)
+            saveToDisk(url, quantizedSec, bitmap)
+
+            if (callback != null) {
+                withContext(Dispatchers.Main) {
+                    callback(bitmap)
+                }
+            }
+        }
     }
 
-    private fun preloadOffset(mmr: MediaMetadataRetriever, url: String, nextTimeUs: Long) {
+    private fun saveToDisk(url: String, quantizedSec: Long, bitmap: Bitmap) {
+        val diskFile = getDiskFile(url, quantizedSec) ?: return
+        if (diskFile.exists()) return
         scope.launch {
             try {
-                val nextSec = (nextTimeUs / 2_000_000L) * 2L
-                val key = "$url#$nextSec"
-                if (frameCache.get(key) == null) {
-                    val preloaded = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                        mmr.getScaledFrameAtTime(
-                            nextTimeUs,
-                            MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
-                            320,
-                            180
-                        )
-                    } else {
-                        mmr.getFrameAtTime(nextTimeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                FileOutputStream(diskFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                }
+            } catch (ignored: Exception) {}
+        }
+    }
+
+    /**
+     * Proactively prefetch neighboring keyframes along the user's scrub direction.
+     */
+    private fun prefetchAround(url: String, timeMs: Long, direction: Int) {
+        scope.launch {
+            val offsets = if (direction >= 0) {
+                longArrayOf(10_000L, 30_000L, 60_000L, 120_000L)
+            } else {
+                longArrayOf(-10_000L, -30_000L, -60_000L, -120_000L)
+            }
+
+            for (offset in offsets) {
+                val target = timeMs + offset
+                if (target < 0) continue
+                val qSec = (target / 2000L) * 2L
+                val key = "$url#$qSec"
+                if (frameCache.get(key) != null) continue
+
+                val diskFile = getDiskFile(url, qSec)
+                if (diskFile != null && diskFile.exists()) {
+                    val bmp = BitmapFactory.decodeFile(diskFile.absolutePath)
+                    if (bmp != null) {
+                        frameCache.put(key, bmp)
+                        trackTimestamp(url, qSec)
                     }
-                    if (preloaded != null) {
-                        frameCache.put(key, preloaded)
+                    continue
+                }
+
+                extractAndCache(url, target, null)
+            }
+        }
+    }
+
+    /**
+     * Proactively pre-warms keyframes around current playback position and key milestone points.
+     */
+    fun proactivePrewarm(url: String, currentPositionMs: Long, durationMs: Long) {
+        scope.launch {
+            try {
+                if (currentSourceUrl != url) {
+                    setDataSource(url)
+                }
+
+                val points = mutableListOf<Long>()
+                if (currentPositionMs > 15_000L) points.add(currentPositionMs - 15_000L)
+                points.add(currentPositionMs + 15_000L)
+                points.add(currentPositionMs + 45_000L)
+                points.add(currentPositionMs + 90_000L)
+
+                if (durationMs > 300_000L) {
+                    points.add((durationMs * 0.10f).toLong())
+                    points.add((durationMs * 0.25f).toLong())
+                    points.add((durationMs * 0.50f).toLong())
+                    points.add((durationMs * 0.75f).toLong())
+                }
+
+                for (p in points) {
+                    val qSec = (p / 2000L) * 2L
+                    if (frameCache.get("$url#$qSec") == null) {
+                        extractAndCache(url, p, null)
                     }
                 }
             } catch (ignored: Exception) {}
@@ -149,12 +353,17 @@ object ClientSideFrameExtractor {
     }
 
     fun release() {
-        activeExtractionJob?.cancel()
+        synchronized(this) {
+            pendingRequestTimeMs = null
+            pendingRequestCallback = null
+        }
         scope.launch {
             try {
-                retriever?.release()
-                retriever = null
-                currentSourceUrl = null
+                retrieverMutex.withLock {
+                    retriever?.release()
+                    retriever = null
+                    currentSourceUrl = null
+                }
             } catch (ignored: Exception) {}
         }
     }
