@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Focused/Active seekbar thumb: cursor de línea vertical blanco puro Apple TV -->
+    <!-- Focused seekbar thumb: cursor de línea vertical blanco puro Apple TV sin círculo -->
     <item android:state_focused="true">
         <shape android:shape="rectangle">
             <size
-                android:width="3dp"
-                android:height="22dp" />
+                android:width="2.5dp"
+                android:height="20dp" />
             <solid android:color="#FFFFFF" />
-            <corners android:radius="1.5dp" />
+            <corners android:radius="1.25dp" />
         </shape>
     </item>
-    <!-- Normal idle seekbar thumb: cursor de línea vertical blanco puro Apple TV -->
+    <!-- Normal seekbar thumb: cursor de línea vertical blanco puro Apple TV -->
     <item>
         <shape android:shape="rectangle">
             <size
                 android:width="2.5dp"
-                android:height="18dp" />
+                android:height="20dp" />
             <solid android:color="#FFFFFF" />
             <corners android:radius="1.25dp" />
         </shape>

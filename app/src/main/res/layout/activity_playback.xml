@@ -299,6 +299,8 @@
                     android:paddingStart="0dp"
                     android:paddingEnd="0dp"
                     android:thumbOffset="1.5dp"
+                    android:background="@null"
+                    android:defaultFocusHighlightEnabled="false"
                     android:progressDrawable="@drawable/seekbar_progress_apple"
                     android:thumb="@drawable/seekbar_thumb_apple"
                     android:splitTrack="false"
@@ -471,34 +473,15 @@
 
         </LinearLayout>
 
-        <!-- TARJETA FLOTANTE DE PREVISUALIZACIÓN DE FOTOGRAMAS (DIRECTAMENTE SOBRE LA LÍNEA DE TIEMPO) -->
-        <LinearLayout
+        <!-- CONTENEDOR FLOTANTE DE PREVISUALIZACIÓN DE FOTOGRAMAS Y AGUJA CONTINUA ESTILO APPLE TV -->
+        <FrameLayout
             android:id="@+id/llScrubPreviewContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_marginBottom="94dp"
-            android:orientation="vertical"
-            android:gravity="center_horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
             android:elevation="28dp"
             android:visibility="gone">
-
-            <!-- Píldora con nombre de capítulo sobre la tarjeta de previsualización -->
-            <TextView
-                android:id="@+id/tvScrubChapterTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_apple_tv_chapter_pill"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:fontFamily="sans-serif-medium"
-                android:paddingStart="12dp"
-                android:paddingTop="3dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="3dp"
-                android:text="Chapter 1"
-                android:visibility="gone" />
 
             <!-- Ventana con esquinas redondeadas 12dp y formato panorámico 16:9 (220x124dp) estilo Apple TV -->
             <androidx.cardview.widget.CardView
@@ -506,9 +489,11 @@
                 android:layout_width="220dp"
                 android:layout_height="124dp"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="28dp"
-                app:cardBackgroundColor="#000000"
-                app:cardPreventCornerOverlap="true">
+                app:cardElevation="6dp"
+                app:cardMaxElevation="6dp"
+                app:cardPreventCornerOverlap="false"
+                app:cardUseCompatPadding="false"
+                app:cardBackgroundColor="#000000">
 
                 <FrameLayout
                     android:layout_width="match_parent"
@@ -530,14 +515,29 @@
                 </FrameLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- LÍNEA CONECTORA VERTICAL TIPO AGUJA / PIN (Sketch usuario) -->
+            <!-- Píldora con nombre de capítulo sobre la tarjeta de previsualización -->
+            <TextView
+                android:id="@+id/tvScrubChapterTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_apple_tv_chapter_pill"
+                android:textColor="#FFFFFF"
+                android:textSize="11.5sp"
+                android:fontFamily="sans-serif-medium"
+                android:paddingStart="12dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="3dp"
+                android:text="Chapter 1"
+                android:visibility="gone" />
+
+            <!-- LÍNEA CONECTORA VERTICAL CONTINUA TIPO AGUJA / PIN (100% Apple TV) -->
             <View
                 android:id="@+id/vScrubPinLine"
                 android:layout_width="2.5dp"
-                android:layout_height="14dp"
-                android:background="#FFFFFF"
-                android:layout_gravity="center_horizontal" />
-        </LinearLayout>
+                android:layout_height="32dp"
+                android:background="@drawable/bg_apple_tv_scrub_needle" />
+        </FrameLayout>
     </RelativeLayout>
 
     <!-- POPUP FLOTANTE ANCLADO EN LA ESQUINA INFERIOR DERECHA (Fotos 1 y 3 de Apple TV) -->

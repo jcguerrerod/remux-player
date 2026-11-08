@@ -68,7 +68,7 @@ class PlaybackActivity : Activity() {
     private lateinit var llActionsRow: LinearLayout
 
     // Apple TV Scrubbing Thumbnail Preview (Foto 4 y 6)
-    private lateinit var llScrubPreviewContainer: LinearLayout
+    private lateinit var llScrubPreviewContainer: View
     private lateinit var tvScrubChapterTitle: TextView
     private lateinit var cvScrubCard: CardView
     private lateinit var ivScrubThumbnail: ImageView
@@ -336,6 +336,7 @@ class PlaybackActivity : Activity() {
             llActionsRow.visibility = View.GONE
             llScrubPreviewContainer.visibility = View.VISIBLE
             llScrubPreviewContainer.alpha = 1f
+            timelineSeekBar.thumb = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
         } else {
             llScrubPreviewContainer.visibility = View.GONE
             topBar.visibility = View.VISIBLE
@@ -344,6 +345,8 @@ class PlaybackActivity : Activity() {
             topBar.alpha = 1f
             llPlayerHeaderRow.alpha = 1f
             llActionsRow.alpha = 1f
+            timelineSeekBar.thumb = androidx.core.content.ContextCompat.getDrawable(this, R.drawable.seekbar_thumb_apple)
+            chapterTicksView.setOriginalPositionRatio(null)
         }
     }
 
@@ -390,6 +393,7 @@ class PlaybackActivity : Activity() {
     private fun commitScrubSeek() {
         if (!isScrubbing) return
         handler.removeCallbacks(scrubTickerRunnable)
+        chapterTicksView.setOriginalPositionRatio(null)
         val target = scrubTargetMs
         isSeeking = true
         player?.seekTo(target)
@@ -408,6 +412,7 @@ class PlaybackActivity : Activity() {
     private fun cancelScrubbing() {
         if (!isScrubbing) return
         handler.removeCallbacks(scrubTickerRunnable)
+        chapterTicksView.setOriginalPositionRatio(null)
         tvScrubSpeedLeft.visibility = View.GONE
         tvScrubSpeedRight.visibility = View.GONE
         tvScrubChapterTitle.visibility = View.GONE
@@ -596,6 +601,10 @@ class PlaybackActivity : Activity() {
         tvCurrentTime = findViewById(R.id.tvScrubTime)
         tvRemainingTime = findViewById(R.id.tvRemainingTime)
         timelineSeekBar = findViewById(R.id.timelineSeekBar)
+        timelineSeekBar.background = null
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            timelineSeekBar.defaultFocusHighlightEnabled = false
+        }
         chapterTicksView = findViewById(R.id.chapterTicksView)
         flPlayPauseBadge = findViewById(R.id.flPlayPauseBadge)
         ivPlayPauseGlyph = findViewById(R.id.ivPlayPauseGlyph)
@@ -725,12 +734,18 @@ class PlaybackActivity : Activity() {
                             val remaining = (duration - newPos).coerceAtLeast(0)
                             tvRemainingTime.text = "-${formatTimeMs(remaining)}"
 
-                            val ratio = (progress.toFloat() / 1000f).coerceIn(0f, 1f)
-                            val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
-                            val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
-                            val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (50 * resources.displayMetrics.density).toInt()
-                            val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
-                            llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
+                            if (isScrubbing) {
+                                scrubTargetMs = newPos
+                                updateScrubPreviewPosition(scrubTargetMs, duration)
+                                loadScrubThumbnail(movieTitle, scrubTargetMs)
+                            } else {
+                                val ratio = (progress.toFloat() / 1000f).coerceIn(0f, 1f)
+                                val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
+                                val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
+                                val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (50 * resources.displayMetrics.density).toInt()
+                                val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
+                                llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
+                            }
                         }
                     }
                 }
@@ -739,6 +754,16 @@ class PlaybackActivity : Activity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
                 isScrubbing = true
                 handler.removeCallbacks(scrubTickerRunnable)
+                player?.let { p ->
+                    wasPlayingBeforeScrub = p.isPlaying
+                    originalPositionBeforeScrub = p.currentPosition
+                    p.pause()
+                    val dur = p.duration
+                    if (dur > 0) {
+                        chapterTicksView.setOriginalPositionRatio(originalPositionBeforeScrub.toFloat() / dur.toFloat())
+                    }
+                }
+                setHudScrubbingMode(true)
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
@@ -747,8 +772,12 @@ class PlaybackActivity : Activity() {
                     if (duration > 0 && seekBar != null) {
                         val newPos = (duration * seekBar.progress) / 1000
                         p.seekTo(newPos)
+                        if (wasPlayingBeforeScrub) {
+                            p.play()
+                        }
                     }
                 }
+                chapterTicksView.setOriginalPositionRatio(null)
                 isScrubbing = false
                 scrubSpeed = 0
                 tvScrubSpeedLeft.visibility = View.GONE
@@ -1104,6 +1133,9 @@ class PlaybackActivity : Activity() {
             scrubTargetMs = p.currentPosition
             scrubSpeed = if (direction > 0) 1 else -1
             setHudScrubbingMode(true)
+            if (duration > 0) {
+                chapterTicksView.setOriginalPositionRatio(originalPositionBeforeScrub.toFloat() / duration.toFloat())
+            }
         } else {
             // Ya en modo scrubbing: acelerar o desacelerar de 1x hasta 5x
             if (direction > 0) {
@@ -1174,34 +1206,57 @@ class PlaybackActivity : Activity() {
     private fun updateScrubPreviewPosition(targetMs: Long, duration: Long) {
         if (duration <= 0) return
         val ratio = (targetMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+        val density = resources.displayMetrics.density
         val loc = IntArray(2)
         timelineSeekBar.getLocationInWindow(loc)
         val seekbarScreenX = loc[0]
         val seekbarScreenY = loc[1]
         val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
         val thumbCenterX = seekbarScreenX + timelineSeekBar.paddingStart + (ratio * usableWidth)
-        val cardWidth = llScrubPreviewContainer.width.takeIf { it > 0 } ?: (220 * resources.displayMetrics.density).toInt()
-        val cardHeight = llScrubPreviewContainer.height.takeIf { it > 0 } ?: (138 * resources.displayMetrics.density).toInt()
-        val margin = 48 * resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-        val clampedX = (thumbCenterX - cardWidth / 2f).coerceIn(margin, screenWidth - cardWidth - margin)
-        llScrubPreviewContainer.x = clampedX
 
-        // Anclar verticalmente de modo que la aguja inferior (vScrubPinLine) toque exactamente la barra de progreso
-        if (seekbarScreenY > 0) {
-            val targetY = seekbarScreenY - cardHeight + (2 * resources.displayMetrics.density)
-            llScrubPreviewContainer.y = targetY
+        val cardWidth = (220 * density).toInt()
+        val cardHeight = (124 * density).toInt()
+        val margin = 48 * density
+        val screenWidth = resources.displayMetrics.widthPixels
+
+        // Apple TV edge docking:
+        // Clamps preview card between margin and (screenWidth - margin - cardWidth)
+        val minCardLeft = margin
+        val maxCardLeft = screenWidth - margin - cardWidth
+        val idealCardLeft = thumbCenterX - cardWidth / 2f
+        val clampedCardLeft = idealCardLeft.coerceIn(minCardLeft, maxCardLeft)
+        cvScrubCard.translationX = clampedCardLeft
+
+        val seekbarCenterY = seekbarScreenY + (timelineSeekBar.height / 2f)
+        val gap = 14f * density
+        val cardBottom = seekbarCenterY - gap
+        val cardTop = cardBottom - cardHeight
+        cvScrubCard.translationY = cardTop
+
+        // Chapter pill above card
+        if (tvScrubChapterTitle.visibility == View.VISIBLE) {
+            tvScrubChapterTitle.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+            val chapWidth = tvScrubChapterTitle.measuredWidth.takeIf { it > 0 } ?: (80 * density).toInt()
+            val chapHeight = tvScrubChapterTitle.measuredHeight.takeIf { it > 0 } ?: (24 * density).toInt()
+            tvScrubChapterTitle.translationX = clampedCardLeft + (cardWidth - chapWidth) / 2f
+            tvScrubChapterTitle.translationY = cardTop - chapHeight - (8 * density)
         }
 
-        // Alinear la aguja vertical para que apunte directamente al cursor de la barra
-        val centerCardX = clampedX + cardWidth / 2f
-        val needleOffset = (thumbCenterX - centerCardX).coerceIn(-cardWidth / 2f + 16 * resources.displayMetrics.density, cardWidth / 2f - 16 * resources.displayMetrics.density)
-        vScrubPinLine.translationX = needleOffset
+        // Single continuous vertical needle line from card bottom down through progress bar
+        val lineWidth = 2.5f * density
+        vScrubPinLine.translationX = thumbCenterX - (lineWidth / 2f)
+        vScrubPinLine.translationY = cardBottom
+        val targetLineHeight = ((seekbarCenterY + 10 * density) - cardBottom).toInt()
+        if (vScrubPinLine.layoutParams.height != targetLineHeight) {
+            val lp = vScrubPinLine.layoutParams
+            lp.height = targetLineHeight
+            vScrubPinLine.layoutParams = lp
+        }
 
-        // Alinear contenedor de tiempo y badges debajo de la barra
+        // Time and speed badge below the progress bar
         val relThumbX = timelineSeekBar.paddingStart + (ratio * usableWidth)
-        val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (70 * resources.displayMetrics.density).toInt()
-        val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * resources.displayMetrics.density).coerceAtLeast(0f)
+        val badgeWidth = llScrubTimeBadgeContainer.width.takeIf { it > 0 } ?: (70 * density).toInt()
+        val maxOffset = (timelineSeekBar.width - badgeWidth - 75 * density).coerceAtLeast(0f)
         llScrubTimeBadgeContainer.translationX = (relThumbX - badgeWidth / 2f).coerceIn(0f, maxOffset)
     }
 

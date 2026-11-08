@@ -9,7 +9,8 @@ import android.view.View
 
 /**
  * Overlay de marcas y muescas de capítulos estilo Apple TV en la barra de progreso.
- * Dibuja cortes sutiles de 2.5dp de ancho para separar visualmente los capítulos.
+ * Dibuja cortes sutiles de 2.5dp de ancho para separar visualmente los capítulos,
+ * y la línea fija (ghost pin) en la posición original antes de adelantar/retroceder.
  */
 class ChapterTicksView @JvmOverloads constructor(
     context: Context,
@@ -22,7 +23,13 @@ class ChapterTicksView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
+    private val ghostPinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#B3FFFFFF") // Blanco translúcido 70% idéntico a Apple TV
+        style = Paint.Style.FILL
+    }
+
     private var chapterStartRatios: List<Float> = emptyList()
+    private var originalPositionRatio: Float? = null
 
     fun setChapters(chapters: List<Long>, durationMs: Long) {
         if (durationMs <= 0L || chapters.isEmpty()) {
@@ -39,9 +46,14 @@ class ChapterTicksView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setOriginalPositionRatio(ratio: Float?) {
+        originalPositionRatio = ratio?.coerceIn(0f, 1f)
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (chapterStartRatios.isEmpty() || width <= 0 || height <= 0) return
+        if (width <= 0 || height <= 0) return
 
         val density = resources.displayMetrics.density
         val usableWidth = width.toFloat()
@@ -52,9 +64,28 @@ class ChapterTicksView @JvmOverloads constructor(
         val top = centerY - trackHalfHeight
         val bottom = centerY + trackHalfHeight
 
+        // 1. Marcas de cortes de capítulos
         for (ratio in chapterStartRatios) {
             val cx = ratio * usableWidth
             canvas.drawRect(cx - notchHalfWidth, top, cx + notchHalfWidth, bottom, notchPaint)
+        }
+
+        // 2. Línea fija / Ghost Pin de posición original antes del scrub (estilo Apple TV)
+        originalPositionRatio?.let { origRatio ->
+            val origX = origRatio * usableWidth
+            val pinHalfWidth = 1.25f * density // 2.5dp ancho
+            val pinHalfHeight = 10f * density  // 20dp alto (atraviesa la barra de 5dp con holgura)
+            val pinTop = centerY - pinHalfHeight
+            val pinBottom = centerY + pinHalfHeight
+            canvas.drawRoundRect(
+                origX - pinHalfWidth,
+                pinTop,
+                origX + pinHalfWidth,
+                pinBottom,
+                pinHalfWidth,
+                pinHalfWidth,
+                ghostPinPaint
+            )
         }
     }
 }
