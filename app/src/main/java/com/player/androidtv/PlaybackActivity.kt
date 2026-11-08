@@ -1342,11 +1342,11 @@ class PlaybackActivity : Activity() {
     private fun openAudioModal() {
         val exo = player ?: return
         activeModalType = ModalType.AUDIO
-        setModalCardMarginEnd(48)
 
         showModal(
             title = "Audio",
-            badge = badgeAudio.text.toString()
+            badge = badgeAudio.text.toString(),
+            anchorButton = btnAudioTrack
         )
 
         llModalListContainer.removeAllViews()
@@ -1502,11 +1502,11 @@ class PlaybackActivity : Activity() {
     private fun openSubtitlesModal() {
         val exo = player ?: return
         activeModalType = ModalType.SUBTITLES
-        setModalCardMarginEnd(48)
 
         showModal(
             title = "Subtitles",
-            badge = ""
+            badge = "",
+            anchorButton = btnSubtitles
         )
 
         llModalListContainer.removeAllViews()
@@ -1704,7 +1704,6 @@ class PlaybackActivity : Activity() {
 
     private fun openDvModeModal() {
         activeModalType = ModalType.DV_MODE
-        setModalCardMarginEnd(48)
 
         val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true)
@@ -1713,7 +1712,8 @@ class PlaybackActivity : Activity() {
         if (isSdr) {
             showModal(
                 title = "Direct Play (SDR)",
-                badge = "SDR BT.709"
+                badge = "SDR BT.709",
+                anchorButton = btnDvMode
             )
             llModalListContainer.removeAllViews()
             val inflater = LayoutInflater.from(this)
@@ -1734,7 +1734,8 @@ class PlaybackActivity : Activity() {
         if (isNativeP8) {
             showModal(
                 title = "Dolby Vision",
-                badge = "DV P8.1 NATIVO"
+                badge = "DV P8.1 NATIVO",
+                anchorButton = btnDvMode
             )
             llModalListContainer.removeAllViews()
             val inflater = LayoutInflater.from(this)
@@ -1754,7 +1755,8 @@ class PlaybackActivity : Activity() {
 
         showModal(
             title = "Dolby Vision",
-            badge = currentDvMode.badgeText
+            badge = currentDvMode.badgeText,
+            anchorButton = btnDvMode
         )
 
         llModalListContainer.removeAllViews()
@@ -1810,11 +1812,11 @@ class PlaybackActivity : Activity() {
 
     private fun openInfoModal() {
         activeModalType = ModalType.INFO
-        setModalCardMarginEnd(48)
 
         showModal(
             title = "Info",
-            badge = "DIRECT PLAY"
+            badge = "DIRECT PLAY",
+            anchorButton = btnInfo
         )
 
         llModalListContainer.removeAllViews()
@@ -1845,7 +1847,7 @@ class PlaybackActivity : Activity() {
         }
     }
 
-    private fun showModal(title: String, badge: String) {
+    private fun showModal(title: String, badge: String, anchorButton: View? = null) {
         handler.removeCallbacks(hideHudRunnable)
         tvModalTitle.text = title
         if (badge.isNotBlank()) {
@@ -1855,43 +1857,114 @@ class PlaybackActivity : Activity() {
             tvModalBadge.visibility = View.GONE
         }
 
-        // Posicionar el modal flotante exactamente por encima de la fila de botones (Subtítulos / Audio)
-        // dejando un espacio de 14dp limpio sin solaparse jamás con los círculos
+        // Highlight activo en el botón que abrió el modal (estilo Apple TV)
+        btnSubtitles.isActivated = (anchorButton == btnSubtitles)
+        btnAudioTrack.isActivated = (anchorButton == btnAudioTrack)
+        btnInfo.isActivated = (anchorButton == btnInfo)
+        btnDvMode.isActivated = (anchorButton == btnDvMode)
+
         val density = resources.displayMetrics.density
-        val loc = IntArray(2)
-        btnSubtitles.getLocationOnScreen(loc)
+        val screenW = resources.displayMetrics.widthPixels
         val screenH = resources.displayMetrics.heightPixels
-        val btnTopFromBottom = screenH - loc[1]
-        val targetBottomMargin = if (btnTopFromBottom in 80..420) {
-            btnTopFromBottom + (14 * density).toInt()
+
+        // Determinar margen derecho:
+        // - Subtítulos: borde derecho del modal alineado con el borde derecho del círculo de Subtítulos (100dp)
+        // - Audio: borde derecho del modal alineado con el borde derecho del círculo de Audio (48dp)
+        val fallbackMarginEnd = when (anchorButton) {
+            btnSubtitles -> (100 * density).toInt()
+            else -> (48 * density).toInt()
+        }
+
+        val targetMarginEnd = if (anchorButton != null) {
+            val loc = IntArray(2)
+            anchorButton.getLocationOnScreen(loc)
+            val btnRight = loc[0] + anchorButton.width
+            val calculatedEnd = screenW - btnRight
+            if (calculatedEnd in 20..350) calculatedEnd else fallbackMarginEnd
+        } else {
+            fallbackMarginEnd
+        }
+
+        // Determinar margen inferior: 14dp limpio por encima de los botones
+        val targetBottomMargin = if (anchorButton != null) {
+            val loc = IntArray(2)
+            anchorButton.getLocationOnScreen(loc)
+            val btnTop = loc[1]
+            val calculatedBottom = screenH - btnTop
+            if (calculatedBottom in 80..420) calculatedBottom + (14 * density).toInt() else (186 * density).toInt()
         } else {
             (186 * density).toInt()
         }
 
         (modalCard.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
-            lp.bottomMargin = targetBottomMargin
-            lp.marginEnd = (48 * density).toInt()
-            modalCard.layoutParams = lp
+            if (modalOverlay.visibility == View.VISIBLE && lp.marginEnd != targetMarginEnd) {
+                val startMargin = lp.marginEnd
+                modalCard.animate().cancel()
+                modalCard.translationX = (startMargin - targetMarginEnd).toFloat()
+                lp.marginEnd = targetMarginEnd
+                lp.bottomMargin = targetBottomMargin
+                modalCard.layoutParams = lp
+                modalCard.animate()
+                    .translationX(0f)
+                    .setDuration(180)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
+            } else {
+                lp.marginEnd = targetMarginEnd
+                lp.bottomMargin = targetBottomMargin
+                modalCard.translationX = 0f
+                modalCard.layoutParams = lp
+            }
         }
+
+        // Configurar punto de origen de la animación (pivot) sobre el botón circular
+        modalCard.pivotX = (350 * density) - (20 * density) // Centro del botón (a 20dp del borde derecho de la tarjeta)
+        modalCard.pivotY = (260 * density) // Base inferior de la tarjeta
 
         topBar.animate().cancel()
         topBar.animate().alpha(0f).setDuration(160).start()
         modalOverlay.bringToFront()
+
         if (modalOverlay.visibility != View.VISIBLE) {
             modalOverlay.visibility = View.VISIBLE
             modalOverlay.alpha = 0f
+            modalCard.scaleX = 0.90f
+            modalCard.scaleY = 0.90f
+            modalCard.alpha = 0f
             modalOverlay.animate().alpha(1f).setDuration(180).start()
+            modalCard.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .alpha(1f)
+                .setDuration(220)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
         }
     }
 
     private fun closeModal() {
         val lastModal = activeModalType
         activeModalType = ModalType.NONE
+
+        // Quitar highlight a todos los botones
+        btnSubtitles.isActivated = false
+        btnAudioTrack.isActivated = false
+        btnInfo.isActivated = false
+        btnDvMode.isActivated = false
+
         topBar.animate().cancel()
         topBar.animate().alpha(1f).setDuration(160).start()
+        modalCard.animate()
+            .scaleX(0.90f)
+            .scaleY(0.90f)
+            .alpha(0f)
+            .setDuration(150)
+            .start()
         modalOverlay.animate().alpha(0f).setDuration(160).withEndAction {
             modalOverlay.visibility = View.GONE
             modalCard.translationX = 0f
+            modalCard.scaleX = 1f
+            modalCard.scaleY = 1f
             when (lastModal) {
                 ModalType.SUBTITLES -> btnSubtitles.requestFocus()
                 ModalType.AUDIO -> btnAudioTrack.requestFocus()
@@ -1975,6 +2048,14 @@ class PlaybackActivity : Activity() {
         if (modalOverlay.visibility == View.VISIBLE) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
                 closeModal()
+                return true
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && activeModalType == ModalType.SUBTITLES) {
+                openAudioModal()
+                return true
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && activeModalType == ModalType.AUDIO) {
+                openSubtitlesModal()
                 return true
             }
             return super.onKeyDown(keyCode, event)
