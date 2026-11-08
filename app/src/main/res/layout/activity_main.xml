@@ -121,7 +121,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1.6"
+                android:layout_weight="2.0"
                 android:orientation="vertical">
 
                 <!-- Apple TV Bold Uppercase Title -->
@@ -181,94 +181,90 @@
                         android:textSize="12sp"
                         android:fontFamily="sans-serif-medium" />
 
-                    <!-- Logo Ultra HD Blu-ray Oficial -->
-                    <ImageView
-                        android:id="@+id/ivLogoUhd"
-                        android:layout_width="52dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="12dp"
-                        android:src="@drawable/logo_uhd_bluray"
-                        android:scaleType="fitCenter"
-                        android:contentDescription="Ultra HD Blu-ray" />
-
-                    <!-- Logo Blu-ray Disc Oficial para REMUX 1080p -->
-                    <ImageView
-                        android:id="@+id/ivLogoBluray"
-                        android:layout_width="38dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="12dp"
-                        android:src="@drawable/logo_bluray_disc"
-                        android:scaleType="fitCenter"
-                        android:contentDescription="Blu-ray Disc"
-                        android:visibility="gone" />
-
-                    <!-- Fallback Badge 1080p para SDR -->
+                    <!-- Resolution Pill: 4K or HD -->
                     <TextView
-                        android:id="@+id/badge4K"
+                        android:id="@+id/badgeResolution"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="12dp"
                         android:background="@drawable/bg_apple_tv_badge"
-                        android:text="1080P HD"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:text="4K"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
-                        android:fontFamily="sans-serif-medium"
-                        android:visibility="gone" />
+                        android:textSize="10.5sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:letterSpacing="0.06" />
 
-                    <!-- Logo Dolby Vision Oficial -->
-                    <ImageView
-                        android:id="@+id/ivLogoDv"
-                        android:layout_width="48dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="8dp"
-                        android:src="@drawable/logo_dolby_vision_wide_white"
-                        android:scaleType="fitCenter"
-                        android:contentDescription="Dolby Vision" />
-
+                    <!-- HDR / Dolby Vision Pill -->
                     <TextView
-                        android:id="@+id/badgeDv"
+                        android:id="@+id/badgeHdr"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="18dp"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_apple_tv_badge"
-                        android:text="DOLBY VISION P8.1"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:text="DOLBY VISION"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="10.5sp"
                         android:fontFamily="sans-serif-medium"
-                        android:visibility="gone" />
+                        android:letterSpacing="0.05" />
 
-                    <!-- Logo Dolby Atmos Oficial -->
-                    <ImageView
-                        android:id="@+id/ivLogoAtmos"
-                        android:layout_width="44dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="8dp"
-                        android:src="@drawable/logo_dolby_atmos_white"
-                        android:scaleType="fitCenter"
-                        android:contentDescription="Dolby Atmos" />
+                    <!-- Source Format Pill: BLU-RAY -->
+                    <TextView
+                        android:id="@+id/badgeSource"
+                        android:layout_width="wrap_content"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_apple_tv_badge"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:text="BLU-RAY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.05" />
 
-                    <!-- Logo DTS-HD Master Audio Oficial -->
-                    <ImageView
-                        android:id="@+id/ivLogoDts"
-                        android:layout_width="54dp"
-                        android:layout_height="16dp"
-                        android:layout_marginStart="8dp"
-                        android:src="@drawable/logo_dts_hd_ma"
-                        android:scaleType="fitCenter"
-                        android:contentDescription="DTS-HD Master Audio"
-                        android:visibility="gone" />
-
-                    <!-- Badge Audio Text -->
+                    <!-- Audio Codec Pill: DOLBY ATMOS / DTS-HD MA / DOLBY AUDIO / TRUEHD -->
                     <TextView
                         android:id="@+id/badgeAudio"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="18dp"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_apple_tv_badge"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:text="DOLBY ATMOS"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
-                        android:fontFamily="sans-serif-medium" />
+                        android:textSize="10.5sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.05" />
+
+                    <!-- Audio Channels Pill: 5.1 / 7.1 -->
+                    <TextView
+                        android:id="@+id/badgeChannels"
+                        android:layout_width="wrap_content"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_apple_tv_badge"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:text="7.1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:letterSpacing="0.05" />
                 </LinearLayout>
 
                 <!-- Main Apple TV Action Buttons -->

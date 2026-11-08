@@ -49,14 +49,11 @@ class MainActivity : Activity() {
     private lateinit var tvHeroGenre: TextView
     private lateinit var tvHeroSynopsis: TextView
     private lateinit var tvMetadataText: TextView
-    private lateinit var ivLogoUhd: ImageView
-    private lateinit var ivLogoBluray: ImageView
-    private lateinit var ivLogoDv: ImageView
-    private lateinit var ivLogoAtmos: ImageView
-    private lateinit var ivLogoDts: ImageView
-    private lateinit var badge4K: TextView
-    private lateinit var badgeDv: TextView
+    private lateinit var badgeResolution: TextView
+    private lateinit var badgeHdr: TextView
+    private lateinit var badgeSource: TextView
     private lateinit var badgeAudio: TextView
+    private lateinit var badgeChannels: TextView
     private lateinit var btnPlayDirect: Button
     private lateinit var btnCheck: ImageButton
     private lateinit var btnDetails: ImageButton
@@ -170,14 +167,11 @@ class MainActivity : Activity() {
         tvHeroGenre = findViewById(R.id.tvHeroGenre)
         tvHeroSynopsis = findViewById(R.id.tvHeroSynopsis)
         tvMetadataText = findViewById(R.id.tvMetadataText)
-        ivLogoUhd = findViewById(R.id.ivLogoUhd)
-        ivLogoBluray = findViewById(R.id.ivLogoBluray)
-        ivLogoDv = findViewById(R.id.ivLogoDv)
-        ivLogoAtmos = findViewById(R.id.ivLogoAtmos)
-        ivLogoDts = findViewById(R.id.ivLogoDts)
-        badge4K = findViewById(R.id.badge4K)
-        badgeDv = findViewById(R.id.badgeDv)
+        badgeResolution = findViewById(R.id.badgeResolution)
+        badgeHdr = findViewById(R.id.badgeHdr)
+        badgeSource = findViewById(R.id.badgeSource)
         badgeAudio = findViewById(R.id.badgeAudio)
+        badgeChannels = findViewById(R.id.badgeChannels)
         btnPlayDirect = findViewById(R.id.btnPlayDirect)
         btnCheck = findViewById(R.id.btnCheck)
         btnDetails = findViewById(R.id.btnDetails)
@@ -461,38 +455,44 @@ class MainActivity : Activity() {
         tvHeroSynopsis.text = movie.synopsis
         tvMetadataText.text = "${movie.year}  ·  ${movie.duration}  ·  ${movie.size}"
 
+        val is4k = movie.videoCodec.contains("4K", ignoreCase = true) ||
+                   (movie.size.contains("Remux", ignoreCase = true) && !isSdr)
+        badgeResolution.text = if (is4k) "4K" else "HD"
+        badgeResolution.visibility = View.VISIBLE
+
         if (isSdr) {
-            ivLogoUhd.visibility = View.GONE
-            ivLogoBluray.visibility = View.VISIBLE
-            badge4K.visibility = View.GONE
-            ivLogoDv.visibility = View.GONE
-            badgeDv.visibility = View.GONE
+            badgeHdr.visibility = View.GONE
         } else {
-            ivLogoUhd.visibility = View.VISIBLE
-            ivLogoBluray.visibility = View.GONE
-            badge4K.visibility = View.GONE
-            ivLogoDv.visibility = View.VISIBLE
-            badgeDv.visibility = View.GONE
+            badgeHdr.visibility = View.VISIBLE
+            badgeHdr.text = if (movie.videoCodec.contains("VISION", ignoreCase = true)) "DOLBY VISION" else "HDR10"
         }
+
+        badgeSource.text = "BLU-RAY"
+        badgeSource.visibility = View.VISIBLE
 
         when {
             movie.audioCodec.contains("Atmos", ignoreCase = true) -> {
-                ivLogoAtmos.visibility = View.VISIBLE
-                ivLogoDts.visibility = View.GONE
-                badgeAudio.visibility = View.GONE
+                badgeAudio.text = "DOLBY ATMOS"
+                badgeChannels.text = if (movie.audioCodec.contains("7.1")) "7.1" else "5.1"
+                badgeChannels.visibility = View.VISIBLE
             }
             movie.audioCodec.contains("DTS", ignoreCase = true) -> {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.VISIBLE
-                badgeAudio.visibility = View.GONE
+                badgeAudio.text = if (movie.audioCodec.contains("HD", ignoreCase = true)) "DTS-HD MA" else "DTS"
+                badgeChannels.text = if (movie.audioCodec.contains("7.1")) "7.1" else "5.1"
+                badgeChannels.visibility = View.VISIBLE
+            }
+            movie.audioCodec.contains("TrueHD", ignoreCase = true) -> {
+                badgeAudio.text = "DOLBY TRUEHD"
+                badgeChannels.text = if (movie.audioCodec.contains("7.1")) "7.1" else "5.1"
+                badgeChannels.visibility = View.VISIBLE
             }
             else -> {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.GONE
-                badgeAudio.visibility = View.VISIBLE
-                badgeAudio.text = movie.audioCodec
+                badgeAudio.text = "DOLBY AUDIO"
+                badgeChannels.text = "5.1"
+                badgeChannels.visibility = View.VISIBLE
             }
         }
+        badgeAudio.visibility = View.VISIBLE
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val (pos, dur) = getSavedProgress(prefs, movie.title)
         if (dur > 0L && pos > 5000L && pos < dur - 30000L) {

@@ -95,14 +95,11 @@ class PlaybackActivity : Activity() {
     private lateinit var btnAudioTrack: ImageButton
 
     private lateinit var loadingSpinner: ProgressBar
-    private lateinit var ivLogoUhd: ImageView
-    private lateinit var ivLogoBluray: ImageView
-    private lateinit var ivLogoDv: ImageView
-    private lateinit var ivLogoAtmos: ImageView
-    private lateinit var ivLogoDts: ImageView
-    private lateinit var badge4K: TextView
-    private lateinit var badgeDv: TextView
+    private lateinit var badgeResolution: TextView
+    private lateinit var badgeHdr: TextView
+    private lateinit var badgeSource: TextView
     private lateinit var badgeAudio: TextView
+    private lateinit var badgeChannels: TextView
     private lateinit var badgeAfr: TextView
 
     // PGS Theatrical Master Reference Subtitles (1920x1080 Canvas):
@@ -794,14 +791,11 @@ class PlaybackActivity : Activity() {
         btnAudioTrack = findViewById(R.id.btnAudioTrack)
 
         loadingSpinner = findViewById(R.id.loadingSpinner)
-        ivLogoUhd = findViewById(R.id.ivLogoUhd)
-        ivLogoBluray = findViewById(R.id.ivLogoBluray)
-        ivLogoDv = findViewById(R.id.ivLogoDv)
-        ivLogoAtmos = findViewById(R.id.ivLogoAtmos)
-        ivLogoDts = findViewById(R.id.ivLogoDts)
-        badge4K = findViewById(R.id.badge4K)
-        badgeDv = findViewById(R.id.badgeDv)
+        badgeResolution = findViewById(R.id.badgeResolution)
+        badgeHdr = findViewById(R.id.badgeHdr)
+        badgeSource = findViewById(R.id.badgeSource)
         badgeAudio = findViewById(R.id.badgeAudio)
+        badgeChannels = findViewById(R.id.badgeChannels)
         badgeAfr = findViewById(R.id.badgeAfr)
 
         modalOverlay = findViewById(R.id.modalOverlay)
@@ -820,26 +814,22 @@ class PlaybackActivity : Activity() {
 
         val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true)
+        val is4k = !isSdr && (movieTitle.contains("Raiders", ignoreCase = true) || movieTitle.contains("Nightmare", ignoreCase = true) || movieTitle.contains("Hail", ignoreCase = true))
+
+        badgeResolution.text = if (is4k) "4K" else "HD"
+        badgeResolution.visibility = View.VISIBLE
+
+        badgeSource.text = "BLU-RAY"
+        badgeSource.visibility = View.VISIBLE
+
         if (isSdr) {
-            ivLogoUhd.visibility = View.GONE
-            badge4K.visibility = View.VISIBLE
-            badge4K.text = "1080P HD"
-            ivLogoDv.visibility = View.GONE
-            badgeDv.visibility = View.GONE
-            ivLogoAtmos.visibility = View.GONE
-            badgeAudio.visibility = View.VISIBLE
-            badgeAudio.text = "AUDIO BITSTREAM"
+            badgeHdr.visibility = View.GONE
             btnDvMode.visibility = View.GONE
             btnChapters.nextFocusRightId = R.id.btnLibrary
             btnLibrary.nextFocusLeftId = R.id.btnChapters
         } else {
-            ivLogoUhd.visibility = View.VISIBLE
-            badge4K.visibility = View.GONE
-            ivLogoDv.visibility = View.VISIBLE
-            badgeDv.visibility = View.GONE
-            ivLogoAtmos.visibility = View.GONE
-            badgeAudio.visibility = View.VISIBLE
-            badgeAudio.text = "AUDIO BITSTREAM"
+            badgeHdr.visibility = View.VISIBLE
+            badgeHdr.text = if (currentDvMode == DolbyVisionProcessingMode.FORCE_HDR10) "HDR10" else "DOLBY VISION"
             btnDvMode.visibility = View.VISIBLE
             btnChapters.nextFocusRightId = R.id.btnDvMode
             btnLibrary.nextFocusLeftId = R.id.btnDvMode
@@ -849,6 +839,10 @@ class PlaybackActivity : Activity() {
                 DolbyVisionProcessingMode.FORCE_HDR10 -> "HDR10"
             }
         }
+
+        badgeAudio.text = "AUDIO BITSTREAM"
+        badgeAudio.visibility = View.VISIBLE
+        badgeChannels.visibility = View.GONE
     }
 
     private fun setupListeners() {
@@ -1561,7 +1555,8 @@ class PlaybackActivity : Activity() {
     }
 
     private fun updateTrackBadges(tracks: Tracks) {
-        var audioName = "Audio Bitstream"
+        var audioName = "AUDIO BITSTREAM"
+        var channelText = ""
         var isDolbyVision = false
         var isHdr = false
         var is4k = false
@@ -1599,12 +1594,22 @@ class PlaybackActivity : Activity() {
                 for (i in 0 until group.length) {
                     if (group.isTrackSelected(i)) {
                         val format = group.getTrackFormat(i)
+                        val mime = format.sampleMimeType ?: ""
                         audioName = when {
-                            format.sampleMimeType?.contains("truehd", ignoreCase = true) == true -> "DOLBY TRUEHD ATMOS"
-                            format.sampleMimeType?.contains("eac3", ignoreCase = true) == true -> "DOLBY AUDIO (E-AC-3)"
-                            format.sampleMimeType?.contains("ac3", ignoreCase = true) == true -> "DOLBY DIGITAL 5.1"
-                            format.sampleMimeType?.contains("dts", ignoreCase = true) == true -> "DTS-HD MASTER AUDIO"
+                            mime.contains("truehd", ignoreCase = true) -> "DOLBY ATMOS"
+                            mime.contains("eac3", ignoreCase = true) -> "DOLBY AUDIO"
+                            mime.contains("ac3", ignoreCase = true) -> "DOLBY AUDIO"
+                            mime.contains("dts", ignoreCase = true) -> "DTS-HD MA"
+                            mime.contains("flac", ignoreCase = true) -> "FLAC"
+                            mime.contains("pcm", ignoreCase = true) -> "PCM"
                             else -> "AUDIO BITSTREAM"
+                        }
+                        channelText = when (format.channelCount) {
+                            8 -> "7.1"
+                            6 -> "5.1"
+                            2 -> "2.0"
+                            1 -> "1.0"
+                            else -> if (format.channelCount > 0) "${format.channelCount} CH" else ""
                         }
                     }
                 }
@@ -1614,23 +1619,18 @@ class PlaybackActivity : Activity() {
         val isMovieSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
                 movieTitle.contains("Whiplash", ignoreCase = true) || (!isDolbyVision && !isHdr && !is4k)
 
-        if (is4k && !isMovieSdr) {
-            ivLogoUhd.visibility = View.VISIBLE
-            ivLogoBluray.visibility = View.GONE
-            badge4K.visibility = View.GONE
-        } else {
-            ivLogoUhd.visibility = View.GONE
-            ivLogoBluray.visibility = View.VISIBLE
-            badge4K.visibility = View.GONE
-        }
+        badgeResolution.text = if (is4k && !isMovieSdr) "4K" else "HD"
+        badgeResolution.visibility = View.VISIBLE
+
+        badgeSource.text = "BLU-RAY"
+        badgeSource.visibility = View.VISIBLE
 
         if (isMovieSdr) {
-            ivLogoDv.visibility = View.GONE
-            badgeDv.visibility = View.GONE
+            badgeHdr.visibility = View.GONE
             btnDvMode.visibility = View.GONE
         } else if (isDolbyVision || currentDvMode != DolbyVisionProcessingMode.FORCE_HDR10) {
-            ivLogoDv.visibility = View.VISIBLE
-            badgeDv.visibility = View.GONE
+            badgeHdr.visibility = View.VISIBLE
+            badgeHdr.text = "DOLBY VISION"
             btnDvMode.visibility = View.VISIBLE
             btnDvMode.text = when {
                 movieTitle.contains("Nightmare", ignoreCase = true) || currentDvMode == DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
@@ -1638,30 +1638,20 @@ class PlaybackActivity : Activity() {
                 else -> "Dolby Vision P8.1"
             }
         } else {
-            ivLogoDv.visibility = View.GONE
-            badgeDv.visibility = View.VISIBLE
-            badgeDv.text = "HDR10"
+            badgeHdr.visibility = View.VISIBLE
+            badgeHdr.text = "HDR10"
             btnDvMode.visibility = View.VISIBLE
             btnDvMode.text = "HDR10"
         }
 
-        when {
-            audioName.contains("ATMOS", ignoreCase = true) -> {
-                ivLogoAtmos.visibility = View.VISIBLE
-                ivLogoDts.visibility = View.GONE
-                badgeAudio.visibility = View.GONE
-            }
-            audioName.contains("DTS", ignoreCase = true) -> {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.VISIBLE
-                badgeAudio.visibility = View.GONE
-            }
-            else -> {
-                ivLogoAtmos.visibility = View.GONE
-                ivLogoDts.visibility = View.GONE
-                badgeAudio.visibility = View.VISIBLE
-                badgeAudio.text = audioName
-            }
+        badgeAudio.text = audioName
+        badgeAudio.visibility = View.VISIBLE
+
+        if (channelText.isNotEmpty()) {
+            badgeChannels.text = channelText
+            badgeChannels.visibility = View.VISIBLE
+        } else {
+            badgeChannels.visibility = View.GONE
         }
     }
 
@@ -2160,7 +2150,7 @@ class PlaybackActivity : Activity() {
                         DolbyVisionProcessingMode.P7_MEL_DIRECT -> "Dolby Vision P7"
                         DolbyVisionProcessingMode.FORCE_HDR10 -> "HDR10"
                     }
-                    badgeDv.text = mode.badgeText
+                    badgeHdr.text = if (mode == DolbyVisionProcessingMode.FORCE_HDR10) "HDR10" else "DOLBY VISION"
 
                     val currentPos = player?.currentPosition ?: 0L
                     val wasPlaying = player?.isPlaying ?: true
