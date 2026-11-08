@@ -1,14 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:startColor="#E61D2230"
-        android:centerColor="#D9131622"
-        android:endColor="#EB0C0E16"
-        android:type="linear" />
-    <corners android:radius="22dp" />
-    <stroke
-        android:width="1.2dp"
-        android:color="#4AFFFFFF" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base frosted liquid glass body -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#F0151926"
+                android:centerColor="#EA10121C"
+                android:endColor="#F20A0C13"
+                android:type="linear" />
+            <corners android:radius="22dp" />
+            <stroke
+                android:width="1.2dp"
+                android:color="#40FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Top specular liquid glass reflection highlight -->
+    <item android:bottom="80dp">
+        <shape android:shape="rectangle">
+            <corners
+                android:topLeftRadius="21dp"
+                android:topRightRadius="21dp"
+                android:bottomLeftRadius="0dp"
+                android:bottomRightRadius="0dp" />
+            <gradient
+                android:angle="270"
+                android:startColor="#2AFFFFFF"
+                android:endColor="#00FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

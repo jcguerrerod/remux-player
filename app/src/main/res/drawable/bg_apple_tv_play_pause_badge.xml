@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <gradient
-        android:angle="270"
-        android:startColor="#B32B3040"
-        android:endColor="#9910121A"
-        android:type="linear" />
-    <stroke
-        android:width="1.5dp"
-        android:color="#5AFFFFFF" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base circular liquid glass body -->
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:angle="270"
+                android:startColor="#D9161B28"
+                android:endColor="#E60A0C14"
+                android:type="linear" />
+            <stroke
+                android:width="1.5dp"
+                android:color="#80FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Specular gloss highlight on upper hemisphere -->
+    <item android:bottom="42dp">
+        <shape android:shape="oval">
+            <gradient
+                android:angle="270"
+                android:startColor="#40FFFFFF"
+                android:endColor="#00FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

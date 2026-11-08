@@ -9,7 +9,7 @@ import android.view.View
 
 /**
  * Overlay de marcas y muescas de capítulos estilo Apple TV en la barra de progreso.
- * Dibuja cortes sutiles de 2.5dp de ancho para separar visualmente los capítulos,
+ * Dibuja cortes físicos sutiles de 2.5dp de ancho para segmentar los capítulos,
  * y la línea fija (ghost pin) en la posición original antes de adelantar/retroceder.
  */
 class ChapterTicksView @JvmOverloads constructor(
@@ -19,7 +19,12 @@ class ChapterTicksView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private val notchPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#141416") // Color idéntico al fondo para simular corte físico entre capítulos
+        color = Color.parseColor("#0C0E14") // Fondo idéntico al HUD para segmentar físicamente la barra
+        style = Paint.Style.FILL
+    }
+
+    private val tickAccentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#33FFFFFF") // Micro acento sutil en las juntas de capítulos
         style = Paint.Style.FILL
     }
 
@@ -64,10 +69,14 @@ class ChapterTicksView @JvmOverloads constructor(
         val top = centerY - trackHalfHeight
         val bottom = centerY + trackHalfHeight
 
-        // 1. Marcas de cortes de capítulos
+        // 1. Marcas de cortes de capítulos (Segmentación Apple TV)
         for (ratio in chapterStartRatios) {
             val cx = ratio * usableWidth
+            // Corte físico oscuro
             canvas.drawRect(cx - notchHalfWidth, top, cx + notchHalfWidth, bottom, notchPaint)
+            // Micro línea de acento sutil
+            val tickHalfHeight = 4.5f * density
+            canvas.drawRect(cx - (0.5f * density), centerY - tickHalfHeight, cx + (0.5f * density), centerY + tickHalfHeight, tickAccentPaint)
         }
 
         // 2. Línea fija / Ghost Pin de posición original antes del scrub (estilo Apple TV)

@@ -45,7 +45,7 @@ class PlaybackActivity : Activity() {
     companion object {
         private const val PREFS_NAME = "remux_player_prefs"
         private const val PREF_KEY_DV_MODE = "dv_processing_mode"
-        private const val HUD_HIDE_DELAY_MS = 6500L
+        private const val HUD_HIDE_DELAY_MS = 3500L
     }
 
     private var player: ExoPlayer? = null
@@ -442,13 +442,14 @@ class PlaybackActivity : Activity() {
             val duration = p.duration
             if (duration <= 0) return
 
+            val speedMagnitude = Math.abs(scrubSpeed)
             val sign = if (scrubSpeed > 0) 1 else -1
-            val stepMs = when (Math.abs(scrubSpeed)) {
-                1 -> 1000L * sign
-                2 -> 4000L * sign
-                3 -> 12000L * sign
-                4 -> 30000L * sign
-                else -> 60000L * sign // 5x
+            val stepMs = when (speedMagnitude) {
+                1 -> 10000L * sign
+                2 -> 30000L * sign
+                3 -> 60000L * sign
+                4 -> 120000L * sign
+                else -> 300000L * sign // 5x
             }
 
             scrubTargetMs = (scrubTargetMs + stepMs).coerceIn(0L, duration)
@@ -462,7 +463,11 @@ class PlaybackActivity : Activity() {
 
             val chap = getCurrentChapter(scrubTargetMs)
             if (chap != null) {
-                tvScrubChapterTitle.text = chap.title
+                if (tvScrubChapterTitle.text != chap.title) {
+                    tvScrubChapterTitle.text = chap.title
+                    tvScrubChapterTitle.alpha = 0.5f
+                    tvScrubChapterTitle.animate().alpha(1f).setDuration(120).start()
+                }
                 tvScrubChapterTitle.visibility = View.VISIBLE
             } else {
                 tvScrubChapterTitle.visibility = View.GONE
@@ -471,7 +476,14 @@ class PlaybackActivity : Activity() {
             updateScrubPreviewPosition(scrubTargetMs, duration)
             loadScrubThumbnail(movieTitle, scrubTargetMs)
 
-            handler.postDelayed(this, 300L)
+            val interval = when (speedMagnitude) {
+                1 -> 350L
+                2 -> 280L
+                3 -> 220L
+                4 -> 180L
+                else -> 130L
+            }
+            handler.postDelayed(this, interval)
         }
     }
 
@@ -1054,9 +1066,13 @@ class PlaybackActivity : Activity() {
                 return super.dispatchKeyEvent(event)
             }
 
+            val isHudVisible = (hudOverlay.visibility == View.VISIBLE && hudOverlay.alpha > 0.5f)
+
             if (isScrubbing) {
                 handler.removeCallbacks(hideHudRunnable)
-            } else {
+            } else if (event.keyCode != KeyEvent.KEYCODE_DPAD_CENTER &&
+                       event.keyCode != KeyEvent.KEYCODE_ENTER &&
+                       event.keyCode != KeyEvent.KEYCODE_NUMPAD_ENTER) {
                 showHud()
             }
 
@@ -1068,12 +1084,19 @@ class PlaybackActivity : Activity() {
                     commitScrubSeek()
                     return true
                 }
-                if (focus != null && focus != timelineSeekBar && focus.isClickable) {
-                    focus.performClick()
+                if (isHudVisible) {
+                    if (focus != null && focus != timelineSeekBar && focus.isClickable) {
+                        focus.performClick()
+                        return true
+                    }
+                    togglePlayPause()
+                    return true
+                } else {
+                    // Quick Peek Apple TV: Show HUD smoothly without interrupting playback
+                    showHud()
+                    timelineSeekBar.requestFocus()
                     return true
                 }
-                togglePlayPause()
-                return true
             }
 
             when (event.keyCode) {
@@ -1126,19 +1149,19 @@ class PlaybackActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (isScrubbing) {
-                        handleScrubKey(-1)
+                        handleScrubKey(-1, event.repeatCount)
                         return true
                     }
                     if (focus == timelineSeekBar || hudOverlay.visibility != View.VISIBLE || (focus !is Button && focus !is ImageButton)) {
                         timelineSeekBar.requestFocus()
-                        handleScrubKey(-1)
+                        handleScrubKey(-1, event.repeatCount)
                         return true
                     }
                     when (focus) {
                         btnAudioTrack -> { btnSubtitles.requestFocus(); return true }
                         btnSubtitles -> {
                             timelineSeekBar.requestFocus()
-                            handleScrubKey(-1)
+                            handleScrubKey(-1, event.repeatCount)
                             return true
                         }
                         btnLibrary -> {
@@ -1148,24 +1171,24 @@ class PlaybackActivity : Activity() {
                         btnDvMode -> { btnInfo.requestFocus(); return true }
                         btnInfo -> {
                             timelineSeekBar.requestFocus()
-                            handleScrubKey(-1)
+                            handleScrubKey(-1, event.repeatCount)
                             return true
                         }
                         else -> {
                             timelineSeekBar.requestFocus()
-                            handleScrubKey(-1)
+                            handleScrubKey(-1, event.repeatCount)
                             return true
                         }
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (isScrubbing) {
-                        handleScrubKey(1)
+                        handleScrubKey(1, event.repeatCount)
                         return true
                     }
                     if (focus == timelineSeekBar || hudOverlay.visibility != View.VISIBLE || (focus !is Button && focus !is ImageButton)) {
                         timelineSeekBar.requestFocus()
-                        handleScrubKey(1)
+                        handleScrubKey(1, event.repeatCount)
                         return true
                     }
                     when (focus) {
@@ -1176,18 +1199,18 @@ class PlaybackActivity : Activity() {
                         btnDvMode -> { btnLibrary.requestFocus(); return true }
                         btnLibrary -> {
                             timelineSeekBar.requestFocus()
-                            handleScrubKey(1)
+                            handleScrubKey(1, event.repeatCount)
                             return true
                         }
                         btnSubtitles -> { btnAudioTrack.requestFocus(); return true }
                         btnAudioTrack -> {
                             timelineSeekBar.requestFocus()
-                            handleScrubKey(1)
+                            handleScrubKey(1, event.repeatCount)
                             return true
                         }
                         else -> {
                             timelineSeekBar.requestFocus()
-                            handleScrubKey(1)
+                            handleScrubKey(1, event.repeatCount)
                             return true
                         }
                     }
@@ -1219,9 +1242,9 @@ class PlaybackActivity : Activity() {
 
     /**
      * Motor de navegación y previsualización de fotogramas estilo Apple TV.
-     * Salto 1 segundo a 1x ("segundo a segundo"), aceleración 2x, 3x, 4x, y retroceso -1x..-4x.
+     * Curva de aceleración continua: 10s (1x) -> 30s (2x) -> 1m (3x) -> 2m (4x) -> 5m (5x).
      */
-    private fun handleScrubKey(direction: Int) {
+    private fun handleScrubKey(direction: Int, repeatCount: Int = 0) {
         val p = player ?: return
         val duration = p.duration
         if (duration <= 0) return
@@ -1241,21 +1264,26 @@ class PlaybackActivity : Activity() {
                 chapterTicksView.setOriginalPositionRatio(originalPositionBeforeScrub.toFloat() / duration.toFloat())
             }
         } else {
-            // Ya en modo scrubbing: acelerar o desacelerar de 1x hasta 5x
-            if (direction > 0) {
-                if (scrubSpeed < 0) {
-                    scrubSpeed++
-                    if (scrubSpeed == 0) scrubSpeed = 1
-                } else if (scrubSpeed in 1..4) {
-                    scrubSpeed++
-                }
-            } else {
-                if (scrubSpeed > 1) {
-                    scrubSpeed--
-                } else if (scrubSpeed == 1) {
-                    scrubSpeed = -1
-                } else if (scrubSpeed in -4..-1) {
-                    scrubSpeed--
+            // Ya en modo scrubbing: acelerar al mantener presionado o por pulsaciones
+            if (repeatCount > 0 && repeatCount % 3 == 0) {
+                if (direction > 0 && scrubSpeed in 1..4) scrubSpeed++
+                else if (direction < 0 && scrubSpeed in -4..-1) scrubSpeed--
+            } else if (repeatCount == 0) {
+                if (direction > 0) {
+                    if (scrubSpeed < 0) {
+                        scrubSpeed++
+                        if (scrubSpeed == 0) scrubSpeed = 1
+                    } else if (scrubSpeed in 1..4) {
+                        scrubSpeed++
+                    }
+                } else {
+                    if (scrubSpeed > 1) {
+                        scrubSpeed--
+                    } else if (scrubSpeed == 1) {
+                        scrubSpeed = -1
+                    } else if (scrubSpeed in -4..-1) {
+                        scrubSpeed--
+                    }
                 }
             }
         }
@@ -1264,12 +1292,12 @@ class PlaybackActivity : Activity() {
         val speedBadgeText = "${speedMagnitude}x"
 
         if (scrubSpeed > 0) {
-            // Adelantar: badge a la DERECHA según sketch del usuario: xx:xx:xx (yx)
+            // Forward: badge on RIGHT side of timestamp: xx:xx:xx (yx)
             tvScrubSpeedLeft.visibility = View.GONE
             tvScrubSpeedRight.text = speedBadgeText
             tvScrubSpeedRight.visibility = View.VISIBLE
         } else {
-            // Retroceder: badge a la IZQUIERDA según sketch del usuario: (yx) xx:xx:xx
+            // Rewind: badge on LEFT side of timestamp: (yx) xx:xx:xx
             tvScrubSpeedRight.visibility = View.GONE
             tvScrubSpeedLeft.text = speedBadgeText
             tvScrubSpeedLeft.visibility = View.VISIBLE
@@ -1277,11 +1305,11 @@ class PlaybackActivity : Activity() {
 
         val sign = if (scrubSpeed > 0) 1 else -1
         val instantStep = when (speedMagnitude) {
-            1 -> 1000L * sign
-            2 -> 4000L * sign
-            3 -> 12000L * sign
-            4 -> 30000L * sign
-            else -> 60000L * sign // 5x
+            1 -> 10000L * sign
+            2 -> 30000L * sign
+            3 -> 60000L * sign
+            4 -> 120000L * sign
+            else -> 300000L * sign // 5x
         }
         scrubTargetMs = (scrubTargetMs + instantStep).coerceIn(0L, duration)
         timelineSeekBar.progress = ((scrubTargetMs * 1000) / duration).toInt()
@@ -1293,7 +1321,11 @@ class PlaybackActivity : Activity() {
 
         val chap = getCurrentChapter(scrubTargetMs)
         if (chap != null) {
-            tvScrubChapterTitle.text = chap.title
+            if (tvScrubChapterTitle.text != chap.title) {
+                tvScrubChapterTitle.text = chap.title
+                tvScrubChapterTitle.alpha = 0.5f
+                tvScrubChapterTitle.animate().alpha(1f).setDuration(120).start()
+            }
             tvScrubChapterTitle.visibility = View.VISIBLE
         } else {
             tvScrubChapterTitle.visibility = View.GONE
@@ -1304,7 +1336,7 @@ class PlaybackActivity : Activity() {
         llScrubPreviewContainer.bringToFront()
 
         handler.removeCallbacks(scrubTickerRunnable)
-        handler.postDelayed(scrubTickerRunnable, 300L)
+        handler.postDelayed(scrubTickerRunnable, 280L)
     }
 
     private fun updateScrubPreviewPosition(targetMs: Long, duration: Long) {
@@ -2368,7 +2400,7 @@ class PlaybackActivity : Activity() {
                 modalCard.translationX = 0f
                 modalCard.layoutParams = lp
             }
-            modalCard.pivotX = (350 * density) - (20 * density)
+            modalCard.pivotX = (380 * density) - (20 * density)
             modalCard.pivotY = (260 * density)
         }
 
