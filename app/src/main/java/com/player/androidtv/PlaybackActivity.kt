@@ -1690,7 +1690,8 @@ class PlaybackActivity : Activity() {
         showModal(
             title = "Audio",
             badge = badgeAudio.text.toString(),
-            anchorButton = btnAudioTrack
+            anchorButton = btnAudioTrack,
+            targetWidthDp = 260
         )
 
         llModalListContainer.removeAllViews()
@@ -1850,7 +1851,8 @@ class PlaybackActivity : Activity() {
         showModal(
             title = "Subtitles",
             badge = "",
-            anchorButton = btnSubtitles
+            anchorButton = btnSubtitles,
+            targetWidthDp = 245
         )
 
         llModalListContainer.removeAllViews()
@@ -2349,7 +2351,7 @@ class PlaybackActivity : Activity() {
         titleItem.post { titleItem.requestFocus() }
     }
 
-    private fun showModal(title: String, badge: String, anchorButton: View? = null) {
+    private fun showModal(title: String, badge: String, anchorButton: View? = null, targetWidthDp: Int = 260) {
         handler.removeCallbacks(hideHudRunnable)
         tvModalTitle.text = title
         if (badge.isNotBlank()) {
@@ -2382,6 +2384,7 @@ class PlaybackActivity : Activity() {
         }
 
         val lp = modalCard.layoutParams as FrameLayout.LayoutParams
+        lp.width = (targetWidthDp * density).toInt()
         val isLeftAnchored = (anchorButton == btnInfo || anchorButton == btnChapters || anchorButton == btnDvMode)
 
         if (isLeftAnchored && anchorButton != null) {
@@ -2449,7 +2452,7 @@ class PlaybackActivity : Activity() {
                 modalCard.translationX = 0f
                 modalCard.layoutParams = lp
             }
-            modalCard.pivotX = (380 * density) - (20 * density)
+            modalCard.pivotX = (targetWidthDp * density) - (20 * density)
             modalCard.pivotY = (260 * density)
         }
 

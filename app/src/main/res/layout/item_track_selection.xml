@@ -8,21 +8,21 @@
     android:background="@drawable/bg_apple_tv_sheet_item"
     android:focusable="true"
     android:clickable="true"
-    android:paddingStart="16dp"
-    android:paddingTop="10dp"
-    android:paddingEnd="16dp"
-    android:paddingBottom="10dp"
-    android:layout_marginTop="2dp"
-    android:layout_marginBottom="2dp">
+    android:paddingStart="11dp"
+    android:paddingTop="7.5dp"
+    android:paddingEnd="11dp"
+    android:paddingBottom="7.5dp"
+    android:layout_marginTop="1.5dp"
+    android:layout_marginBottom="1.5dp">
 
     <!-- Checkmark Icon (Visible when active) -->
     <ImageView
         android:id="@+id/ivTrackCheck"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
         android:src="@drawable/ic_check"
         android:tint="@color/apple_sheet_text_selector"
-        android:layout_marginEnd="10dp"
+        android:layout_marginEnd="8dp"
         android:duplicateParentState="true"
         android:visibility="invisible"
         android:contentDescription="Selected" />
@@ -32,7 +32,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginEnd="10dp"
+        android:layout_marginEnd="6dp"
         android:duplicateParentState="true"
         android:orientation="vertical">
 
@@ -42,12 +42,10 @@
             android:layout_height="wrap_content"
             android:text="Track Title"
             android:textColor="@color/apple_sheet_text_selector"
-            android:textSize="13sp"
+            android:textSize="12.5sp"
             android:duplicateParentState="true"
             android:singleLine="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:scrollHorizontally="true"
+            android:ellipsize="end"
             android:fontFamily="sans-serif-medium" />
 
         <TextView
@@ -56,7 +54,7 @@
             android:layout_height="wrap_content"
             android:text="Technical Details"
             android:textColor="@color/apple_sheet_subtext_selector"
-            android:textSize="11sp"
+            android:textSize="10.5sp"
             android:duplicateParentState="true"
             android:fontFamily="sans-serif"
             android:visibility="gone" />
@@ -78,13 +76,15 @@
             android:layout_height="wrap_content"
             android:background="@drawable/bg_apple_tv_sheet_badge"
             android:textColor="@color/apple_sheet_text_selector"
-            android:textSize="10.5sp"
+            android:textSize="10sp"
             android:fontFamily="sans-serif-bold"
-            android:paddingStart="7dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="2dp"
-            android:layout_marginEnd="6dp"
+            android:includeFontPadding="false"
+            android:gravity="center"
+            android:paddingStart="5.5dp"
+            android:paddingTop="1.5dp"
+            android:paddingEnd="5.5dp"
+            android:paddingBottom="1.5dp"
+            android:layout_marginEnd="4dp"
             android:duplicateParentState="true"
             android:visibility="gone" />
 
@@ -95,12 +95,14 @@
             android:layout_height="wrap_content"
             android:background="@drawable/bg_apple_tv_sheet_badge_highlight"
             android:textColor="@color/apple_sheet_text_selector"
-            android:textSize="10.5sp"
+            android:textSize="10sp"
             android:fontFamily="sans-serif-bold"
-            android:paddingStart="8dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="2dp"
+            android:includeFontPadding="false"
+            android:gravity="center"
+            android:paddingStart="6.5dp"
+            android:paddingTop="1.5dp"
+            android:paddingEnd="6.5dp"
+            android:paddingBottom="1.5dp"
             android:duplicateParentState="true"
             android:visibility="gone" />
     </LinearLayout>
