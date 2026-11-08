@@ -338,7 +338,7 @@
                     android:id="@+id/tvHeroCast"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Reparto  Harrison Ford, Karen Allen, Paul Freeman, John Rhys-Davies"
+                    android:text="Cast  Harrison Ford, Karen Allen, Paul Freeman, John Rhys-Davies"
                     android:textColor="#8E8E93"
                     android:textSize="12sp"
                     android:lineSpacingExtra="3dp"
@@ -367,7 +367,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Películas"
+                android:text="Movies"
                 android:textColor="#8E8E93"
                 android:textSize="13sp"
                 android:letterSpacing="0.04"

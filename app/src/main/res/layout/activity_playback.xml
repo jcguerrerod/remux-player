@@ -32,7 +32,7 @@
             android:layout_gravity="center"
             android:src="@drawable/ic_pause"
             android:tint="#FFFFFF"
-            android:contentDescription="Estado de reproducción" />
+            android:contentDescription="Playback Status" />
     </FrameLayout>
 
     <!-- OVERLAY HUD MINIMALISTA EXACTO APPLE TV+ / tvOS -->
@@ -65,7 +65,7 @@
                 android:tint="@color/apple_btn_tint_selector"
                 android:focusable="true"
                 android:nextFocusDown="@id/timelineSeekBar"
-                android:contentDescription="Atrás" />
+                android:contentDescription="Back" />
 
             <TextView
                 android:id="@+id/tvTopHint"
@@ -265,7 +265,7 @@
                         android:nextFocusDown="@id/timelineSeekBar"
                         android:nextFocusRight="@id/btnAudioTrack"
                         android:nextFocusUp="@id/btnBack"
-                        android:contentDescription="Subtítulos" />
+                        android:contentDescription="Subtitles" />
 
                     <ImageButton
                         android:id="@+id/btnAudioTrack"
@@ -398,7 +398,7 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Píldoras de la Izquierda: Info, InSight / Dolby Vision, Biblioteca -->
+                <!-- Píldoras de la Izquierda: Info, Chapters, Dolby Vision, Library -->
                 <Button
                     android:id="@+id/btnInfo"
                     android:layout_width="wrap_content"
@@ -413,6 +413,24 @@
                     android:paddingEnd="16dp"
                     android:focusable="true"
                     android:nextFocusUp="@id/timelineSeekBar"
+                    android:nextFocusRight="@id/btnChapters" />
+
+                <Button
+                    android:id="@+id/btnChapters"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_apple_tv_pill_secondary"
+                    android:text="Chapters"
+                    android:textColor="@color/apple_btn_text_selector"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textAllCaps="false"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:focusable="true"
+                    android:nextFocusUp="@id/timelineSeekBar"
+                    android:nextFocusLeft="@id/btnInfo"
                     android:nextFocusRight="@id/btnDvMode" />
 
                 <Button
@@ -430,7 +448,7 @@
                     android:paddingEnd="16dp"
                     android:focusable="true"
                     android:nextFocusUp="@id/timelineSeekBar"
-                    android:nextFocusLeft="@id/btnInfo"
+                    android:nextFocusLeft="@id/btnChapters"
                     android:nextFocusRight="@id/btnLibrary" />
 
                 <Button
@@ -439,7 +457,7 @@
                     android:layout_height="36dp"
                     android:layout_marginStart="10dp"
                     android:background="@drawable/bg_apple_tv_pill_secondary"
-                    android:text="Biblioteca"
+                    android:text="Library"
                     android:textColor="@color/apple_btn_text_selector"
                     android:textSize="12sp"
                     android:fontFamily="sans-serif-medium"
@@ -479,7 +497,7 @@
                 android:paddingTop="3dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="3dp"
-                android:text="Capítulo 1"
+                android:text="Chapter 1"
                 android:visibility="gone" />
 
             <!-- Ventana con esquinas redondeadas 12dp y formato panorámico 16:9 (220x124dp) estilo Apple TV -->
@@ -502,7 +520,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"
-                        android:contentDescription="Previsualización" />
+                        android:contentDescription="Preview Thumbnail" />
 
                     <!-- Borde estético sutil Apple TV (transparente con contorno 1.5dp) -->
                     <View

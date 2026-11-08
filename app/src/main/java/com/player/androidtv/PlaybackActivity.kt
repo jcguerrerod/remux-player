@@ -110,8 +110,8 @@ class PlaybackActivity : Activity() {
     private val subTextSizeFraction = 50f / 1080f
     private val subBottomPaddingFraction = 155f / 1080f
 
-    // Apple TV Floating Popups (Fotos 1 y 3)
-    private enum class ModalType { NONE, SUBTITLES, AUDIO, DV_MODE, INFO }
+    // Apple TV Floating Popups
+    private enum class ModalType { NONE, SUBTITLES, AUDIO, CHAPTERS, DV_MODE, INFO }
     private var activeModalType = ModalType.NONE
 
     private lateinit var modalOverlay: View
@@ -123,6 +123,15 @@ class PlaybackActivity : Activity() {
     private var streamUrl: String = ""
     private var movieTitle: String = ""
     private var movieYear: String = "1981"
+    private var movieDuration: String = "1h 55m"
+    private var movieGenre: String = "Movie · Action · Adventure"
+    private var movieSynopsis: String = ""
+    private var movieDirector: String = "Steven Spielberg"
+    private var movieActors: String = "Harrison Ford, Karen Allen"
+    private var movieSize: String = "56.73 GB Remux"
+    private var movieVideoCodec: String = "DOLBY VISION P8.1"
+    private var movieAudioCodec: String = "DOLBY ATMOS"
+    private lateinit var btnChapters: Button
     private var currentDvMode: DolbyVisionProcessingMode = DolbyVisionProcessingMode.P8_TRANSMUTE
     private val handler = Handler(Looper.getMainLooper())
 
@@ -229,84 +238,84 @@ class PlaybackActivity : Activity() {
     private fun initMovieChapters(title: String, durationMs: Long) {
         currentChapters = when {
             title.contains("Whiplash", ignoreCase = true) -> listOf(
-                MovieChapter("Capítulo 1: Obertura", 0L),
-                MovieChapter("Capítulo 2: Studio Band", 411828L),
-                MovieChapter("Capítulo 3: Caravan", 874457L),
-                MovieChapter("Capítulo 4: Overbeck", 1466382L),
-                MovieChapter("Capítulo 5: Dunellen Competition", 1806096L),
-                MovieChapter("Capítulo 6: Primer Baterista", 2143975L),
-                MovieChapter("Capítulo 7: Práctica a Sangre", 2611359L),
-                MovieChapter("Capítulo 8: Whiplash", 2815312L),
-                MovieChapter("Capítulo 9: Doble Tiempo", 3192481L),
-                MovieChapter("Capítulo 10: El Autobús", 3757504L),
-                MovieChapter("Capítulo 11: El Accidente", 4230560L),
-                MovieChapter("Capítulo 12: Expulsión", 4443606L),
-                MovieChapter("Capítulo 13: Encuentro en el Club", 4668789L),
-                MovieChapter("Capítulo 14: JVC Jazz Festival", 4986106L),
-                MovieChapter("Capítulo 15: Not Quite My Tempo", 5128290L),
-                MovieChapter("Capítulo 16: Gran Solo Final", 5516219L)
+                MovieChapter("Chapter 1: Overture", 0L),
+                MovieChapter("Chapter 2: Studio Band", 411828L),
+                MovieChapter("Chapter 3: Caravan", 874457L),
+                MovieChapter("Chapter 4: Overbeck", 1466382L),
+                MovieChapter("Chapter 5: Dunellen Competition", 1806096L),
+                MovieChapter("Chapter 6: First Chair", 2143975L),
+                MovieChapter("Chapter 7: Blood on the Kit", 2611359L),
+                MovieChapter("Chapter 8: Whiplash", 2815312L),
+                MovieChapter("Chapter 9: Double Time", 3192481L),
+                MovieChapter("Chapter 10: The Bus", 3757504L),
+                MovieChapter("Chapter 11: The Car Crash", 4230560L),
+                MovieChapter("Chapter 12: Expulsion", 4443606L),
+                MovieChapter("Chapter 13: Jazz Club Reunion", 4668789L),
+                MovieChapter("Chapter 14: JVC Jazz Festival", 4986106L),
+                MovieChapter("Chapter 15: Not Quite My Tempo", 5128290L),
+                MovieChapter("Chapter 16: Grand Finale Solo", 5516219L)
             )
             title.contains("Apocalypse", ignoreCase = true) -> listOf(
-                MovieChapter("Capítulo 1: The End / Saigón", 0L),
-                MovieChapter("Capítulo 2: La Misión", 565273L),
-                MovieChapter("Capítulo 3: Hacia el Río", 1224431L),
-                MovieChapter("Capítulo 4: Kilgore / Air Cav", 1564312L),
-                MovieChapter("Capítulo 5: Cabalgata de las Valkirias", 1921169L),
-                MovieChapter("Capítulo 6: Olor a Napalm", 2097428L),
-                MovieChapter("Capítulo 7: El Tigre en la Jungla", 2749079L),
-                MovieChapter("Capítulo 8: Cartas desde Casa", 3018014L),
-                MovieChapter("Capítulo 9: El Espectáculo USO", 3565728L),
-                MovieChapter("Capítulo 10: Hau Phat / Lluvia", 4133838L),
-                MovieChapter("Capítulo 11: El Sampán", 4536406L),
-                MovieChapter("Capítulo 12: Puente Do Lung", 4855141L),
-                MovieChapter("Capítulo 13: Cartas de Kurtz", 5439183L),
-                MovieChapter("Capítulo 14: Plantación Francesa", 5781192L),
-                MovieChapter("Capítulo 15: Ataque de Flechas", 6250869L),
-                MovieChapter("Capítulo 16: El Reino de Kurtz", 6776186L),
-                MovieChapter("Capítulo 17: Dennis Hopper / La Jaula", 7310177L),
-                MovieChapter("Capítulo 18: El Horror / Apocalipsis", 8058341L)
+                MovieChapter("Chapter 1: The End / Saigon", 0L),
+                MovieChapter("Chapter 2: The Mission", 565273L),
+                MovieChapter("Chapter 3: Up the River", 1224431L),
+                MovieChapter("Chapter 4: Kilgore / Air Cav", 1564312L),
+                MovieChapter("Chapter 5: Ride of the Valkyries", 1921169L),
+                MovieChapter("Chapter 6: Smell of Napalm", 2097428L),
+                MovieChapter("Chapter 7: Tiger in the Jungle", 2749079L),
+                MovieChapter("Chapter 8: Letters from Home", 3018014L),
+                MovieChapter("Chapter 9: The USO Show", 3565728L),
+                MovieChapter("Chapter 10: Hau Phat / Heavy Rain", 4133838L),
+                MovieChapter("Chapter 11: The Sampan Incident", 4536406L),
+                MovieChapter("Chapter 12: Do Lung Bridge", 4855141L),
+                MovieChapter("Chapter 13: Kurtz's Dossier", 5439183L),
+                MovieChapter("Chapter 14: French Plantation", 5781192L),
+                MovieChapter("Chapter 15: Arrow Attack", 6250869L),
+                MovieChapter("Chapter 16: Kurtz's Compound", 6776186L),
+                MovieChapter("Chapter 17: Dennis Hopper / The Cage", 7310177L),
+                MovieChapter("Chapter 18: The Horror, The Horror", 8058341L)
             )
             title.contains("Raiders", ignoreCase = true) -> listOf(
-                MovieChapter("Capítulo 1: Sudamérica, 1936", 0L),
-                MovieChapter("Capítulo 2: El Ídolo Dorado y la Roca", 510000L),
-                MovieChapter("Capítulo 3: Marshall College", 855000L),
-                MovieChapter("Capítulo 4: Inteligencia del Ejército", 1260000L),
-                MovieChapter("Capítulo 5: Nepal / El Cuervo", 1725000L),
-                MovieChapter("Capítulo 6: Calles de El Cairo", 2300000L),
-                MovieChapter("Capítulo 7: Sala del Mapa", 2830000L),
-                MovieChapter("Capítulo 8: Pozo de las Almas", 3390000L),
-                MovieChapter("Capítulo 9: Escape y el Ala Volante", 4180000L),
-                MovieChapter("Capítulo 10: Persecución del Convoy", 4875000L),
-                MovieChapter("Capítulo 11: A Bordo del Bantu Wind", 5520000L),
-                MovieChapter("Capítulo 12: Base de Submarinos", 5960000L),
-                MovieChapter("Capítulo 13: Apertura del Arca", 6420000L),
-                MovieChapter("Capítulo 14: Washington / Hangar 51", 6730000L)
+                MovieChapter("Chapter 1: South America, 1936", 0L),
+                MovieChapter("Chapter 2: The Golden Idol & Boulder", 510000L),
+                MovieChapter("Chapter 3: Marshall College", 855000L),
+                MovieChapter("Chapter 4: Army Intelligence", 1260000L),
+                MovieChapter("Chapter 5: The Raven / Nepal", 1725000L),
+                MovieChapter("Chapter 6: Streets of Cairo", 2300000L),
+                MovieChapter("Chapter 7: The Map Room", 2830000L),
+                MovieChapter("Chapter 8: The Well of Souls", 3390000L),
+                MovieChapter("Chapter 9: Flying Wing Brawl & Escape", 4180000L),
+                MovieChapter("Chapter 10: Desert Convoy Chase", 4875000L),
+                MovieChapter("Chapter 11: Aboard the Bantu Wind", 5520000L),
+                MovieChapter("Chapter 12: U-Boat Submarine Base", 5960000L),
+                MovieChapter("Chapter 13: Opening the Ark", 6420000L),
+                MovieChapter("Chapter 14: Washington / Hangar 51", 6730000L)
             )
             title.contains("Nightmare", ignoreCase = true) -> listOf(
-                MovieChapter("Capítulo 1: This Is Halloween", 0L),
-                MovieChapter("Capítulo 2: El Lamento de Jack", 435000L),
-                MovieChapter("Capítulo 3: Ciudad de la Navidad", 920000L),
-                MovieChapter("Capítulo 4: Reunión en el Pueblo", 1510000L),
-                MovieChapter("Capítulo 5: Fabricando la Navidad", 2140000L),
-                MovieChapter("Capítulo 6: Secuestrar a Santa Clavos", 2715000L),
-                MovieChapter("Capítulo 7: Jack Alza el Vuelo", 3380000L),
-                MovieChapter("Capítulo 8: Batalla en el Cementerio", 3960000L),
-                MovieChapter("Capítulo 9: Nieve en Halloween Town", 4335000L)
+                MovieChapter("Chapter 1: This Is Halloween", 0L),
+                MovieChapter("Chapter 2: Jack's Lament", 435000L),
+                MovieChapter("Chapter 3: Christmas Town", 920000L),
+                MovieChapter("Chapter 4: Town Meeting", 1510000L),
+                MovieChapter("Chapter 5: Making Christmas", 2140000L),
+                MovieChapter("Chapter 6: Kidnap the Sandy Claws", 2715000L),
+                MovieChapter("Chapter 7: Jack Takes Flight", 3380000L),
+                MovieChapter("Chapter 8: Graveyard Battle", 3960000L),
+                MovieChapter("Chapter 9: Snow in Halloween Town", 4335000L)
             )
             title.contains("Hail", ignoreCase = true) -> listOf(
-                MovieChapter("Capítulo 1: Despertar en la Oscuridad", 0L),
-                MovieChapter("Capítulo 2: El Enigma Petrova", 1120000L),
-                MovieChapter("Capítulo 3: Primer Contacto con Rocky", 2295000L),
-                MovieChapter("Capítulo 4: La Solución del Xenonite", 3570000L),
-                MovieChapter("Capítulo 5: Cultivo de Taumoebas", 5110000L),
-                MovieChapter("Capítulo 6: El Regreso a Casa", 6765000L),
-                MovieChapter("Capítulo 7: Un Sol Renovado", 8060000L)
+                MovieChapter("Chapter 1: Awakening in the Dark", 0L),
+                MovieChapter("Chapter 2: The Petrova Enigma", 1120000L),
+                MovieChapter("Chapter 3: First Contact with Rocky", 2295000L),
+                MovieChapter("Chapter 4: The Xenonite Solution", 3570000L),
+                MovieChapter("Chapter 5: Farming Taumoebas", 5110000L),
+                MovieChapter("Chapter 6: The Journey Home", 6765000L),
+                MovieChapter("Chapter 7: A Renewed Sun", 8060000L)
             )
             durationMs > 0 -> {
                 val numChapters = 10
                 val step = durationMs / numChapters
                 (0 until numChapters).map { i ->
-                    MovieChapter("Capítulo ${i + 1}", i * step)
+                    MovieChapter("Chapter ${i + 1}", i * step)
                 }
             }
             else -> emptyList()
@@ -490,32 +499,89 @@ class PlaybackActivity : Activity() {
                 ?: intent.getStringExtra("title")
                 ?: intent.getStringExtra("android.intent.extra.TITLE")
                 ?: incomingUri.getQueryParameter("title")
-                ?: incomingUri.lastPathSegment ?: "Película Jellyfin"
+                ?: incomingUri.lastPathSegment ?: "Jellyfin Video"
             val explicitYear = intent.getStringExtra("MOVIE_YEAR")
-            if (explicitYear != null) {
+            if (!explicitYear.isNullOrBlank()) {
                 movieYear = explicitYear
             }
 
             if (title.contains("Raiders", ignoreCase = true)) {
                 title = "Raiders of the Lost Ark"
                 movieYear = "1981"
+                movieDuration = "1h 55m"
+                movieGenre = "Movie  ·  Action  ·  Adventure"
+                movieSynopsis = "Archeologist and adventurer Indiana Jones is hired by the US government to find the Ark of the Covenant before the Nazis obtain its awesome powers."
+                movieDirector = "Steven Spielberg"
+                movieActors = "Harrison Ford, Karen Allen, Paul Freeman"
+                movieSize = "56.73 GB Remux"
+                movieVideoCodec = "DOLBY VISION P8.1"
+                movieAudioCodec = "DOLBY ATMOS"
             } else if (title.contains("Nightmare", ignoreCase = true)) {
                 title = "The Nightmare Before Christmas"
                 movieYear = "1993"
+                movieDuration = "1h 16m"
+                movieGenre = "Movie  ·  Animation  ·  Family"
+                movieSynopsis = "Jack Skellington, king of Halloween Town, discovers Christmas Town, but his attempts to bring Christmas to his home cause confusion and danger."
+                movieDirector = "Henry Selick (Story: Tim Burton)"
+                movieActors = "Danny Elfman, Chris Sarandon, Catherine O'Hara"
+                movieSize = "42.15 GB Remux"
+                movieVideoCodec = "DOLBY VISION P8.1"
+                movieAudioCodec = "DOLBY TRUEHD ATMOS"
             } else if (title.contains("Apocalypse", ignoreCase = true)) {
                 title = "Apocalypse Now"
                 movieYear = "1979"
-            } else if (title.contains("Hail Mary", ignoreCase = true)) {
+                movieDuration = "2h 27m"
+                movieGenre = "Movie  ·  War  ·  Drama"
+                movieSynopsis = "During the Vietnam War, Captain Willard is assigned a classified mission to journey deep into Cambodia and terminate rogue Special Forces Colonel Kurtz."
+                movieDirector = "Francis Ford Coppola"
+                movieActors = "Marlon Brando, Martin Sheen, Robert Duvall, Laurence Fishburne"
+                movieSize = "30.33 GB Remux"
+                movieVideoCodec = "1080P BLU-RAY"
+                movieAudioCodec = "DOLBY TRUEHD"
+            } else if (title.contains("Hail Mary", ignoreCase = true) || title.contains("Hail", ignoreCase = true)) {
                 title = "Project Hail Mary"
                 movieYear = "2026"
+                movieDuration = "2h 35m"
+                movieGenre = "Movie  ·  Sci-Fi  ·  Adventure"
+                movieSynopsis = "The sole survivor of a desperate interstellar mission awakens with amnesia, discovering the fate of humanity and Earth's survival rests squarely on his shoulders."
+                movieDirector = "Phil Lord, Christopher Miller"
+                movieActors = "Ryan Gosling, Sandra Hüller, Milana Vayntrub"
+                movieSize = "81.29 GB Remux"
+                movieVideoCodec = "DOLBY VISION P7 MEL"
+                movieAudioCodec = "DOLBY ATMOS"
             } else if (title.contains("Whiplash", ignoreCase = true)) {
                 title = "Whiplash"
                 movieYear = "2014"
+                movieDuration = "1h 46m"
+                movieGenre = "Movie  ·  Drama  ·  Music"
+                movieSynopsis = "An ambitious young jazz drummer enters an elite music conservatory, where he is driven past human limits by a ruthless and uncompromising instructor."
+                movieDirector = "Damien Chazelle"
+                movieActors = "Miles Teller, J.K. Simmons, Paul Reiser, Melissa Benoist"
+                movieSize = "23.46 GB Remux"
+                movieVideoCodec = "1080P AVC"
+                movieAudioCodec = "DTS-HD MASTER AUDIO"
             }
             movieTitle = title
+
+            intent.getStringExtra("MOVIE_DURATION")?.let { if (it.isNotBlank()) movieDuration = it }
+            intent.getStringExtra("MOVIE_GENRE")?.let { if (it.isNotBlank()) movieGenre = it }
+            intent.getStringExtra("MOVIE_SYNOPSIS")?.let { if (it.isNotBlank()) movieSynopsis = it }
+            intent.getStringExtra("MOVIE_DIRECTOR")?.let { if (it.isNotBlank()) movieDirector = it }
+            intent.getStringExtra("MOVIE_ACTORS")?.let { if (it.isNotBlank()) movieActors = it }
+            intent.getStringExtra("MOVIE_SIZE")?.let { if (it.isNotBlank()) movieSize = it }
+            intent.getStringExtra("MOVIE_VIDEO_CODEC")?.let { if (it.isNotBlank()) movieVideoCodec = it }
+            intent.getStringExtra("MOVIE_AUDIO_CODEC")?.let { if (it.isNotBlank()) movieAudioCodec = it }
         } else {
             movieTitle = "Raiders of the Lost Ark"
             movieYear = "1981"
+            movieDuration = "1h 55m"
+            movieGenre = "Movie  ·  Action  ·  Adventure"
+            movieSynopsis = "Archeologist and adventurer Indiana Jones is hired by the US government to find the Ark of the Covenant before the Nazis obtain its awesome powers."
+            movieDirector = "Steven Spielberg"
+            movieActors = "Harrison Ford, Karen Allen, Paul Freeman"
+            movieSize = "56.73 GB Remux"
+            movieVideoCodec = "DOLBY VISION P8.1"
+            movieAudioCodec = "DOLBY ATMOS"
         }
     }
 
@@ -547,6 +613,7 @@ class PlaybackActivity : Activity() {
 
         btnBack = findViewById(R.id.btnBack)
         btnInfo = findViewById(R.id.btnInfo)
+        btnChapters = findViewById(R.id.btnChapters)
         btnDvMode = findViewById(R.id.btnDvMode)
         btnLibrary = findViewById(R.id.btnLibrary)
         btnSubtitles = findViewById(R.id.btnSubtitles)
@@ -589,6 +656,8 @@ class PlaybackActivity : Activity() {
             badgeAudio.visibility = View.VISIBLE
             badgeAudio.text = "AUDIO BITSTREAM"
             btnDvMode.visibility = View.GONE
+            btnChapters.nextFocusRightId = R.id.btnLibrary
+            btnLibrary.nextFocusLeftId = R.id.btnChapters
         } else {
             ivLogoUhd.visibility = View.VISIBLE
             badge4K.visibility = View.GONE
@@ -598,6 +667,8 @@ class PlaybackActivity : Activity() {
             badgeAudio.visibility = View.VISIBLE
             badgeAudio.text = "AUDIO BITSTREAM"
             btnDvMode.visibility = View.VISIBLE
+            btnChapters.nextFocusRightId = R.id.btnDvMode
+            btnLibrary.nextFocusLeftId = R.id.btnDvMode
             btnDvMode.text = when (currentDvMode) {
                 DolbyVisionProcessingMode.P8_TRANSMUTE -> "Dolby Vision P8.1"
                 DolbyVisionProcessingMode.P7_MEL_DIRECT -> "Dolby Vision P7"
@@ -613,6 +684,14 @@ class PlaybackActivity : Activity() {
 
         btnInfo.setOnClickListener {
             openInfoModal()
+        }
+
+        btnChapters.setOnClickListener {
+            openChaptersModal()
+        }
+
+        tvPlayerChapter.setOnClickListener {
+            openChaptersModal()
         }
 
         btnDvMode.setOnClickListener {
@@ -1388,9 +1467,9 @@ class PlaybackActivity : Activity() {
                         else -> if (format.channelCount > 0) "${format.channelCount} Ch" else ""
                     }
 
-                    val titleText = if (isCommentary) "$langDisplay (Comentarios)" else langDisplay
+                    val titleText = if (isCommentary) "$langDisplay (Commentary)" else langDisplay
                     val badgePrimary: String
-                    val badgeSecondary = if (isCommentary) "COMENTARIOS" else ch
+                    val badgeSecondary = if (isCommentary) "COMMENTARY" else ch
                     var score = getLanguagePriority(lang)
 
                     when {
@@ -1470,22 +1549,22 @@ class PlaybackActivity : Activity() {
             llModalListContainer.addView(itemView)
         }
 
-        // Opción Apple TV: Modo Nocturno y Diálogos Claros
+        // Option Apple TV: Night Mode and Clear Dialogue
         val nightModeItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
         nightModeItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
         val tvNightTitle = nightModeItem.findViewById<TextView>(R.id.tvTrackTitle)
         val tvNightBadge = nightModeItem.findViewById<TextView>(R.id.tvTrackBadge)
         val tvNightSub = nightModeItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        tvNightTitle.text = "Modo Nocturno / Diálogos Claros"
+        tvNightTitle.text = "Night Mode / Clear Dialogue"
         nightModeItem.setOnFocusChangeListener { _, hasFocus ->
             tvNightTitle.isSelected = hasFocus
         }
-        tvNightSub.text = "Compresión dinámica EBU R128 para altavoces de TV"
+        tvNightSub.text = "Dynamic EBU R128 loudness compression for TV speakers"
         tvNightSub.visibility = View.VISIBLE
         tvNightBadge.text = "EBU R128"
         tvNightBadge.visibility = View.VISIBLE
         nightModeItem.setOnClickListener {
-            // Activar compresión EBU R128 sin interrumpir la reproducción
+            // Activate EBU R128 compression
         }
         llModalListContainer.addView(nightModeItem)
 
@@ -1573,9 +1652,9 @@ class PlaybackActivity : Activity() {
 
                     val badgePrimary = if (isPgs) "PGS" else "SRT"
                     val badgeSecondary = when {
-                        isForced -> "FORZADOS"
+                        isForced -> "FORCED"
                         isSdh -> "SDH / CC"
-                        else -> "" // Subtítulos completos normales van limpios sin tag redundante
+                        else -> "" // Clean full subtitles without redundant tags
                     }
 
                     trackItems.add(
@@ -1720,7 +1799,7 @@ class PlaybackActivity : Activity() {
             val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
             itemView.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.VISIBLE
             val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
-            tvTitle.text = "Direct Play 1080p SDR (Rec.709 Nativo)"
+            tvTitle.text = "Direct Play 1080p SDR (Native Rec.709)"
             tvTitle.isSelected = true
             val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
             tvBadge.text = "SDR"
@@ -1734,7 +1813,7 @@ class PlaybackActivity : Activity() {
         if (isNativeP8) {
             showModal(
                 title = "Dolby Vision",
-                badge = "DV P8.1 NATIVO",
+                badge = "NATIVE DV P8.1",
                 anchorButton = btnDvMode
             )
             llModalListContainer.removeAllViews()
@@ -1742,7 +1821,7 @@ class PlaybackActivity : Activity() {
             val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
             itemView.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.VISIBLE
             val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
-            tvTitle.text = "Dolby Vision Perfil 8.1 Nativo (Direct Play HW)"
+            tvTitle.text = "Native Dolby Vision Profile 8.1 (Direct Play HW)"
             tvTitle.isSelected = true
             val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
             tvBadge.text = "P8.1 DIRECT"
@@ -1810,41 +1889,199 @@ class PlaybackActivity : Activity() {
         }
     }
 
+    private fun openChaptersModal() {
+        val exo = player ?: return
+        activeModalType = ModalType.CHAPTERS
+
+        val countText = if (currentChapters.isNotEmpty()) "${currentChapters.size} CHAPTERS" else "CHAPTERS"
+        showModal(
+            title = "Chapters",
+            badge = countText,
+            anchorButton = btnChapters
+        )
+
+        llModalListContainer.removeAllViews()
+        val inflater = LayoutInflater.from(this)
+
+        val currentPos = exo.currentPosition
+        val activeChapter = getCurrentChapter(currentPos)
+
+        var activeItemView: View? = null
+
+        for ((index, chapter) in currentChapters.withIndex()) {
+            val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+            val ivCheck = itemView.findViewById<ImageView>(R.id.ivTrackCheck)
+            val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
+            val tvBadgePrimary = itemView.findViewById<TextView>(R.id.tvTrackBadge)
+            val tvBadgeSecondary = itemView.findViewById<TextView>(R.id.tvTrackBadgeSecondary)
+
+            val isCurrent = (chapter == activeChapter) || (activeChapter == null && index == 0)
+            ivCheck.visibility = if (isCurrent) View.VISIBLE else View.INVISIBLE
+            itemView.isSelected = isCurrent
+            tvTitle.text = chapter.title
+
+            tvBadgePrimary.text = formatTimeMs(chapter.startTimeMs)
+            tvBadgePrimary.visibility = View.VISIBLE
+            tvBadgeSecondary.visibility = View.GONE
+
+            itemView.setOnFocusChangeListener { _, hasFocus ->
+                tvTitle.isSelected = hasFocus
+            }
+
+            itemView.setOnClickListener {
+                exo.seekTo(chapter.startTimeMs)
+                tvPlayerChapter.text = chapter.title
+                tvPlayerChapter.visibility = View.VISIBLE
+                closeModal()
+            }
+
+            llModalListContainer.addView(itemView)
+            if (isCurrent) {
+                activeItemView = itemView
+            }
+        }
+
+        val focusTarget = activeItemView ?: llModalListContainer.getChildAt(0)
+        focusTarget?.requestFocus()
+        focusTarget?.post { focusTarget.requestFocus() }
+    }
+
     private fun openInfoModal() {
         activeModalType = ModalType.INFO
 
+        val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
+                movieTitle.contains("Whiplash", ignoreCase = true)
+
+        val masterQualityBadge = if (isSdr) "1080P MASTER" else "4K UHD MASTER"
+
         showModal(
-            title = "Info",
-            badge = "DIRECT PLAY",
+            title = "InSight",
+            badge = masterQualityBadge,
             anchorButton = btnInfo
         )
 
         llModalListContainer.removeAllViews()
         val inflater = LayoutInflater.from(this)
 
-        val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true)
+        // Item 1: Movie Title & Year
+        val titleItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+        titleItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+        val tvHeaderTitle = titleItem.findViewById<TextView>(R.id.tvTrackTitle)
+        val tvHeaderSub = titleItem.findViewById<TextView>(R.id.tvTrackSubtext)
+        val tvHeaderBadge = titleItem.findViewById<TextView>(R.id.tvTrackBadge)
+        tvHeaderTitle.text = "$movieTitle ($movieYear)"
+        tvHeaderTitle.isSelected = true
+        tvHeaderSub.text = "$movieDuration  ·  $movieGenre"
+        tvHeaderSub.visibility = View.VISIBLE
+        tvHeaderBadge.text = movieSize
+        tvHeaderBadge.visibility = View.VISIBLE
+        titleItem.isFocusable = true
+        titleItem.setOnFocusChangeListener { _, hasFocus -> tvHeaderTitle.isSelected = hasFocus }
+        llModalListContainer.addView(titleItem)
 
-        val specs = listOf(
-            Triple("Película", "$movieTitle ($movieYear)", if (isSdr) "1080P REMUX" else "4K REMUX"),
-            Triple("Direct Play", "Transmisión nativa sin transcodificar desde Jellyfin", "STATIC"),
-            Triple("Video", if (isSdr) "H.264 High@L4.1 SDR Rec.709" else "Dolby Vision RPU transmute NAL 62", if (isSdr) "BT.709" else currentDvMode.badgeText),
-            Triple("Subtítulos", "Motor cinematográfico estilo PGS Blu-ray (SMPTE)", "CINEMA"),
-            Triple("Audio", "Bitstream Passthrough directo al hardware (HW_AV_SYNC)", badgeAudio.text.toString())
-        )
-
-        for (spec in specs) {
-            val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-            itemView.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-            val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
-            tvTitle.text = "${spec.first}: ${spec.second}"
-            tvTitle.isSelected = true
-            val tvBadge = itemView.findViewById<TextView>(R.id.tvTrackBadge)
-            tvBadge.text = spec.third
-            tvBadge.visibility = View.VISIBLE
-            itemView.isFocusable = true
-            llModalListContainer.addView(itemView)
+        // Item 2: Storyline / Synopsis
+        if (movieSynopsis.isNotBlank()) {
+            val synopsisItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+            synopsisItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+            val tvSynTitle = synopsisItem.findViewById<TextView>(R.id.tvTrackTitle)
+            val tvSynSub = synopsisItem.findViewById<TextView>(R.id.tvTrackSubtext)
+            val tvSynBadge = synopsisItem.findViewById<TextView>(R.id.tvTrackBadge)
+            tvSynTitle.text = "Storyline"
+            tvSynTitle.isSelected = true
+            tvSynSub.text = movieSynopsis
+            tvSynSub.visibility = View.VISIBLE
+            tvSynBadge.text = "SYNOPSIS"
+            tvSynBadge.visibility = View.VISIBLE
+            synopsisItem.isFocusable = true
+            synopsisItem.setOnFocusChangeListener { _, hasFocus -> tvSynTitle.isSelected = hasFocus }
+            llModalListContainer.addView(synopsisItem)
         }
+
+        // Item 3: Director and Cast
+        val castItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+        castItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+        val tvCastTitle = castItem.findViewById<TextView>(R.id.tvTrackTitle)
+        val tvCastSub = castItem.findViewById<TextView>(R.id.tvTrackSubtext)
+        val tvCastBadge = castItem.findViewById<TextView>(R.id.tvTrackBadge)
+        tvCastTitle.text = "Director: $movieDirector"
+        tvCastTitle.isSelected = true
+        tvCastSub.text = "Cast: $movieActors"
+        tvCastSub.visibility = View.VISIBLE
+        tvCastBadge.text = "CAST & CREW"
+        tvCastBadge.visibility = View.VISIBLE
+        castItem.isFocusable = true
+        castItem.setOnFocusChangeListener { _, hasFocus -> tvCastTitle.isSelected = hasFocus }
+        llModalListContainer.addView(castItem)
+
+        // Item 4: Video Spec
+        val videoItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+        videoItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+        val tvVidTitle = videoItem.findViewById<TextView>(R.id.tvTrackTitle)
+        val tvVidSub = videoItem.findViewById<TextView>(R.id.tvTrackSubtext)
+        val tvVidBadge = videoItem.findViewById<TextView>(R.id.tvTrackBadge)
+        val tvVidSec = videoItem.findViewById<TextView>(R.id.tvTrackBadgeSecondary)
+        tvVidTitle.text = if (isSdr) "Video: 1080p SDR Rec.709 Direct Play" else "Video: 4K Dolby Vision Remux Direct Play"
+        tvVidTitle.isSelected = true
+        tvVidSub.text = if (isSdr) "Direct HW decode (H.264 High@L4.1)" else "Direct HW decode (HEVC Main 10 / NAL 62 transmute)"
+        tvVidSub.visibility = View.VISIBLE
+        tvVidSec.text = if (isSdr) "AVC" else "HEVC"
+        tvVidSec.visibility = View.VISIBLE
+        tvVidBadge.text = if (isSdr) "BT.709" else currentDvMode.badgeText
+        tvVidBadge.visibility = View.VISIBLE
+        videoItem.isFocusable = true
+        videoItem.setOnFocusChangeListener { _, hasFocus -> tvVidTitle.isSelected = hasFocus }
+        llModalListContainer.addView(videoItem)
+
+        // Item 5: Lossless Audio Spec
+        val audioItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+        audioItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+        val tvAudTitle = audioItem.findViewById<TextView>(R.id.tvTrackTitle)
+        val tvAudSub = audioItem.findViewById<TextView>(R.id.tvTrackSubtext)
+        val tvAudBadge = audioItem.findViewById<TextView>(R.id.tvTrackBadge)
+        tvAudTitle.text = "Audio: $movieAudioCodec"
+        tvAudTitle.isSelected = true
+        tvAudSub.text = "Direct bitstream passthrough (HW_AV_SYNC)"
+        tvAudSub.visibility = View.VISIBLE
+        tvAudBadge.text = badgeAudio.text.toString()
+        tvAudBadge.visibility = View.VISIBLE
+        audioItem.isFocusable = true
+        audioItem.setOnFocusChangeListener { _, hasFocus -> tvAudTitle.isSelected = hasFocus }
+        llModalListContainer.addView(audioItem)
+
+        // Item 6: Cinema Frame Rate
+        val afrItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+        afrItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+        val tvAfrTitle = afrItem.findViewById<TextView>(R.id.tvTrackTitle)
+        val tvAfrSub = afrItem.findViewById<TextView>(R.id.tvTrackSubtext)
+        val tvAfrBadge = afrItem.findViewById<TextView>(R.id.tvTrackBadge)
+        tvAfrTitle.text = "Match Content Frame Rate: 24.000 Hz"
+        tvAfrTitle.isSelected = true
+        tvAfrSub.text = "Zero 3:2 pulldown judder via HDMI 2.1 display mode"
+        tvAfrSub.visibility = View.VISIBLE
+        tvAfrBadge.text = "AFR 24.000"
+        tvAfrBadge.visibility = View.VISIBLE
+        afrItem.isFocusable = true
+        afrItem.setOnFocusChangeListener { _, hasFocus -> tvAfrTitle.isSelected = hasFocus }
+        llModalListContainer.addView(afrItem)
+
+        // Item 7: Subtitles Rendering Engine
+        val subsItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+        subsItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
+        val tvSubTitle = subsItem.findViewById<TextView>(R.id.tvTrackTitle)
+        val tvSubSub = subsItem.findViewById<TextView>(R.id.tvTrackSubtext)
+        val tvSubBadge = subsItem.findViewById<TextView>(R.id.tvTrackBadge)
+        tvSubTitle.text = "Subtitles: PGS Hardware Cinema Engine"
+        tvSubTitle.isSelected = true
+        tvSubSub.text = "SMPTE 2084 reference white (#EBEBEB) with zero OLED glare"
+        tvSubSub.visibility = View.VISIBLE
+        tvSubBadge.text = "PGS / SRT"
+        tvSubBadge.visibility = View.VISIBLE
+        subsItem.isFocusable = true
+        subsItem.setOnFocusChangeListener { _, hasFocus -> tvSubTitle.isSelected = hasFocus }
+        llModalListContainer.addView(subsItem)
+
+        titleItem.requestFocus()
+        titleItem.post { titleItem.requestFocus() }
     }
 
     private fun showModal(title: String, badge: String, anchorButton: View? = null) {
@@ -1861,29 +2098,12 @@ class PlaybackActivity : Activity() {
         btnSubtitles.isActivated = (anchorButton == btnSubtitles)
         btnAudioTrack.isActivated = (anchorButton == btnAudioTrack)
         btnInfo.isActivated = (anchorButton == btnInfo)
+        btnChapters.isActivated = (anchorButton == btnChapters)
         btnDvMode.isActivated = (anchorButton == btnDvMode)
 
         val density = resources.displayMetrics.density
         val screenW = resources.displayMetrics.widthPixels
         val screenH = resources.displayMetrics.heightPixels
-
-        // Determinar margen derecho:
-        // - Subtítulos: borde derecho del modal alineado con el borde derecho del círculo de Subtítulos (100dp)
-        // - Audio: borde derecho del modal alineado con el borde derecho del círculo de Audio (48dp)
-        val fallbackMarginEnd = when (anchorButton) {
-            btnSubtitles -> (100 * density).toInt()
-            else -> (48 * density).toInt()
-        }
-
-        val targetMarginEnd = if (anchorButton != null) {
-            val loc = IntArray(2)
-            anchorButton.getLocationOnScreen(loc)
-            val btnRight = loc[0] + anchorButton.width
-            val calculatedEnd = screenW - btnRight
-            if (calculatedEnd in 20..350) calculatedEnd else fallbackMarginEnd
-        } else {
-            fallbackMarginEnd
-        }
 
         // Determinar margen inferior: 14dp limpio por encima de los botones
         val targetBottomMargin = if (anchorButton != null) {
@@ -1896,11 +2116,59 @@ class PlaybackActivity : Activity() {
             (186 * density).toInt()
         }
 
-        (modalCard.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+        val lp = modalCard.layoutParams as FrameLayout.LayoutParams
+        val isLeftAnchored = (anchorButton == btnInfo || anchorButton == btnChapters || anchorButton == btnDvMode)
+
+        if (isLeftAnchored && anchorButton != null) {
+            lp.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.START
+            val loc = IntArray(2)
+            anchorButton.getLocationOnScreen(loc)
+            val btnLeft = loc[0]
+            val targetMarginStart = (btnLeft - (8 * density).toInt()).coerceAtLeast((32 * density).toInt())
+
+            if (modalOverlay.visibility == View.VISIBLE && lp.marginStart != targetMarginStart) {
+                val startMargin = lp.marginStart
+                modalCard.animate().cancel()
+                modalCard.translationX = (startMargin - targetMarginStart).toFloat()
+                lp.marginStart = targetMarginStart
+                lp.marginEnd = 0
+                lp.bottomMargin = targetBottomMargin
+                modalCard.layoutParams = lp
+                modalCard.animate()
+                    .translationX(0f)
+                    .setDuration(180)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
+            } else {
+                lp.marginStart = targetMarginStart
+                lp.marginEnd = 0
+                lp.bottomMargin = targetBottomMargin
+                modalCard.translationX = 0f
+                modalCard.layoutParams = lp
+            }
+            modalCard.pivotX = (30 * density)
+            modalCard.pivotY = (260 * density)
+        } else {
+            lp.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
+            val fallbackMarginEnd = when (anchorButton) {
+                btnSubtitles -> (100 * density).toInt()
+                else -> (48 * density).toInt()
+            }
+            val targetMarginEnd = if (anchorButton != null) {
+                val loc = IntArray(2)
+                anchorButton.getLocationOnScreen(loc)
+                val btnRight = loc[0] + anchorButton.width
+                val calculatedEnd = screenW - btnRight
+                if (calculatedEnd in 20..350) calculatedEnd else fallbackMarginEnd
+            } else {
+                fallbackMarginEnd
+            }
+
             if (modalOverlay.visibility == View.VISIBLE && lp.marginEnd != targetMarginEnd) {
                 val startMargin = lp.marginEnd
                 modalCard.animate().cancel()
                 modalCard.translationX = (startMargin - targetMarginEnd).toFloat()
+                lp.marginStart = 0
                 lp.marginEnd = targetMarginEnd
                 lp.bottomMargin = targetBottomMargin
                 modalCard.layoutParams = lp
@@ -1910,16 +2178,15 @@ class PlaybackActivity : Activity() {
                     .setInterpolator(android.view.animation.DecelerateInterpolator())
                     .start()
             } else {
+                lp.marginStart = 0
                 lp.marginEnd = targetMarginEnd
                 lp.bottomMargin = targetBottomMargin
                 modalCard.translationX = 0f
                 modalCard.layoutParams = lp
             }
+            modalCard.pivotX = (350 * density) - (20 * density)
+            modalCard.pivotY = (260 * density)
         }
-
-        // Configurar punto de origen de la animación (pivot) sobre el botón circular
-        modalCard.pivotX = (350 * density) - (20 * density) // Centro del botón (a 20dp del borde derecho de la tarjeta)
-        modalCard.pivotY = (260 * density) // Base inferior de la tarjeta
 
         topBar.animate().cancel()
         topBar.animate().alpha(0f).setDuration(160).start()
@@ -1950,6 +2217,7 @@ class PlaybackActivity : Activity() {
         btnSubtitles.isActivated = false
         btnAudioTrack.isActivated = false
         btnInfo.isActivated = false
+        btnChapters.isActivated = false
         btnDvMode.isActivated = false
 
         topBar.animate().cancel()
@@ -1968,6 +2236,7 @@ class PlaybackActivity : Activity() {
             when (lastModal) {
                 ModalType.SUBTITLES -> btnSubtitles.requestFocus()
                 ModalType.AUDIO -> btnAudioTrack.requestFocus()
+                ModalType.CHAPTERS -> btnChapters.requestFocus()
                 ModalType.DV_MODE -> btnDvMode.requestFocus()
                 ModalType.INFO -> btnInfo.requestFocus()
                 else -> timelineSeekBar.requestFocus()
@@ -2005,38 +2274,38 @@ class PlaybackActivity : Activity() {
     private fun getLanguageDisplayName(code: String): String {
         val clean = code.trim().lowercase(Locale.ROOT)
         when (clean) {
-            "lat", "es-419" -> return "Español (Latinoamérica)"
-            "spa", "es", "spanish" -> return "Español"
+            "lat", "es-419" -> return "Spanish (Latin America)"
+            "spa", "es", "spanish" -> return "Spanish"
             "eng", "en", "english" -> return "English"
-            "fra", "fre", "fr", "french" -> return "Français"
-            "deu", "ger", "de", "german" -> return "Deutsch"
-            "ita", "it", "italian" -> return "Italiano"
-            "jpn", "ja", "japanese" -> return "Japonés"
-            "por", "pt", "portuguese" -> return "Português"
-            "rus", "ru", "russian" -> return "Ruso"
-            "zho", "chi", "zh", "chinese" -> return "Chino"
-            "kor", "ko", "korean" -> return "Coreano"
-            "dan", "da", "danish" -> return "Danés"
-            "nld", "dut", "nl", "dutch" -> return "Holandés"
-            "swe", "sv", "swedish" -> return "Sueco"
-            "nor", "no", "norwegian" -> return "Noruego"
-            "fin", "fi", "finnish" -> return "Finlandés"
-            "pol", "pl", "polish" -> return "Polaco"
-            "ces", "cze", "cs", "czech" -> return "Checo"
-            "hun", "hu", "hungarian" -> return "Húngaro"
-            "ell", "gre", "el", "greek" -> return "Griego"
-            "ara", "ar", "arabic" -> return "Árabe"
-            "heb", "he", "hebrew" -> return "Hebreo"
+            "fra", "fre", "fr", "french" -> return "French"
+            "deu", "ger", "de", "german" -> return "German"
+            "ita", "it", "italian" -> return "Italian"
+            "jpn", "ja", "japanese" -> return "Japanese"
+            "por", "pt", "portuguese" -> return "Portuguese"
+            "rus", "ru", "russian" -> return "Russian"
+            "zho", "chi", "zh", "chinese" -> return "Chinese"
+            "kor", "ko", "korean" -> return "Korean"
+            "dan", "da", "danish" -> return "Danish"
+            "nld", "dut", "nl", "dutch" -> return "Dutch"
+            "swe", "sv", "swedish" -> return "Swedish"
+            "nor", "no", "norwegian" -> return "Norwegian"
+            "fin", "fi", "finnish" -> return "Finnish"
+            "pol", "pl", "polish" -> return "Polish"
+            "ces", "cze", "cs", "czech" -> return "Czech"
+            "hun", "hu", "hungarian" -> return "Hungarian"
+            "ell", "gre", "el", "greek" -> return "Greek"
+            "ara", "ar", "arabic" -> return "Arabic"
+            "heb", "he", "hebrew" -> return "Hebrew"
             "hin", "hi", "hindi" -> return "Hindi"
-            "tha", "th", "thai" -> return "Tailandés"
-            "tur", "tr", "turkish" -> return "Turco"
-            "vie", "vi", "vietnamese" -> return "Vietnamita"
-            "und" -> return "Desconocido"
+            "tha", "th", "thai" -> return "Thai"
+            "tur", "tr", "turkish" -> return "Turkish"
+            "vie", "vi", "vietnamese" -> return "Vietnamese"
+            "und" -> return "Unknown"
         }
         try {
             val loc = Locale.forLanguageTag(clean).takeIf { it.displayLanguage.isNotBlank() }
                 ?: Locale(clean)
-            val name = loc.getDisplayLanguage(Locale("es"))
+            val name = loc.getDisplayLanguage(Locale.ENGLISH)
             if (name.isNotBlank()) {
                 return name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
             }
@@ -2050,13 +2319,26 @@ class PlaybackActivity : Activity() {
                 closeModal()
                 return true
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && activeModalType == ModalType.SUBTITLES) {
-                openAudioModal()
-                return true
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                when (activeModalType) {
+                    ModalType.SUBTITLES -> { openAudioModal(); return true }
+                    ModalType.INFO -> { openChaptersModal(); return true }
+                    ModalType.CHAPTERS -> {
+                        if (btnDvMode.visibility == View.VISIBLE) {
+                            openDvModeModal()
+                            return true
+                        }
+                    }
+                    else -> {}
+                }
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && activeModalType == ModalType.AUDIO) {
-                openSubtitlesModal()
-                return true
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                when (activeModalType) {
+                    ModalType.AUDIO -> { openSubtitlesModal(); return true }
+                    ModalType.CHAPTERS -> { openInfoModal(); return true }
+                    ModalType.DV_MODE -> { openChaptersModal(); return true }
+                    else -> {}
+                }
             }
             return super.onKeyDown(keyCode, event)
         }
@@ -2079,7 +2361,7 @@ class PlaybackActivity : Activity() {
                     when (currentFocus) {
                         timelineSeekBar -> btnSubtitles.requestFocus()
                         btnSubtitles, btnAudioTrack -> btnBack.requestFocus()
-                        btnInfo, btnDvMode, btnLibrary -> timelineSeekBar.requestFocus()
+                        btnInfo, btnChapters, btnDvMode, btnLibrary -> timelineSeekBar.requestFocus()
                         else -> timelineSeekBar.requestFocus()
                     }
                     true

@@ -1,7 +1,7 @@
 package com.player.coremedia.player
 
 /**
- * Modos de procesamiento y transmutación de perfiles Dolby Vision / HDR10 para Remux 4K.
+ * Processing and transmute modes for Dolby Vision / HDR10 profiles on 4K Remux playback.
  */
 enum class DolbyVisionProcessingMode(
     val displayName: String,
@@ -9,36 +9,36 @@ enum class DolbyVisionProcessingMode(
     val description: String
 ) {
     /**
-     * Descarta el NAL 63 (Full Enhancement Layer - FEL) por SIMD C++20 Zero-Copy y
-     * transmuta la metadata dinámica RPU (NAL 62) a Perfil 8.1 (dvhe.08.06).
-     * Máxima compatibilidad en todos los Smart TVs Dolby Vision (Sony, TCL, Philips, LG, Shield TV).
+     * Discards NAL 63 (Full Enhancement Layer - FEL) via Zero-Copy C++20 SIMD and
+     * transmutes dynamic RPU metadata (NAL 62) to Profile 8.1 (dvhe.08.06).
+     * Maximum compatibility across all Dolby Vision Smart TVs (Sony, TCL, Philips, LG, Shield TV).
      */
     P8_TRANSMUTE(
-        "Dolby Vision P8.1 (Recomendado)",
+        "Dolby Vision P8.1 (Recommended)",
         "DOLBY VISION P8.1",
-        "Filtra FEL (NAL 63) y mantiene 100% de la RPU dinámica en Perfil 8.1."
+        "Filters FEL (NAL 63) and preserves 100% dynamic RPU metadata transmuted to Profile 8.1."
     ),
 
     /**
-     * Mantiene el identificador de Perfil 7 nativo (dvhe.07.06).
-     * Recomendado exclusivamente para películas con MEL (Minimal Enhancement Layer) sin sub-capa FEL
-     * en televisores o dispositivos cuyo hardware admita el contenedor dvhe.07 directamente.
+     * Retains native Profile 7 identifier (dvhe.07.06).
+     * Recommended exclusively for titles with MEL (Minimal Enhancement Layer) without FEL sub-layers
+     * on TVs or hardware players supporting dvhe.07 directly.
      */
     P7_MEL_DIRECT(
-        "Dolby Vision P7 Nativo (Solo MEL)",
+        "Dolby Vision P7 Native (MEL Only)",
         "DOLBY VISION P7 (MEL)",
-        "Transmite Perfil 7 nativo sin alterar el stream. Solo apto para películas MEL."
+        "Transmits native Profile 7 without modifying stream. Suitable for MEL titles on supported displays."
     ),
 
     /**
-     * Ignora completamente las capas NAL de metadatos Dolby Vision y decodifica la capa base
-     * HEVC Main 10 (BT.2020 / ST 2084 PQ) como HDR10 estándar.
-     * Ideal para televisores sin soporte Dolby Vision o para descartar problemas de mapeo dinámico.
+     * Bypasses Dolby Vision metadata NALs entirely and decodes the HEVC Main 10 base layer
+     * (BT.2020 / ST 2084 PQ) as standard HDR10.
+     * Ideal for HDR displays without Dolby Vision support or troubleshooting tone mapping.
      */
     FORCE_HDR10(
-        "Forzar Capa Base HDR10",
+        "Force HDR10 Base Layer",
         "HDR10 / BT.2020",
-        "Ignora metadatos dinámicos DV y reproduce en HDR10 PQ estándar (HEVC Main 10)."
+        "Bypasses Dolby Vision dynamic metadata and decodes standard HDR10 PQ (HEVC Main 10)."
     );
 
     companion object {

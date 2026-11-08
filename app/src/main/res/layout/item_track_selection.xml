@@ -25,7 +25,7 @@
         android:layout_marginEnd="10dp"
         android:duplicateParentState="true"
         android:visibility="invisible"
-        android:contentDescription="Seleccionado" />
+        android:contentDescription="Selected" />
 
     <!-- Track Title and Info -->
     <LinearLayout
@@ -40,7 +40,7 @@
             android:id="@+id/tvTrackTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Nombre de Pista"
+            android:text="Track Title"
             android:textColor="@color/apple_sheet_text_selector"
             android:textSize="13sp"
             android:duplicateParentState="true"
@@ -54,7 +54,7 @@
             android:id="@+id/tvTrackSubtext"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Detalle técnico"
+            android:text="Technical Details"
             android:textColor="@color/apple_sheet_subtext_selector"
             android:textSize="11sp"
             android:duplicateParentState="true"

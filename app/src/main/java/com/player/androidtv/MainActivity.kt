@@ -75,11 +75,11 @@ class MainActivity : Activity() {
             title = "RAIDERS OF THE LOST ARK",
             year = "1981",
             duration = "1h 55m",
-            genre = "Movie  ·  Acción  ·  Aventura",
+            genre = "Movie  ·  Action  ·  Adventure",
             size = "56.73 GB Remux",
             videoCodec = "DOLBY VISION P8.1",
             audioCodec = "DOLBY ATMOS",
-            synopsis = "El intrépido arqueólogo Indiana Jones emprende una misión global para recuperar la legendaria Arca de la Alianza antes de que caiga en manos de las fuerzas nazis.",
+            synopsis = "Archaeology professor Indiana Jones ventures across the globe to uncover the legendary Ark of the Covenant before insidious Nazi forces can seize its ancient power.",
             actors = "Harrison Ford, Karen Allen, Paul Freeman, John Rhys-Davies",
             director = "Steven Spielberg",
             backdropAsset = "backdrops/raiders.jpg",
@@ -90,13 +90,13 @@ class MainActivity : Activity() {
             title = "THE NIGHTMARE BEFORE CHRISTMAS",
             year = "1993",
             duration = "1h 16m",
-            genre = "Movie  ·  Animación  ·  Fantasía",
+            genre = "Movie  ·  Animation  ·  Fantasy",
             size = "49.02 GB Remux",
             videoCodec = "DOLBY VISION P8.1",
             audioCodec = "DTS-HD MASTER AUDIO 7.1",
-            synopsis = "Jack Skellington, el rey de las calabazas de Ciudad de Halloween, descubre la luminosa Ciudad de la Navidad y decide apoderarse de la festividad con inesperadas consecuencias.",
+            synopsis = "Jack Skellington, the Pumpkin King of Halloween Town, accidentally stumbles into Christmas Town and plots to take over the festive holiday with delightfully chaotic results.",
             actors = "Danny Elfman, Chris Sarandon, Catherine O'Hara, William Hickey",
-            director = "Henry Selick (Historia: Tim Burton)",
+            director = "Henry Selick (Story: Tim Burton)",
             backdropAsset = "backdrops/nightmare.jpg",
             cardAsset = "backdrops/nightmare_card.jpg",
             itemId = "ab56ab19-3dea-37a4-d273-c4db2be3678e"
@@ -105,11 +105,11 @@ class MainActivity : Activity() {
             title = "APOCALYPSE NOW",
             year = "1979",
             duration = "2h 27m",
-            genre = "Movie  ·  Bélico  ·  Drama",
+            genre = "Movie  ·  War  ·  Drama",
             size = "30.33 GB Remux",
             videoCodec = "1080P BLU-RAY",
             audioCodec = "DOLBY TRUEHD",
-            synopsis = "Durante la Guerra de Vietnam, el capitán Willard recibe la misión clasificada de remontar el río y liquidar al coronel Kurtz, un oficial renegado que ha enloquecido.",
+            synopsis = "During the Vietnam War, Captain Willard is assigned a classified mission to journey deep into Cambodia and terminate rogue Special Forces Colonel Kurtz.",
             actors = "Marlon Brando, Martin Sheen, Robert Duvall, Laurence Fishburne",
             director = "Francis Ford Coppola",
             backdropAsset = "backdrops/apocalypse.jpg",
@@ -120,11 +120,11 @@ class MainActivity : Activity() {
             title = "PROJECT HAIL MARY",
             year = "2026",
             duration = "2h 35m",
-            genre = "Movie  ·  Ciencia Ficción  ·  Aventura",
+            genre = "Movie  ·  Sci-Fi  ·  Adventure",
             size = "81.29 GB Remux",
             videoCodec = "DOLBY VISION P7 MEL",
             audioCodec = "DOLBY ATMOS",
-            synopsis = "El único superviviente de una desesperada misión espacial interestelar despierta sin recuerdos para descubrir que de él depende salvar la supervivencia del planeta Tierra.",
+            synopsis = "The sole survivor of a desperate interstellar mission awakens with amnesia, discovering the fate of humanity and Earth's survival rests squarely on his shoulders.",
             actors = "Ryan Gosling, Sandra Hüller, Milana Vayntrub",
             director = "Phil Lord, Christopher Miller",
             backdropAsset = "backdrops/hailmary.jpg",
@@ -135,11 +135,11 @@ class MainActivity : Activity() {
             title = "WHIPLASH",
             year = "2014",
             duration = "1h 46m",
-            genre = "Movie  ·  Drama  ·  Música",
+            genre = "Movie  ·  Drama  ·  Music",
             size = "23.46 GB Remux",
             videoCodec = "1080P AVC",
             audioCodec = "DTS-HD MASTER AUDIO",
-            synopsis = "Un joven y ambicioso baterista de jazz ingresa al prestigioso conservatorio Shaffer, donde es empujado más allá de sus límites físicos y mentales por un despiadado instructor.",
+            synopsis = "An ambitious young jazz drummer enters an elite music conservatory, where he is driven past human limits by a ruthless and uncompromising instructor.",
             actors = "Miles Teller, J.K. Simmons, Paul Reiser, Melissa Benoist",
             director = "Damien Chazelle",
             backdropAsset = "backdrops/whiplash.jpg",
@@ -404,7 +404,7 @@ class MainActivity : Activity() {
             }
         }
         btnPlayDirect.text = movie.duration
-        tvHeroCast.text = "Reparto  ${movie.actors}"
+        tvHeroCast.text = "Cast  ${movie.actors}"
         tvHeroDirector.text = "Director  ${movie.director}"
 
         // 2. Debounce del crossfade de fondo para navegación 60 FPS fluida en Android TV
@@ -456,7 +456,20 @@ class MainActivity : Activity() {
             putExtra("title", movie.title)
             putExtra("MOVIE_TITLE", movie.title)
             putExtra("MOVIE_YEAR", movie.year)
+            putExtra("MOVIE_DURATION", movie.duration)
+            putExtra("MOVIE_GENRE", movie.genre)
+            putExtra("MOVIE_SYNOPSIS", movie.synopsis)
+            putExtra("MOVIE_DIRECTOR", movie.director)
+            putExtra("MOVIE_ACTORS", movie.actors)
+            putExtra("MOVIE_SIZE", movie.size)
+            putExtra("MOVIE_VIDEO_CODEC", movie.videoCodec)
+            putExtra("MOVIE_AUDIO_CODEC", movie.audioCodec)
         }
-        startActivity(intent)
+        val options = android.app.ActivityOptions.makeCustomAnimation(
+            this,
+            R.anim.cinematic_fade_in,
+            R.anim.cinematic_zoom_out
+        )
+        startActivity(intent, options.toBundle())
     }
 }
