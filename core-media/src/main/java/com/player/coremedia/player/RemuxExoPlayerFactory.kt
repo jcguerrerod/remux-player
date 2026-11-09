@@ -74,40 +74,41 @@ object RemuxExoPlayerFactory {
             } == true
         } else false
 
-        val effectiveAudioCapabilities = if (!hasHdmiOutput) {
-            Log.i(TAG, "Audio output: TV speakers detected (No HDMI/eARC receiver). Decoding DTS/DTS-HD to hardware PCM.")
-            AudioCapabilities(
-                intArrayOf(
-                    AudioFormat.ENCODING_PCM_16BIT,
-                    AudioFormat.ENCODING_PCM_FLOAT,
-                    AudioFormat.ENCODING_AC3,
-                    AudioFormat.ENCODING_E_AC3
-                ),
-                8
-            )
-        } else {
-            Log.i(TAG, "Audio output: External HDMI/eARC receiver detected. Enabling full passthrough.")
-            AudioCapabilities.getCapabilities(context)
+        val baseCaps = AudioCapabilities.getCapabilities(context)
+        val supportedEncodings = mutableSetOf(
+            AudioFormat.ENCODING_PCM_16BIT,
+            AudioFormat.ENCODING_PCM_FLOAT,
+            AudioFormat.ENCODING_AC3,
+            AudioFormat.ENCODING_E_AC3,
+            AudioFormat.ENCODING_DTS,
+            AudioFormat.ENCODING_DTS_HD_MA
+        )
+        if (hasHdmiOutput || baseCaps.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)) {
+            supportedEncodings.add(AudioFormat.ENCODING_DOLBY_TRUEHD)
         }
+        val effectiveAudioCapabilities = AudioCapabilities(
+            supportedEncodings.toIntArray(),
+            8
+        )
 
         val supportsTrueHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)
         val supportsDtsHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS_HD_MA)
         val supportsDts = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS)
         val supportsEac3 = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_E_AC3)
 
-        Log.d(TAG, "Audio Passthrough (hasHdmi=$hasHdmiOutput): TrueHD=$supportsTrueHd, DTS-HD=$supportsDtsHd, DTS=$supportsDts, E-AC3=$supportsEac3")
+        Log.d(TAG, "Audio Capabilities (hasHdmi=$hasHdmiOutput): TrueHD=$supportsTrueHd, DTS-HD=$supportsDtsHd, DTS=$supportsDts, E-AC3=$supportsEac3")
 
         val trackSelector = DefaultTrackSelector(context)
         val paramsBuilder = trackSelector.buildUponParameters()
             .setExceedRendererCapabilitiesIfNecessary(false)
-            // Prioritize audio formats fully compatible with TV hardware decoding (DD 5.1 / DD+)
-            // to avoid buffer underruns on internal TV speakers when no TrueHD AVR is on HDMI.
+            // Prioritize lossless master formats (TrueHD, DTS-HD MA) over lossy formats
             .setPreferredAudioMimeTypes(
+                MimeTypes.AUDIO_TRUEHD,
+                MimeTypes.AUDIO_DTS_HD,
                 MimeTypes.AUDIO_E_AC3_JOC,
                 MimeTypes.AUDIO_E_AC3,
-                MimeTypes.AUDIO_AC3,
-                MimeTypes.AUDIO_TRUEHD,
-                MimeTypes.AUDIO_DTS_HD
+                MimeTypes.AUDIO_DTS,
+                MimeTypes.AUDIO_AC3
             )
             .setSelectUndeterminedTextLanguage(true)
 
@@ -331,24 +332,33 @@ object RemuxExoPlayerFactory {
                                 Log.i(TAG, "Configurado decodificador nativo Dolby Vision Perfil 8.1")
                             }
                         } else if (codecMimeType == MimeTypes.VIDEO_H265) {
+                            val codecs = format.codecs ?: ""
+                            val isMain10Profile = codecs.contains("hvc1.2") ||
+                                    codecs.contains("hev1.2") ||
+                                    codecs.startsWith("hvc1.2") ||
+                                    codecs.startsWith("hev1.2") ||
+                                    codecs.contains(".2.")
                             val isHdr = format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 ||
                                     format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG ||
+                                    format.colorInfo?.colorSpace == C.COLOR_SPACE_BT2020 ||
+                                    isMain10Profile ||
                                     isCurrentStreamDv
-                            val supportsMain10 = codecInfo?.profileLevels?.any {
-                                it.profile == MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10
-                            } == true
 
-                            if (supportsMain10 && isHdr && !isEmulator) {
+                            if (isHdr && !isEmulator) {
                                 mediaFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10)
                                 try {
                                     mediaFormat.setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT2020)
-                                    mediaFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_ST2084)
+                                    val transfer = if (format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG) {
+                                        MediaFormat.COLOR_TRANSFER_HLG
+                                    } else {
+                                        MediaFormat.COLOR_TRANSFER_ST2084
+                                    }
+                                    mediaFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, transfer)
                                     mediaFormat.setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
                                 } catch (_: Exception) {}
-                                Log.i(TAG, "Configurado decodificador HEVC para capa base HDR10 PQ (Main 10)")
+                                Log.i(TAG, "Configured HEVC hardware decoder for 10-bit HDR (Main 10 ST2084/BT2020)")
                             } else {
-                                Log.i(TAG, "Decodificador HEVC en modo compatible (Main 8-bit / SDR)")
-                                mediaFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain)
+                                Log.i(TAG, "HEVC standard SDR mode (8-bit Rec.709)")
                             }
                         } else {
                             // Para AVC / H.264 (MimeTypes.VIDEO_H264 / video/avc) y otros códecs:
@@ -389,7 +399,7 @@ object RemuxExoPlayerFactory {
 
                 return DefaultAudioSink.Builder(context)
                     .setAudioCapabilities(effectiveAudioCapabilities)
-                    .setEnableFloatOutput(false)
+                    .setEnableFloatOutput(true)
                     .setAudioTrackBufferSizeProvider(bufferSizeProvider)
                     .build()
             }
@@ -417,18 +427,18 @@ object RemuxExoPlayerFactory {
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
-        // Ultra-Buffer Allocator: 96 MB dedicated RAM buffer for high-bitrate 4K UHD Blu-ray Remux
+        // Ultra-Buffer Allocator: 192 MB dedicated RAM buffer for high-bitrate 4K UHD Blu-ray Remux
         val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setAllocator(allocator)
-            .setTargetBufferBytes(96 * 1024 * 1024) // 96 MB dedicated buffer
+            .setTargetBufferBytes(192 * 1024 * 1024) // 192 MB dedicated buffer
             .setBufferDurationsMs(
                 25000, // minBufferMs: buffer at least 25s ahead
-                80000, // maxBufferMs: buffer up to 80s ahead
-                1500,  // bufferForPlaybackMs: quick 1.5s start
-                3000   // bufferForPlaybackAfterRebufferMs: 3.0s after rebuffer
+                75000, // maxBufferMs: buffer up to 75s ahead
+                2500,  // bufferForPlaybackMs: quick 2.5s start
+                5000   // bufferForPlaybackAfterRebufferMs: 5.0s after rebuffer
             )
-            .setPrioritizeTimeOverSizeThresholds(false)
+            .setPrioritizeTimeOverSizeThresholds(true)
             .setBackBuffer(30000, false) // 30s back buffer for instant -10s quick skips
             .build()
 

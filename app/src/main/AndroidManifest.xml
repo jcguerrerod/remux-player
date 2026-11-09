@@ -20,6 +20,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Leanback.Fullscreen"
         android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="false"
         android:banner="@android:drawable/sym_def_app_icon">
@@ -42,6 +43,7 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:screenOrientation="landscape"
+            android:colorMode="hdr"
             android:theme="@style/Theme.Leanback.Fullscreen">
 
             <!-- 1. Interceptar intents HTTP/HTTPS de Jellyfin, Emby, Plex -->

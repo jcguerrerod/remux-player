@@ -582,6 +582,13 @@ class PlaybackActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            try {
+                window.colorMode = android.content.pm.ActivityInfo.COLOR_MODE_HDR
+            } catch (e: Exception) {
+                Log.w("PlaybackActivity", "Could not set COLOR_MODE_HDR on window", e)
+            }
+        }
         setContentView(R.layout.activity_playback)
 
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -740,6 +747,9 @@ class PlaybackActivity : Activity() {
 
     private fun bindViews() {
         playerView = findViewById(R.id.playerView)
+        (playerView.videoSurfaceView as? android.view.SurfaceView)?.holder?.apply {
+            setFormat(android.graphics.PixelFormat.TRANSLUCENT)
+        }
         hudOverlay = findViewById(R.id.hudOverlay)
         topBar = findViewById(R.id.topBar)
         llPlayerHeaderRow = findViewById(R.id.llPlayerHeaderRow)
@@ -1833,24 +1843,26 @@ class PlaybackActivity : Activity() {
                     when {
                         mime.contains("truehd", ignoreCase = true) -> {
                             badgePrimary = "DOLBY ATMOS"
-                            score += 5
-                        }
-                        mime.contains("eac3", ignoreCase = true) -> {
-                            badgePrimary = "E-AC3"
-                            score += 4
-                        }
-                        mime.contains("ac3", ignoreCase = true) -> {
-                            badgePrimary = "DOLBY AUDIO"
-                            score += 3
+                            score += 15
                         }
                         mime.contains("dts", ignoreCase = true) -> {
                             badgePrimary = "DTS-HD MA"
-                            score += 3
+                            score += 14
+                        }
+                        mime.contains("eac3", ignoreCase = true) -> {
+                            badgePrimary = "E-AC3"
+                            score += 8
+                        }
+                        mime.contains("ac3", ignoreCase = true) -> {
+                            badgePrimary = "DOLBY AUDIO"
+                            score += 5
                         }
                         else -> {
                             badgePrimary = "PCM"
+                            score += 10
                         }
                     }
+                    score += format.channelCount * 2
 
                     trackItems.add(
                         AudioTrackItem(group, i, format, lang, langDisplay, isSelected, titleText, badgePrimary, badgeSecondary, score)
