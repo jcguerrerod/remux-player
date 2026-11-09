@@ -104,6 +104,10 @@ object ClientSideFrameExtractor {
     @Synchronized
     fun setDataSource(url: String) {
         if (url.isBlank() || (currentSourceUrl == url && retriever != null)) return
+        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
+            currentSourceUrl = url
+            return
+        }
 
         currentSourceUrl = url
         isInitializing = true
@@ -190,6 +194,10 @@ object ClientSideFrameExtractor {
                     prefetchAround(url, timeMs, direction)
                 }
             }
+            return false
+        }
+
+        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
             return false
         }
 

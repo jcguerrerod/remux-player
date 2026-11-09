@@ -1057,6 +1057,11 @@ class PlaybackActivity : Activity() {
                 }
             }
 
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Log.e("PlaybackActivity", "Playback error occurred: ${error.errorCodeName} (${error.errorCode})", error)
+                loadingSpinner.visibility = View.GONE
+            }
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) {
                     scheduleHudHide()
