@@ -43,7 +43,6 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:screenOrientation="landscape"
-            android:colorMode="hdr"
             android:theme="@style/Theme.Leanback.Fullscreen">
 
             <!-- 1. Interceptar intents HTTP/HTTPS de Jellyfin, Emby, Plex -->

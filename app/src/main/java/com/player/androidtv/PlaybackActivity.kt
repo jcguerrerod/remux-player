@@ -582,13 +582,7 @@ class PlaybackActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            try {
-                window.colorMode = android.content.pm.ActivityInfo.COLOR_MODE_HDR
-            } catch (e: Exception) {
-                Log.w("PlaybackActivity", "Could not set COLOR_MODE_HDR on window", e)
-            }
-        }
+
         setContentView(R.layout.activity_playback)
 
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -747,9 +741,6 @@ class PlaybackActivity : Activity() {
 
     private fun bindViews() {
         playerView = findViewById(R.id.playerView)
-        (playerView.videoSurfaceView as? android.view.SurfaceView)?.holder?.apply {
-            setFormat(android.graphics.PixelFormat.TRANSLUCENT)
-        }
         hudOverlay = findViewById(R.id.hudOverlay)
         topBar = findViewById(R.id.topBar)
         llPlayerHeaderRow = findViewById(R.id.llPlayerHeaderRow)

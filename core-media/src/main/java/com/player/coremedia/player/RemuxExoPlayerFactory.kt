@@ -427,19 +427,19 @@ object RemuxExoPlayerFactory {
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
-        // Ultra-Buffer Allocator: 64 MB dedicated RAM buffer for high-bitrate 4K UHD Blu-ray Remux
+        // Calibrated 96 MB RAM buffer with 0s back buffer for zero-copy 4K UHD Blu-ray Remux
         val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setAllocator(allocator)
-            .setTargetBufferBytes(64 * 1024 * 1024) // 64 MB dedicated buffer (prevents Android TV lowmemorykiller)
+            .setTargetBufferBytes(96 * 1024 * 1024) // 96 MB dedicated buffer
             .setBufferDurationsMs(
-                15000, // minBufferMs: buffer 15s ahead
-                35000, // maxBufferMs: buffer up to 35s ahead
-                2500,  // bufferForPlaybackMs: quick 2.5s start
-                5000   // bufferForPlaybackAfterRebufferMs: 5.0s after rebuffer
+                20000, // minBufferMs: buffer 20s ahead
+                50000, // maxBufferMs: buffer up to 50s ahead
+                2000,  // bufferForPlaybackMs: quick 2.0s start
+                4000   // bufferForPlaybackAfterRebufferMs: 4.0s after rebuffer
             )
             .setPrioritizeTimeOverSizeThresholds(false)
-            .setBackBuffer(0, false) // 0s back buffer: instantly free already-played 4K frames to avoid OOM
+            .setBackBuffer(0, false) // 0s back buffer: instantly free already-played 4K frames to prevent OOM
             .build()
 
         return ExoPlayer.Builder(context, renderersFactory)
