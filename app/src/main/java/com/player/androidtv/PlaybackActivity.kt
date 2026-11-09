@@ -1915,24 +1915,6 @@ class PlaybackActivity : Activity() {
             llModalListContainer.addView(itemView)
         }
 
-        // Option Apple TV: Night Mode and Clear Dialogue
-        val nightModeItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        nightModeItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvNightTitle = nightModeItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvNightBadge = nightModeItem.findViewById<TextView>(R.id.tvTrackBadge)
-        val tvNightSub = nightModeItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        tvNightTitle.text = "Night Mode / Clear Dialogue"
-        nightModeItem.setOnFocusChangeListener { _, hasFocus ->
-            tvNightTitle.isSelected = hasFocus
-        }
-        tvNightSub.text = "Dynamic EBU R128 loudness compression for TV speakers"
-        tvNightSub.visibility = View.VISIBLE
-        tvNightBadge.text = "EBU R128"
-        tvNightBadge.visibility = View.VISIBLE
-        nightModeItem.setOnClickListener {
-            // Activate EBU R128 compression
-        }
-        llModalListContainer.addView(nightModeItem)
 
         // Focus on currently active audio track
         val focusTarget = (0 until llModalListContainer.childCount)
