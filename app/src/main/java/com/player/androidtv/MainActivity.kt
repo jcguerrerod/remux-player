@@ -77,7 +77,7 @@ class MainActivity : Activity() {
             year = "1981",
             duration = "1h 55m",
             genre = "Movie  ·  Action  ·  Adventure",
-            size = "56.73 GB Remux",
+            size = "56.73 GB",
             videoCodec = "DOLBY VISION P8.1",
             audioCodec = "DOLBY ATMOS",
             synopsis = "Archaeology professor Indiana Jones ventures across the globe to uncover the legendary Ark of the Covenant before insidious Nazi forces can seize its ancient power.",
@@ -92,7 +92,7 @@ class MainActivity : Activity() {
             year = "1993",
             duration = "1h 16m",
             genre = "Movie  ·  Animation  ·  Fantasy",
-            size = "49.02 GB Remux",
+            size = "49.02 GB",
             videoCodec = "DOLBY VISION P8.1",
             audioCodec = "DTS-HD MASTER AUDIO 7.1",
             synopsis = "Jack Skellington, the Pumpkin King of Halloween Town, accidentally stumbles into Christmas Town and plots to take over the festive holiday with delightfully chaotic results.",
@@ -107,7 +107,7 @@ class MainActivity : Activity() {
             year = "1979",
             duration = "2h 27m",
             genre = "Movie  ·  War  ·  Drama",
-            size = "30.33 GB Remux",
+            size = "30.33 GB",
             videoCodec = "1080P BLU-RAY",
             audioCodec = "DOLBY TRUEHD",
             synopsis = "During the Vietnam War, Captain Willard is assigned a classified mission to journey deep into Cambodia and terminate rogue Special Forces Colonel Kurtz.",
@@ -122,7 +122,7 @@ class MainActivity : Activity() {
             year = "2026",
             duration = "2h 35m",
             genre = "Movie  ·  Sci-Fi  ·  Adventure",
-            size = "81.29 GB Remux",
+            size = "81.29 GB",
             videoCodec = "DOLBY VISION P7 MEL",
             audioCodec = "DOLBY ATMOS",
             synopsis = "The sole survivor of a desperate interstellar mission awakens with amnesia, discovering the fate of humanity and Earth's survival rests squarely on his shoulders.",
@@ -137,7 +137,7 @@ class MainActivity : Activity() {
             year = "2014",
             duration = "1h 46m",
             genre = "Movie  ·  Drama  ·  Music",
-            size = "23.46 GB Remux",
+            size = "23.46 GB",
             videoCodec = "1080P AVC",
             audioCodec = "DTS-HD MASTER AUDIO",
             synopsis = "An ambitious young jazz drummer enters an elite music conservatory, where he is driven past human limits by a ruthless and uncompromising instructor.",
@@ -152,7 +152,7 @@ class MainActivity : Activity() {
             year = "2026",
             duration = "2h 52m",
             genre = "Movie  •  Sci-Fi  •  Adventure",
-            size = "88.25 GB Remux",
+            size = "88.25 GB",
             videoCodec = "4K HDR10",
             audioCodec = "DTS-HD MASTER AUDIO 5.1",
             synopsis = "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
@@ -471,7 +471,9 @@ class MainActivity : Activity() {
         tvMetadataText.text = "${movie.year}  ·  ${movie.duration}  ·  ${movie.size}"
 
         val is4k = movie.videoCodec.contains("4K", ignoreCase = true) ||
-                   (movie.size.contains("Remux", ignoreCase = true) && !isSdr)
+                   movie.videoCodec.contains("2160", ignoreCase = true) ||
+                   movie.videoCodec.contains("VISION", ignoreCase = true) ||
+                   (movie.videoCodec.contains("HDR", ignoreCase = true) && !isSdr)
         badgeResolution.text = if (is4k) "4K" else "HD"
         badgeResolution.visibility = View.VISIBLE
 

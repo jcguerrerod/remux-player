@@ -135,7 +135,7 @@ class PlaybackActivity : Activity() {
     private var movieSynopsis: String = ""
     private var movieDirector: String = "Steven Spielberg"
     private var movieActors: String = "Harrison Ford, Karen Allen"
-    private var movieSize: String = "56.73 GB Remux"
+    private var movieSize: String = "56.73 GB"
     private var movieVideoCodec: String = "DOLBY VISION P8.1"
     private var movieAudioCodec: String = "DOLBY ATMOS"
     private lateinit var btnChapters: Button
@@ -667,7 +667,7 @@ class PlaybackActivity : Activity() {
                 movieSynopsis = "Archeologist and adventurer Indiana Jones is hired by the US government to find the Ark of the Covenant before the Nazis obtain its awesome powers."
                 movieDirector = "Steven Spielberg"
                 movieActors = "Harrison Ford, Karen Allen, Paul Freeman"
-                movieSize = "56.73 GB Remux"
+                movieSize = "56.73 GB"
                 movieVideoCodec = "DOLBY VISION P8.1"
                 movieAudioCodec = "DOLBY ATMOS"
             } else if (title.contains("Nightmare", ignoreCase = true)) {
@@ -678,7 +678,7 @@ class PlaybackActivity : Activity() {
                 movieSynopsis = "Jack Skellington, king of Halloween Town, discovers Christmas Town, but his attempts to bring Christmas to his home cause confusion and danger."
                 movieDirector = "Henry Selick (Story: Tim Burton)"
                 movieActors = "Danny Elfman, Chris Sarandon, Catherine O'Hara"
-                movieSize = "42.15 GB Remux"
+                movieSize = "42.15 GB"
                 movieVideoCodec = "DOLBY VISION P8.1"
                 movieAudioCodec = "DOLBY TRUEHD ATMOS"
             } else if (title.contains("Apocalypse", ignoreCase = true)) {
@@ -689,7 +689,7 @@ class PlaybackActivity : Activity() {
                 movieSynopsis = "During the Vietnam War, Captain Willard is assigned a classified mission to journey deep into Cambodia and terminate rogue Special Forces Colonel Kurtz."
                 movieDirector = "Francis Ford Coppola"
                 movieActors = "Marlon Brando, Martin Sheen, Robert Duvall, Laurence Fishburne"
-                movieSize = "30.33 GB Remux"
+                movieSize = "30.33 GB"
                 movieVideoCodec = "1080P BLU-RAY"
                 movieAudioCodec = "DOLBY TRUEHD"
             } else if (title.contains("Hail Mary", ignoreCase = true) || title.contains("Hail", ignoreCase = true)) {
@@ -700,7 +700,7 @@ class PlaybackActivity : Activity() {
                 movieSynopsis = "The sole survivor of a desperate interstellar mission awakens with amnesia, discovering the fate of humanity and Earth's survival rests squarely on his shoulders."
                 movieDirector = "Phil Lord, Christopher Miller"
                 movieActors = "Ryan Gosling, Sandra Hüller, Milana Vayntrub"
-                movieSize = "81.29 GB Remux"
+                movieSize = "81.29 GB"
                 movieVideoCodec = "DOLBY VISION P7 MEL"
                 movieAudioCodec = "DOLBY ATMOS"
             } else if (title.contains("Whiplash", ignoreCase = true)) {
@@ -711,7 +711,7 @@ class PlaybackActivity : Activity() {
                 movieSynopsis = "An ambitious young jazz drummer enters an elite music conservatory, where he is driven past human limits by a ruthless and uncompromising instructor."
                 movieDirector = "Damien Chazelle"
                 movieActors = "Miles Teller, J.K. Simmons, Paul Reiser, Melissa Benoist"
-                movieSize = "23.46 GB Remux"
+                movieSize = "23.46 GB"
                 movieVideoCodec = "1080P AVC"
                 movieAudioCodec = "DTS-HD MASTER AUDIO"
             }
@@ -733,7 +733,7 @@ class PlaybackActivity : Activity() {
             movieSynopsis = "Archeologist and adventurer Indiana Jones is hired by the US government to find the Ark of the Covenant before the Nazis obtain its awesome powers."
             movieDirector = "Steven Spielberg"
             movieActors = "Harrison Ford, Karen Allen, Paul Freeman"
-            movieSize = "56.73 GB Remux"
+            movieSize = "56.73 GB"
             movieVideoCodec = "DOLBY VISION P8.1"
             movieAudioCodec = "DOLBY ATMOS"
         }
@@ -2426,19 +2426,19 @@ class PlaybackActivity : Activity() {
 
         when (currentDynamicRange) {
             VideoDynamicRange.DOLBY_VISION -> {
-                tvVidTitle.text = "Video: 4K Dolby Vision Remux Direct Play"
+                tvVidTitle.text = "Video: 4K Dolby Vision Direct Play"
                 tvVidSub.text = "Direct HW decode (HEVC Main 10 / NAL 62 $currentDvProfile)"
                 tvVidSec.text = "HEVC"
                 tvVidBadge.text = currentDvMode.badgeText
             }
             VideoDynamicRange.HDR10 -> {
-                tvVidTitle.text = "Video: 4K HDR10 Remux Direct Play"
+                tvVidTitle.text = "Video: 4K HDR10 Direct Play"
                 tvVidSub.text = "Direct HW decode (HEVC Main 10 / SMPTE ST 2084 PQ)"
                 tvVidSec.text = "HEVC"
                 tvVidBadge.text = "ST 2084"
             }
             VideoDynamicRange.HLG -> {
-                tvVidTitle.text = "Video: 4K HLG Remux Direct Play"
+                tvVidTitle.text = "Video: 4K HLG Direct Play"
                 tvVidSub.text = "Direct HW decode (HEVC Main 10 / BT.2100 HLG)"
                 tvVidSec.text = "HEVC"
                 tvVidBadge.text = "BT.2100"
