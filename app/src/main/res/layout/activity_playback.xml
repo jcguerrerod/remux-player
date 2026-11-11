@@ -272,7 +272,7 @@
                     android:thumb="@drawable/seekbar_thumb_apple"
                     android:splitTrack="false"
                     android:focusable="true"
-                    android:nextFocusDown="@id/btnInfo"
+                    android:nextFocusDown="@id/btnChapters"
                     android:nextFocusUp="@id/btnSubtitles">
                     <requestFocus />
                 </SeekBar>
@@ -364,7 +364,7 @@
                 </LinearLayout>
             </RelativeLayout>
 
-            <!-- ROW 3: APPLE TV PILL ACTIONS (Info, Chapters, Dolby Vision, Library) -->
+            <!-- ROW 3: APPLE TV PILL ACTIONS (Chapters, Dolby Vision, Library) -->
             <LinearLayout
                 android:id="@+id/llActionsRow"
                 android:layout_width="match_parent"
@@ -375,26 +375,9 @@
 
                 <!-- Action Pills on the Left -->
                 <Button
-                    android:id="@+id/btnInfo"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:background="@drawable/bg_apple_tv_pill_secondary"
-                    android:text="Info"
-                    android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:textAllCaps="false"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:focusable="true"
-                    android:nextFocusUp="@id/timelineSeekBar"
-                    android:nextFocusRight="@id/btnChapters" />
-
-                <Button
                     android:id="@+id/btnChapters"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:layout_marginStart="10dp"
                     android:background="@drawable/bg_apple_tv_pill_secondary"
                     android:text="Chapters"
                     android:textColor="@color/apple_btn_text_selector"
@@ -405,7 +388,6 @@
                     android:paddingEnd="16dp"
                     android:focusable="true"
                     android:nextFocusUp="@id/timelineSeekBar"
-                    android:nextFocusLeft="@id/btnInfo"
                     android:nextFocusRight="@id/btnDvMode" />
 
                 <Button

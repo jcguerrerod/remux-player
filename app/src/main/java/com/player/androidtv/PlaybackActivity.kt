@@ -93,7 +93,6 @@ class PlaybackActivity : Activity() {
 
     // Apple TV Transport and Actions Buttons
     private lateinit var btnBack: ImageButton
-    private lateinit var btnInfo: Button
     private lateinit var btnDvMode: Button
     private lateinit var btnLibrary: Button
     private lateinit var btnSubtitles: ImageButton
@@ -118,7 +117,7 @@ class PlaybackActivity : Activity() {
     private var currentDynamicRange = VideoDynamicRange.SDR
     private var currentDvProfile = "P8.1"
 
-    private enum class ModalType { NONE, SUBTITLES, AUDIO, CHAPTERS, DV_MODE, INFO }
+    private enum class ModalType { NONE, SUBTITLES, AUDIO, CHAPTERS, DV_MODE }
     private var activeModalType = ModalType.NONE
 
     private lateinit var modalOverlay: View
@@ -768,7 +767,6 @@ class PlaybackActivity : Activity() {
         tvScrubSpeedRight = findViewById(R.id.tvScrubSpeedRight)
 
         btnBack = findViewById(R.id.btnBack)
-        btnInfo = findViewById(R.id.btnInfo)
         btnChapters = findViewById(R.id.btnChapters)
         btnDvMode = findViewById(R.id.btnDvMode)
         btnLibrary = findViewById(R.id.btnLibrary)
@@ -870,10 +868,6 @@ class PlaybackActivity : Activity() {
     private fun setupListeners() {
         btnBack.setOnClickListener {
             finish()
-        }
-
-        btnInfo.setOnClickListener {
-            openInfoModal()
         }
 
         btnChapters.setOnClickListener {
@@ -1216,7 +1210,7 @@ class PlaybackActivity : Activity() {
                         btnBack.requestFocus()
                         return true
                     }
-                    if (focus == btnInfo || focus == btnChapters || focus == btnDvMode || focus == btnLibrary) {
+                    if (focus == btnChapters || focus == btnDvMode || focus == btnLibrary) {
                         timelineSeekBar.requestFocus()
                         return true
                     }
@@ -1235,7 +1229,7 @@ class PlaybackActivity : Activity() {
                         return true
                     }
                     if (focus == timelineSeekBar) {
-                        btnInfo.requestFocus()
+                        btnChapters.requestFocus()
                         return true
                     }
                 }
@@ -1262,8 +1256,7 @@ class PlaybackActivity : Activity() {
                                 return true
                             }
                             btnDvMode -> { btnChapters.requestFocus(); return true }
-                            btnChapters -> { btnInfo.requestFocus(); return true }
-                            btnInfo -> { /* edge of pills row, allow skip */ }
+                            btnChapters -> { /* edge of pills row, allow skip */ }
                             btnBack -> { return true }
                         }
                     }
@@ -1292,7 +1285,6 @@ class PlaybackActivity : Activity() {
                     val focus = currentFocus
                     if (hudOverlay.visibility == View.VISIBLE && focus != null && focus != timelineSeekBar) {
                         when (focus) {
-                            btnInfo -> { btnChapters.requestFocus(); return true }
                             btnChapters -> {
                                 if (btnDvMode.visibility == View.VISIBLE) btnDvMode.requestFocus() else btnLibrary.requestFocus()
                                 return true
@@ -2349,167 +2341,6 @@ class PlaybackActivity : Activity() {
         focusTarget?.post { focusTarget.requestFocus() }
     }
 
-    private fun openInfoModal() {
-        activeModalType = ModalType.INFO
-
-        val isSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true)
-
-        val masterQualityBadge = if (isSdr) "1080P MASTER" else "4K UHD MASTER"
-
-        showModal(
-            title = "InSight",
-            badge = masterQualityBadge,
-            anchorButton = btnInfo
-        )
-
-        llModalListContainer.removeAllViews()
-        val inflater = LayoutInflater.from(this)
-
-        // Item 1: Movie Title & Year
-        val titleItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        titleItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvHeaderTitle = titleItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvHeaderSub = titleItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        val tvHeaderBadge = titleItem.findViewById<TextView>(R.id.tvTrackBadge)
-        tvHeaderTitle.text = "$movieTitle ($movieYear)"
-        tvHeaderTitle.isSelected = true
-        tvHeaderSub.text = "$movieDuration  ·  $movieGenre"
-        tvHeaderSub.visibility = View.VISIBLE
-        tvHeaderBadge.text = movieSize
-        tvHeaderBadge.visibility = View.VISIBLE
-        titleItem.isFocusable = true
-        titleItem.setOnFocusChangeListener { _, hasFocus -> tvHeaderTitle.isSelected = hasFocus }
-        llModalListContainer.addView(titleItem)
-
-        // Item 2: Storyline / Synopsis
-        if (movieSynopsis.isNotBlank()) {
-            val synopsisItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-            synopsisItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-            val tvSynTitle = synopsisItem.findViewById<TextView>(R.id.tvTrackTitle)
-            val tvSynSub = synopsisItem.findViewById<TextView>(R.id.tvTrackSubtext)
-            val tvSynBadge = synopsisItem.findViewById<TextView>(R.id.tvTrackBadge)
-            tvSynTitle.text = "Storyline"
-            tvSynTitle.isSelected = true
-            tvSynSub.text = movieSynopsis
-            tvSynSub.visibility = View.VISIBLE
-            tvSynBadge.text = "SYNOPSIS"
-            tvSynBadge.visibility = View.VISIBLE
-            synopsisItem.isFocusable = true
-            synopsisItem.setOnFocusChangeListener { _, hasFocus -> tvSynTitle.isSelected = hasFocus }
-            llModalListContainer.addView(synopsisItem)
-        }
-
-        // Item 3: Director and Cast
-        val castItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        castItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvCastTitle = castItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvCastSub = castItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        val tvCastBadge = castItem.findViewById<TextView>(R.id.tvTrackBadge)
-        tvCastTitle.text = "Director: $movieDirector"
-        tvCastTitle.isSelected = true
-        tvCastSub.text = "Cast: $movieActors"
-        tvCastSub.visibility = View.VISIBLE
-        tvCastBadge.text = "CAST & CREW"
-        tvCastBadge.visibility = View.VISIBLE
-        castItem.isFocusable = true
-        castItem.setOnFocusChangeListener { _, hasFocus -> tvCastTitle.isSelected = hasFocus }
-        llModalListContainer.addView(castItem)
-
-        // Item 4: Video Spec
-        val videoItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        videoItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvVidTitle = videoItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvVidSub = videoItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        val tvVidBadge = videoItem.findViewById<TextView>(R.id.tvTrackBadge)
-        val tvVidSec = videoItem.findViewById<TextView>(R.id.tvTrackBadgeSecondary)
-
-        when (currentDynamicRange) {
-            VideoDynamicRange.DOLBY_VISION -> {
-                tvVidTitle.text = "Video: 4K Dolby Vision Direct Play"
-                tvVidSub.text = "Direct HW decode (HEVC Main 10 / NAL 62 $currentDvProfile)"
-                tvVidSec.text = "HEVC"
-                tvVidBadge.text = currentDvMode.badgeText
-            }
-            VideoDynamicRange.HDR10 -> {
-                tvVidTitle.text = "Video: 4K HDR10 Direct Play"
-                tvVidSub.text = "Direct HW decode (HEVC Main 10 / SMPTE ST 2084 PQ)"
-                tvVidSec.text = "HEVC"
-                tvVidBadge.text = "ST 2084"
-            }
-            VideoDynamicRange.HLG -> {
-                tvVidTitle.text = "Video: 4K HLG Direct Play"
-                tvVidSub.text = "Direct HW decode (HEVC Main 10 / BT.2100 HLG)"
-                tvVidSec.text = "HEVC"
-                tvVidBadge.text = "BT.2100"
-            }
-            VideoDynamicRange.SDR -> {
-                tvVidTitle.text = "Video: 1080p SDR Rec.709 Direct Play"
-                tvVidSub.text = "Direct HW decode (H.264 High@L4.1)"
-                tvVidSec.text = "AVC"
-                tvVidBadge.text = "BT.709"
-            }
-        }
-        tvVidTitle.isSelected = true
-        tvVidSub.visibility = View.VISIBLE
-        tvVidSec.visibility = View.VISIBLE
-        tvVidBadge.visibility = View.VISIBLE
-        videoItem.isFocusable = true
-        videoItem.setOnFocusChangeListener { _, hasFocus -> tvVidTitle.isSelected = hasFocus }
-        llModalListContainer.addView(videoItem)
-
-        // Item 5: Lossless Audio Spec
-        val audioItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        audioItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvAudTitle = audioItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvAudSub = audioItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        val tvAudBadge = audioItem.findViewById<TextView>(R.id.tvTrackBadge)
-        tvAudTitle.text = "Audio: $movieAudioCodec"
-        tvAudTitle.isSelected = true
-        tvAudSub.text = "Direct bitstream passthrough (HW_AV_SYNC)"
-        tvAudSub.visibility = View.VISIBLE
-        tvAudBadge.text = badgeAudio.text.toString()
-        tvAudBadge.visibility = View.VISIBLE
-        audioItem.isFocusable = true
-        audioItem.setOnFocusChangeListener { _, hasFocus -> tvAudTitle.isSelected = hasFocus }
-        llModalListContainer.addView(audioItem)
-
-        // Item 6: Cinema Frame Rate
-        val afrItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        afrItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvAfrTitle = afrItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvAfrSub = afrItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        val tvAfrBadge = afrItem.findViewById<TextView>(R.id.tvTrackBadge)
-        tvAfrTitle.text = "Match Content Frame Rate: 24.000 Hz"
-        tvAfrTitle.isSelected = true
-        tvAfrSub.text = "Zero 3:2 pulldown judder via HDMI 2.1 display mode"
-        tvAfrSub.visibility = View.VISIBLE
-        tvAfrBadge.text = "AFR 24.000"
-        tvAfrBadge.visibility = View.VISIBLE
-        afrItem.isFocusable = true
-        afrItem.setOnFocusChangeListener { _, hasFocus -> tvAfrTitle.isSelected = hasFocus }
-        llModalListContainer.addView(afrItem)
-
-        // Item 7: Subtitles Rendering Engine
-        val subsItem = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
-        subsItem.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.GONE
-        val tvSubTitle = subsItem.findViewById<TextView>(R.id.tvTrackTitle)
-        val tvSubSub = subsItem.findViewById<TextView>(R.id.tvTrackSubtext)
-        val tvSubBadge = subsItem.findViewById<TextView>(R.id.tvTrackBadge)
-        tvSubTitle.text = "Subtitles: PGS Hardware Cinema Engine"
-        tvSubTitle.isSelected = true
-        tvSubSub.text = "SMPTE 2084 reference white (#EBEBEB) with zero OLED glare"
-        tvSubSub.visibility = View.VISIBLE
-        tvSubBadge.text = "PGS / SRT"
-        tvSubBadge.visibility = View.VISIBLE
-        subsItem.isFocusable = true
-        subsItem.setOnFocusChangeListener { _, hasFocus -> tvSubTitle.isSelected = hasFocus }
-        llModalListContainer.addView(subsItem)
-
-        titleItem.requestFocus()
-        titleItem.post { titleItem.requestFocus() }
-    }
-
     private fun showModal(title: String, badge: String, anchorButton: View? = null, targetWidthDp: Int = 260) {
         handler.removeCallbacks(hideHudRunnable)
         tvModalTitle.text = title
@@ -2523,7 +2354,6 @@ class PlaybackActivity : Activity() {
         // Active highlight on the button that opened the modal (Apple TV style)
         btnSubtitles.isActivated = (anchorButton == btnSubtitles)
         btnAudioTrack.isActivated = (anchorButton == btnAudioTrack)
-        btnInfo.isActivated = (anchorButton == btnInfo)
         btnChapters.isActivated = (anchorButton == btnChapters)
         btnDvMode.isActivated = (anchorButton == btnDvMode)
 
@@ -2544,7 +2374,7 @@ class PlaybackActivity : Activity() {
 
         val lp = modalCard.layoutParams as FrameLayout.LayoutParams
         lp.width = (targetWidthDp * density).toInt()
-        val isLeftAnchored = (anchorButton == btnInfo || anchorButton == btnChapters || anchorButton == btnDvMode)
+        val isLeftAnchored = (anchorButton == btnChapters || anchorButton == btnDvMode)
 
         if (isLeftAnchored && anchorButton != null) {
             lp.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.START
@@ -2643,7 +2473,6 @@ class PlaybackActivity : Activity() {
         // Quitar highlight a todos los botones
         btnSubtitles.isActivated = false
         btnAudioTrack.isActivated = false
-        btnInfo.isActivated = false
         btnChapters.isActivated = false
         btnDvMode.isActivated = false
 
@@ -2665,7 +2494,6 @@ class PlaybackActivity : Activity() {
                 ModalType.AUDIO -> btnAudioTrack.requestFocus()
                 ModalType.CHAPTERS -> btnChapters.requestFocus()
                 ModalType.DV_MODE -> btnDvMode.requestFocus()
-                ModalType.INFO -> btnInfo.requestFocus()
                 else -> timelineSeekBar.requestFocus()
             }
             scheduleHudHide()
@@ -2749,7 +2577,6 @@ class PlaybackActivity : Activity() {
             if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 when (activeModalType) {
                     ModalType.SUBTITLES -> { openAudioModal(); return true }
-                    ModalType.INFO -> { openChaptersModal(); return true }
                     ModalType.CHAPTERS -> {
                         if (btnDvMode.visibility == View.VISIBLE) {
                             openDvModeModal()
@@ -2762,7 +2589,6 @@ class PlaybackActivity : Activity() {
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                 when (activeModalType) {
                     ModalType.AUDIO -> { openSubtitlesModal(); return true }
-                    ModalType.CHAPTERS -> { openInfoModal(); return true }
                     ModalType.DV_MODE -> { openChaptersModal(); return true }
                     else -> {}
                 }
@@ -2788,7 +2614,7 @@ class PlaybackActivity : Activity() {
                     when (currentFocus) {
                         timelineSeekBar -> btnSubtitles.requestFocus()
                         btnSubtitles, btnAudioTrack -> btnBack.requestFocus()
-                        btnInfo, btnChapters, btnDvMode, btnLibrary -> timelineSeekBar.requestFocus()
+                        btnChapters, btnDvMode, btnLibrary -> timelineSeekBar.requestFocus()
                         else -> timelineSeekBar.requestFocus()
                     }
                     true
@@ -2802,7 +2628,7 @@ class PlaybackActivity : Activity() {
                     when (currentFocus) {
                         btnBack -> btnSubtitles.requestFocus()
                         btnSubtitles, btnAudioTrack -> timelineSeekBar.requestFocus()
-                        timelineSeekBar -> btnInfo.requestFocus()
+                        timelineSeekBar -> btnChapters.requestFocus()
                         else -> super.onKeyDown(keyCode, event)
                     }
                     true
