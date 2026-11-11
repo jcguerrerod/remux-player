@@ -102,6 +102,56 @@ class JellyfinDirectPlayClient(
     }
 
     /**
+     * Obtiene todas las series (TV Shows) de la biblioteca del usuario.
+     */
+    suspend fun fetchTvShows(session: JellyfinSession): List<JellyfinShow> {
+        return try {
+            val response = client.get("${session.serverUrl}/Users/${session.userId}/Items") {
+                header("X-Emby-Token", session.accessToken)
+                header("Authorization", buildAuthHeader(session.accessToken))
+                parameter("IncludeItemTypes", "Series")
+                parameter("Recursive", "true")
+                parameter("Fields", "Overview,Genres,People,ProductionYear,ChildCount")
+                parameter("SortBy", "DateCreated,SortName")
+                parameter("SortOrder", "Descending")
+            }
+            if (!response.status.isSuccess()) return emptyList()
+            JellyfinMetadataMapper.parseSeriesResponse(
+                response.bodyAsText(),
+                session.serverUrl,
+                session.accessToken
+            )
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Obtiene los episodios de una serie ordenados por temporada y episodio, listos para Direct Play.
+     */
+    suspend fun fetchEpisodes(session: JellyfinSession, seriesId: String): List<JellyfinMovie> {
+        return try {
+            val response = client.get("${session.serverUrl}/Shows/$seriesId/Episodes") {
+                header("X-Emby-Token", session.accessToken)
+                header("Authorization", buildAuthHeader(session.accessToken))
+                parameter("UserId", session.userId)
+                parameter(
+                    "Fields",
+                    "Overview,MediaSources,MediaStreams,Chapters,RunTimeTicks,ProductionYear"
+                )
+            }
+            if (!response.status.isSuccess()) return emptyList()
+            JellyfinMetadataMapper.parseEpisodesResponse(
+                response.bodyAsText(),
+                session.serverUrl,
+                session.accessToken
+            )
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
      * Marca o desmarca una película como vista en Jellyfin.
      */
     suspend fun setPlayedStatus(session: JellyfinSession, itemId: String, played: Boolean): Boolean {

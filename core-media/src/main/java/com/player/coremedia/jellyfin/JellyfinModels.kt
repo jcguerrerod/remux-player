@@ -66,7 +66,37 @@ data class JellyfinMovie(
     val mediaSourceId: String = id,
     val playbackPositionMs: Long = 0L,
     val isPlayed: Boolean = false,
-    val chapters: List<JellyfinChapter> = emptyList()
+    val chapters: List<JellyfinChapter> = emptyList(),
+    val seriesName: String? = null,
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null
+) {
+    val episodeCode: String
+        get() = if (seasonNumber != null && episodeNumber != null) {
+            String.format(Locale.US, "S%02dE%02d", seasonNumber, episodeNumber)
+        } else {
+            ""
+        }
+}
+
+data class JellyfinShow(
+    val id: String,
+    val title: String,
+    val year: String,
+    val genreText: String,
+    val synopsis: String,
+    val actors: String,
+    val director: String,
+    val seasonsCount: Int = 1,
+    val backdropUrl: String? = null,
+    val cardUrl: String? = null,
+    val backdropAsset: String? = null,
+    val cardAsset: String? = null,
+    val is4k: Boolean = true,
+    val dynamicRange: DynamicRangeType = DynamicRangeType.HDR10,
+    val audioBadge: String = "DOLBY ATMOS",
+    val channelsBadge: String = "5.1",
+    val episodes: List<JellyfinMovie> = emptyList()
 )
 
 object JellyfinMetadataMapper {
@@ -143,6 +173,14 @@ object JellyfinMetadataMapper {
     }
 
     fun parseMoviesResponse(jsonBody: String, serverUrl: String, accessToken: String): List<JellyfinMovie> {
+        return parsePlayableListResponse(jsonBody, serverUrl, accessToken)
+    }
+
+    fun parseEpisodesResponse(jsonBody: String, serverUrl: String, accessToken: String): List<JellyfinMovie> {
+        return parsePlayableListResponse(jsonBody, serverUrl, accessToken)
+    }
+
+    private fun parsePlayableListResponse(jsonBody: String, serverUrl: String, accessToken: String): List<JellyfinMovie> {
         val cleanBase = serverUrl.trimEnd('/')
         val root = try {
             json.parseToJsonElement(jsonBody).jsonObject
@@ -152,16 +190,107 @@ object JellyfinMetadataMapper {
         val items = root["Items"]?.jsonArray ?: return emptyList()
         return items.mapNotNull { element ->
             try {
-                parseMovieItem(element.jsonObject, cleanBase, accessToken)
+                parsePlayableItem(element.jsonObject, cleanBase, accessToken)
             } catch (_: Exception) {
                 null
             }
         }
     }
 
-    private fun parseMovieItem(item: JsonObject, baseUrl: String, token: String): JellyfinMovie? {
+    fun parseSeriesResponse(jsonBody: String, serverUrl: String, accessToken: String): List<JellyfinShow> {
+        val cleanBase = serverUrl.trimEnd('/')
+        val root = try {
+            json.parseToJsonElement(jsonBody).jsonObject
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        val items = root["Items"]?.jsonArray ?: return emptyList()
+        return items.mapNotNull { element ->
+            try {
+                parseSeriesItem(element.jsonObject, cleanBase, accessToken)
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun parseSeriesItem(item: JsonObject, baseUrl: String, token: String): JellyfinShow? {
         val id = item["Id"]?.jsonPrimitive?.content ?: return null
         val name = item["Name"]?.jsonPrimitive?.content ?: return null
+        val year = item["ProductionYear"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
+        val genresList = item["Genres"]?.jsonArray
+            ?.mapNotNull { it.jsonPrimitive.content }
+            ?.take(2)
+            ?: emptyList()
+        val genreText = (listOf("TV Series") + genresList).joinToString("  ·  ")
+        val synopsis = item["Overview"]?.jsonPrimitive?.content ?: ""
+        val (directors, actors) = extractCrew(item)
+        val (backdropUrl, cardUrl) = extractImages(item, id, baseUrl, token)
+        val seasonsCount = item["ChildCount"]?.jsonPrimitive?.intOrNull?.coerceAtLeast(1) ?: 1
+
+        return JellyfinShow(
+            id = id,
+            title = name.uppercase(Locale.US),
+            year = year,
+            genreText = genreText,
+            synopsis = synopsis,
+            actors = actors.joinToString(", "),
+            director = directors.joinToString(", "),
+            seasonsCount = seasonsCount,
+            backdropUrl = backdropUrl,
+            cardUrl = cardUrl
+        )
+    }
+
+    private fun extractCrew(item: JsonObject): Pair<List<String>, List<String>> {
+        val people = item["People"]?.jsonArray ?: JsonArray(emptyList())
+        val directors = mutableListOf<String>()
+        val actors = mutableListOf<String>()
+        for (personEl in people) {
+            val personObj = personEl.jsonObject
+            val personName = personObj["Name"]?.jsonPrimitive?.content ?: continue
+            val roleType = personObj["Type"]?.jsonPrimitive?.content ?: ""
+            if ((roleType.equals("Director", ignoreCase = true) || roleType.equals("Creator", ignoreCase = true)) && directors.size < 2) {
+                directors.add(personName)
+            } else if (roleType.equals("Actor", ignoreCase = true) && actors.size < 4) {
+                actors.add(personName)
+            }
+        }
+        return directors to actors
+    }
+
+    private fun extractImages(item: JsonObject, id: String, baseUrl: String, token: String): Pair<String?, String?> {
+        val backdropTags = item["BackdropImageTags"]?.jsonArray
+        val hasBackdrop = backdropTags != null && backdropTags.isNotEmpty()
+        val imageTags = item["ImageTags"]?.jsonObject
+        val hasThumb = imageTags?.containsKey("Thumb") == true
+        val hasPrimary = imageTags?.containsKey("Primary") == true
+
+        val backdropUrl = if (hasBackdrop) {
+            "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=1920&quality=90&api_key=$token"
+        } else if (hasPrimary) {
+            "$baseUrl/Items/$id/Images/Primary?maxWidth=1920&quality=90&api_key=$token"
+        } else {
+            null
+        }
+
+        val cardUrl = when {
+            hasThumb -> "$baseUrl/Items/$id/Images/Thumb?maxWidth=640&quality=90&api_key=$token"
+            hasBackdrop -> "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=640&quality=88&api_key=$token"
+            hasPrimary -> "$baseUrl/Items/$id/Images/Primary?maxWidth=640&quality=88&api_key=$token"
+            else -> null
+        }
+        return backdropUrl to cardUrl
+    }
+
+    private fun parsePlayableItem(item: JsonObject, baseUrl: String, token: String): JellyfinMovie? {
+        val id = item["Id"]?.jsonPrimitive?.content ?: return null
+        val name = item["Name"]?.jsonPrimitive?.content ?: return null
+        val itemType = item["Type"]?.jsonPrimitive?.content ?: "Movie"
+        val isEpisode = itemType.equals("Episode", ignoreCase = true)
+        val seriesName = item["SeriesName"]?.jsonPrimitive?.content
+        val seasonNum = item["ParentIndexNumber"]?.jsonPrimitive?.intOrNull
+        val episodeNum = item["IndexNumber"]?.jsonPrimitive?.intOrNull
         val year = item["ProductionYear"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
         val runTimeTicks = item["RunTimeTicks"]?.jsonPrimitive?.longOrNull ?: 0L
         val durationMs = ticksToMs(runTimeTicks)
@@ -171,26 +300,13 @@ object JellyfinMetadataMapper {
             ?.mapNotNull { it.jsonPrimitive.content }
             ?.take(2)
             ?: emptyList()
-        val genreParts = mutableListOf("Movie").apply {
+        val genreParts = mutableListOf(if (isEpisode) "Episode" else "Movie").apply {
             addAll(genresList)
         }
         val genreText = genreParts.joinToString("  ·  ")
 
         val synopsis = item["Overview"]?.jsonPrimitive?.content ?: ""
-
-        val people = item["People"]?.jsonArray ?: JsonArray(emptyList())
-        val directors = mutableListOf<String>()
-        val actors = mutableListOf<String>()
-        for (personEl in people) {
-            val personObj = personEl.jsonObject
-            val personName = personObj["Name"]?.jsonPrimitive?.content ?: continue
-            val roleType = personObj["Type"]?.jsonPrimitive?.content ?: ""
-            if (roleType.equals("Director", ignoreCase = true) && directors.size < 2) {
-                directors.add(personName)
-            } else if (roleType.equals("Actor", ignoreCase = true) && actors.size < 4) {
-                actors.add(personName)
-            }
-        }
+        val (directors, actors) = extractCrew(item)
 
         val mediaSources = item["MediaSources"]?.jsonArray
         val primarySource = mediaSources?.firstOrNull()?.jsonObject
@@ -280,34 +396,20 @@ object JellyfinMetadataMapper {
         val userData = item["UserData"]?.jsonObject
         val playbackPosMs = ticksToMs(userData?.get("PlaybackPositionTicks")?.jsonPrimitive?.longOrNull ?: 0L)
         val isPlayed = userData?.get("Played")?.jsonPrimitive?.booleanOrNull ?: false
-
-        val backdropTags = item["BackdropImageTags"]?.jsonArray
-        val hasBackdrop = backdropTags != null && backdropTags.isNotEmpty()
-        val imageTags = item["ImageTags"]?.jsonObject
-        val hasThumb = imageTags?.containsKey("Thumb") == true
-        val hasPrimary = imageTags?.containsKey("Primary") == true
-
-        val backdropUrl = if (hasBackdrop) {
-            "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=1920&quality=90&api_key=$token"
-        } else if (hasPrimary) {
-            "$baseUrl/Items/$id/Images/Primary?maxWidth=1920&quality=90&api_key=$token"
-        } else {
-            null
-        }
-
-        val cardUrl = when {
-            hasThumb -> "$baseUrl/Items/$id/Images/Thumb?maxWidth=640&quality=90&api_key=$token"
-            hasBackdrop -> "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=640&quality=88&api_key=$token"
-            hasPrimary -> "$baseUrl/Items/$id/Images/Primary?maxWidth=640&quality=88&api_key=$token"
-            else -> null
-        }
+        val (backdropUrl, cardUrl) = extractImages(item, id, baseUrl, token)
 
         val ext = container.split(",").firstOrNull()?.trim()?.ifBlank { "mkv" } ?: "mkv"
         val streamUrl = "$baseUrl/Videos/$id/stream.$ext?Static=true&MediaSourceId=$mediaSourceId&api_key=$token"
 
+        val displayTitle = if (isEpisode && !seriesName.isNullOrBlank() && seasonNum != null && episodeNum != null) {
+            "${seriesName.uppercase(Locale.US)} · S%02dE%02d · %s".format(Locale.US, seasonNum, episodeNum, name)
+        } else {
+            name.uppercase(Locale.US)
+        }
+
         return JellyfinMovie(
             id = id,
-            title = name.uppercase(Locale.US),
+            title = displayTitle,
             year = year,
             durationText = durationText,
             durationMs = durationMs,
@@ -329,7 +431,10 @@ object JellyfinMetadataMapper {
             mediaSourceId = mediaSourceId,
             playbackPositionMs = playbackPosMs,
             isPlayed = isPlayed,
-            chapters = chapters
+            chapters = chapters,
+            seriesName = seriesName,
+            seasonNumber = seasonNum,
+            episodeNumber = episodeNum
         )
     }
 }

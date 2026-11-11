@@ -166,4 +166,115 @@ class JellyfinMetadataMapperTest {
         assertEquals("Juan", session?.userName)
         assertEquals("http://localhost:8096", session?.serverUrl)
     }
+
+    @Test
+    fun `parseSeriesResponse extracts series metadata seasons count and artwork urls`() {
+        val sampleSeriesJson = """
+        {
+          "Items": [
+            {
+              "Id": "series-101",
+              "Name": "Severance",
+              "ProductionYear": 2022,
+              "ChildCount": 2,
+              "Overview": "Mark leads a team of office workers whose memories have been surgically divided.",
+              "Genres": ["Sci-Fi", "Thriller"],
+              "People": [
+                {"Name": "Adam Scott", "Type": "Actor"},
+                {"Name": "Britt Lower", "Type": "Actor"},
+                {"Name": "Ben Stiller", "Type": "Director"}
+              ],
+              "BackdropImageTags": ["img-backdrop-1"],
+              "ImageTags": { "Primary": "img-primary-1" }
+            }
+          ]
+        }
+        """.trimIndent()
+
+        val shows = JellyfinMetadataMapper.parseSeriesResponse(
+            sampleSeriesJson,
+            "http://10.0.2.2:8096/",
+            "tok123"
+        )
+
+        assertEquals(1, shows.size)
+        val severance = shows[0]
+        assertEquals("series-101", severance.id)
+        assertEquals("SEVERANCE", severance.title)
+        assertEquals("2022", severance.year)
+        assertEquals(2, severance.seasonsCount)
+        assertEquals("TV Series  ·  Sci-Fi  ·  Thriller", severance.genreText)
+        assertEquals("Adam Scott, Britt Lower", severance.actors)
+        assertEquals("Ben Stiller", severance.director)
+        assertTrue(severance.backdropUrl?.contains("/Items/series-101/Images/Backdrop") == true)
+        assertTrue(severance.cardUrl?.contains("/Items/series-101/Images/Backdrop") == true)
+    }
+
+    @Test
+    fun `parseEpisodesResponse extracts season episode code streams and chapters`() {
+        val sampleEpisodesJson = """
+        {
+          "Items": [
+            {
+              "Id": "ep-101",
+              "Name": "Good News About Hell",
+              "SeriesName": "Severance",
+              "ParentIndexNumber": 1,
+              "IndexNumber": 1,
+              "ProductionYear": 2022,
+              "RunTimeTicks": 34200000000,
+              "Overview": "Mark is promoted after Petey vanishes.",
+              "UserData": { "PlaybackPositionTicks": 600000000, "Played": false },
+              "Chapters": [
+                {"Name": "Orientation", "StartPositionTicks": 0},
+                {"Name": "MDR Floor", "StartPositionTicks": 9000000000}
+              ],
+              "MediaSources": [
+                {
+                  "Size": 18253611008,
+                  "MediaStreams": [
+                    {
+                      "Type": "Video",
+                      "Codec": "hevc",
+                      "Width": 3840,
+                      "Height": 2160,
+                      "VideoRange": "HDR",
+                      "VideoRangeType": "DOVI"
+                    },
+                    {
+                      "Type": "Audio",
+                      "Codec": "eac3",
+                      "Profile": "Dolby Digital Plus + Dolby Atmos",
+                      "Channels": 6
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """.trimIndent()
+
+        val episodes = JellyfinMetadataMapper.parseEpisodesResponse(
+            sampleEpisodesJson,
+            "http://10.0.2.2:8096",
+            "tok123"
+        )
+
+        assertEquals(1, episodes.size)
+        val ep1 = episodes[0]
+        assertEquals("ep-101", ep1.id)
+        assertEquals("GOOD NEWS ABOUT HELL", ep1.title)
+        assertEquals("Severance", ep1.seriesName)
+        assertEquals(1, ep1.seasonNumber)
+        assertEquals(1, ep1.episodeNumber)
+        assertEquals("S01E01", ep1.episodeCode)
+        assertEquals("57m", ep1.durationText)
+        assertTrue(ep1.is4k)
+        assertEquals(DynamicRangeType.DOLBY_VISION, ep1.dynamicRange)
+        assertEquals("DOLBY ATMOS", ep1.audioBadge)
+        assertEquals(60_000L, ep1.playbackPositionMs)
+        assertEquals(2, ep1.chapters.size)
+        assertTrue(ep1.streamUrl.contains("/Videos/ep-101/stream.mkv?Static=true"))
+    }
 }

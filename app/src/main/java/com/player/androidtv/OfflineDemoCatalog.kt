@@ -3,6 +3,7 @@ package com.player.androidtv
 import com.player.coremedia.jellyfin.DynamicRangeType
 import com.player.coremedia.jellyfin.JellyfinChapter
 import com.player.coremedia.jellyfin.JellyfinMovie
+import com.player.coremedia.jellyfin.JellyfinShow
 
 /**
  * Provides the curated offline showcase catalog when no live Jellyfin session
@@ -240,6 +241,223 @@ object OfflineDemoCatalog {
                     JellyfinChapter("Chapter 18: Penelope's Challenge of the Bow", 8_883_875L),
                     JellyfinChapter("Chapter 19: The Slaughter of the Suitors", 9_777_977L),
                     JellyfinChapter("Chapter 20: Peace in Ithaca & Credits", 9_941_140L)
+                )
+            )
+        )
+    }
+
+    fun getTvShows(serverBaseUrl: String): List<JellyfinShow> {
+        val cleanBase = serverBaseUrl.trimEnd('/')
+        return listOf(
+            JellyfinShow(
+                id = "show-severance-2022",
+                title = "SEVERANCE",
+                year = "2022",
+                genreText = "TV Series  ·  Sci-Fi  ·  Thriller",
+                synopsis = "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+                actors = "Adam Scott, Zach Cherry, Britt Lower, Tramell Tillman",
+                director = "Ben Stiller",
+                seasonsCount = 2,
+                is4k = true,
+                dynamicRange = DynamicRangeType.DOLBY_VISION,
+                audioBadge = "DOLBY ATMOS",
+                channelsBadge = "5.1",
+                episodes = listOf(
+                    JellyfinMovie(
+                        id = "sev-s01e01",
+                        title = "GOOD NEWS ABOUT HELL",
+                        seriesName = "SEVERANCE",
+                        seasonNumber = 1,
+                        episodeNumber = 1,
+                        year = "2022",
+                        durationText = "57m",
+                        durationMs = 3_420_000L,
+                        genreText = "TV Series  ·  Sci-Fi  ·  Thriller",
+                        sizeText = "16.84 GB",
+                        videoCodecLabel = "4K DOLBY VISION P8",
+                        audioCodecLabel = "DOLBY ATMOS 5.1",
+                        is4k = true,
+                        dynamicRange = DynamicRangeType.DOLBY_VISION,
+                        dvProfile = "P8",
+                        audioBadge = "DOLBY ATMOS",
+                        channelsBadge = "5.1",
+                        synopsis = "Mark is promoted to lead a team of office workers whose memories have been surgically divided between their work and personal lives.",
+                        actors = "Adam Scott, Zach Cherry, Britt Lower",
+                        director = "Ben Stiller",
+                        streamUrl = "$cleanBase/Videos/sev-s01e01/stream.mkv?Static=true",
+                        chapters = listOf(
+                            JellyfinChapter("Orientation", 0L),
+                            JellyfinChapter("Perpetuity Hall", 1_140_000L),
+                            JellyfinChapter("Dinnerless Dinner", 2_310_000L)
+                        )
+                    ),
+                    JellyfinMovie(
+                        id = "sev-s01e02",
+                        title = "HALF LOOP",
+                        seriesName = "SEVERANCE",
+                        seasonNumber = 1,
+                        episodeNumber = 2,
+                        year = "2022",
+                        durationText = "55m",
+                        durationMs = 3_300_000L,
+                        genreText = "TV Series  ·  Sci-Fi  ·  Thriller",
+                        sizeText = "15.92 GB",
+                        videoCodecLabel = "4K DOLBY VISION P8",
+                        audioCodecLabel = "DOLBY ATMOS 5.1",
+                        is4k = true,
+                        dynamicRange = DynamicRangeType.DOLBY_VISION,
+                        dvProfile = "P8",
+                        audioBadge = "DOLBY ATMOS",
+                        channelsBadge = "5.1",
+                        synopsis = "The team trains new hire Helly on macrodata refinement. Mark takes a day off to meet with a former colleague.",
+                        actors = "Adam Scott, Britt Lower, John Turturro",
+                        director = "Ben Stiller",
+                        streamUrl = "$cleanBase/Videos/sev-s01e02/stream.mkv?Static=true",
+                        chapters = listOf(
+                            JellyfinChapter("The Surgery", 0L),
+                            JellyfinChapter("Pip's VIP", 1_260_000L)
+                        )
+                    ),
+                    JellyfinMovie(
+                        id = "sev-s02e01",
+                        title = "HELLO, MS. COBEL",
+                        seriesName = "SEVERANCE",
+                        seasonNumber = 2,
+                        episodeNumber = 1,
+                        year = "2025",
+                        durationText = "58m",
+                        durationMs = 3_480_000L,
+                        genreText = "TV Series  ·  Sci-Fi  ·  Thriller",
+                        sizeText = "17.40 GB",
+                        videoCodecLabel = "4K DOLBY VISION P8",
+                        audioCodecLabel = "DOLBY ATMOS 5.1",
+                        is4k = true,
+                        dynamicRange = DynamicRangeType.DOLBY_VISION,
+                        dvProfile = "P8",
+                        audioBadge = "DOLBY ATMOS",
+                        channelsBadge = "5.1",
+                        synopsis = "Mark returns to Lumon Industries under radically altered circumstances as the fallout of the Overtime Contingency reshapes the severed floor.",
+                        actors = "Adam Scott, Britt Lower, Patricia Arquette",
+                        director = "Ben Stiller",
+                        streamUrl = "$cleanBase/Videos/sev-s02e01/stream.mkv?Static=true",
+                        chapters = listOf(
+                            JellyfinChapter("Cold Harbor", 0L),
+                            JellyfinChapter("New MDR", 1_500_000L)
+                        )
+                    )
+                )
+            ),
+            JellyfinShow(
+                id = "show-andor-2022",
+                title = "ANDOR",
+                year = "2022",
+                genreText = "TV Series  ·  Sci-Fi  ·  Action",
+                synopsis = "In an era filled with danger, deception and intrigue, Cassian Andor embarks on a path that is destined to turn him into a rebel hero in a burgeoning rebellion against the Galactic Empire.",
+                actors = "Diego Luna, Stellan Skarsgård, Genevieve O'Reilly, Adria Arjona",
+                director = "Tony Gilroy",
+                seasonsCount = 2,
+                is4k = true,
+                dynamicRange = DynamicRangeType.HDR10,
+                audioBadge = "DOLBY ATMOS",
+                channelsBadge = "7.1",
+                episodes = listOf(
+                    JellyfinMovie(
+                        id = "andor-s01e01",
+                        title = "KASSA",
+                        seriesName = "ANDOR",
+                        seasonNumber = 1,
+                        episodeNumber = 1,
+                        year = "2022",
+                        durationText = "42m",
+                        durationMs = 2_520_000L,
+                        genreText = "TV Series  ·  Sci-Fi  ·  Action",
+                        sizeText = "14.12 GB",
+                        videoCodecLabel = "4K HDR10",
+                        audioCodecLabel = "DOLBY ATMOS 7.1",
+                        is4k = true,
+                        dynamicRange = DynamicRangeType.HDR10,
+                        dvProfile = "",
+                        audioBadge = "DOLBY ATMOS",
+                        channelsBadge = "7.1",
+                        synopsis = "Cassian Andor's reckless search for his missing sister triggers a deadly Corporate Authority investigation on Morlana One.",
+                        actors = "Diego Luna, Adria Arjona, Kyle Soller",
+                        director = "Toby Haynes",
+                        streamUrl = "$cleanBase/Videos/andor-s01e01/stream.mkv?Static=true",
+                        chapters = listOf(
+                            JellyfinChapter("Morlana One", 0L),
+                            JellyfinChapter("Ferrix Docks", 1_120_000L)
+                        )
+                    ),
+                    JellyfinMovie(
+                        id = "andor-s01e10",
+                        title = "ONE WAY OUT",
+                        seriesName = "ANDOR",
+                        seasonNumber = 1,
+                        episodeNumber = 10,
+                        year = "2022",
+                        durationText = "46m",
+                        durationMs = 2_760_000L,
+                        genreText = "TV Series  ·  Sci-Fi  ·  Action",
+                        sizeText = "16.30 GB",
+                        videoCodecLabel = "4K HDR10",
+                        audioCodecLabel = "DOLBY ATMOS 7.1",
+                        is4k = true,
+                        dynamicRange = DynamicRangeType.HDR10,
+                        dvProfile = "",
+                        audioBadge = "DOLBY ATMOS",
+                        channelsBadge = "7.1",
+                        synopsis = "Cassian and Kino Loy rally the prisoners of Narkina 5 in a desperate, all-or-nothing uprising across the electrified floors.",
+                        actors = "Diego Luna, Andy Serkis, Stellan Skarsgård",
+                        director = "Toby Haynes",
+                        streamUrl = "$cleanBase/Videos/andor-s01e10/stream.mkv?Static=true",
+                        chapters = listOf(
+                            JellyfinChapter("Floor Five", 0L),
+                            JellyfinChapter("The Leap", 1_840_000L)
+                        )
+                    )
+                )
+            ),
+            JellyfinShow(
+                id = "show-twin-peaks-1990",
+                title = "TWIN PEAKS",
+                year = "1990",
+                genreText = "TV Series  ·  Mystery  ·  Drama",
+                synopsis = "An idiosyncratic FBI agent investigates the murder of a young woman in the even more idiosyncratic logging town of Twin Peaks, Washington.",
+                actors = "Kyle MacLachlan, Michael Ontkean, Sheryl Lee, Sherilyn Fenn",
+                director = "David Lynch",
+                seasonsCount = 2,
+                is4k = false,
+                dynamicRange = DynamicRangeType.SDR,
+                audioBadge = "DTS-HD MA",
+                channelsBadge = "5.1",
+                episodes = listOf(
+                    JellyfinMovie(
+                        id = "tp-s01e01",
+                        title = "PILOT (NORTHWEST PASSAGE)",
+                        seriesName = "TWIN PEAKS",
+                        seasonNumber = 1,
+                        episodeNumber = 1,
+                        year = "1990",
+                        durationText = "1h 34m",
+                        durationMs = 5_640_000L,
+                        genreText = "TV Series  ·  Mystery  ·  Drama",
+                        sizeText = "21.85 GB",
+                        videoCodecLabel = "1080P AVC",
+                        audioCodecLabel = "DTS-HD MASTER AUDIO 5.1",
+                        is4k = false,
+                        dynamicRange = DynamicRangeType.SDR,
+                        dvProfile = "",
+                        audioBadge = "DTS-HD MA",
+                        channelsBadge = "5.1",
+                        synopsis = "The body of homecoming queen Laura Palmer washes ashore wrapped in plastic, drawing Special Agent Dale Cooper to Twin Peaks.",
+                        actors = "Kyle MacLachlan, Michael Ontkean, Sheryl Lee",
+                        director = "David Lynch",
+                        streamUrl = "$cleanBase/Videos/tp-s01e01/stream.mkv?Static=true",
+                        chapters = listOf(
+                            JellyfinChapter("Wrapped in Plastic", 0L),
+                            JellyfinChapter("Damn Fine Coffee", 2_400_000L)
+                        )
+                    )
                 )
             )
         )
