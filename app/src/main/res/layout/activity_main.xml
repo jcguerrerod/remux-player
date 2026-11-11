@@ -77,20 +77,24 @@
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
-            <!-- Badge Servidor Jellyfin (Oculto para limpieza visual Apple TV) -->
+            <!-- Badge / Selector Servidor Jellyfin (Apple TV Glass Pill) -->
             <LinearLayout
                 android:id="@+id/serverBadge"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_apple_tv_badge"
-                android:paddingStart="12dp"
-                android:paddingTop="5dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="5dp"
+                android:layout_height="34dp"
+                android:background="@drawable/bg_apple_tv_pill_secondary"
+                android:paddingStart="14dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="4dp"
                 android:gravity="center_vertical"
-                android:visibility="gone">
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusDown="@+id/btnPlayDirect"
+                android:visibility="visible">
 
                 <View
+                    android:id="@+id/serverStatusDot"
                     android:layout_width="6dp"
                     android:layout_height="6dp"
                     android:background="@drawable/bg_badge_directplay" />
@@ -100,9 +104,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="Jellyfin Guerrero · 192.168.100.108"
-                    android:textColor="#D1D1D6"
-                    android:textSize="11sp"
+                    android:duplicateParentState="true"
+                    android:text="Connect Jellyfin"
+                    android:textColor="@color/apple_btn_text_selector"
+                    android:textSize="11.5sp"
                     android:fontFamily="sans-serif-medium" />
             </LinearLayout>
         </LinearLayout>
@@ -278,6 +283,7 @@
                         android:paddingStart="20dp"
                         android:paddingEnd="20dp"
                         android:focusable="true"
+                        android:nextFocusUp="@+id/serverBadge"
                         android:nextFocusDown="@+id/shelfScrollView" />
 
                     <!-- Circular Checkmark Button -->
@@ -290,8 +296,9 @@
                         android:src="@drawable/ic_check"
                         android:tint="@color/apple_btn_tint_selector"
                         android:focusable="true"
+                        android:nextFocusUp="@+id/serverBadge"
                         android:nextFocusDown="@+id/shelfScrollView"
-                        android:contentDescription="In Watchlist" />
+                        android:contentDescription="Toggle Watched" />
 
                     <!-- Circular Info Button -->
                     <ImageButton
@@ -303,8 +310,9 @@
                         android:src="@drawable/ic_info"
                         android:tint="@color/apple_btn_tint_selector"
                         android:focusable="true"
+                        android:nextFocusUp="@+id/serverBadge"
                         android:nextFocusDown="@+id/shelfScrollView"
-                        android:contentDescription="More Info" />
+                        android:contentDescription="Movie Details" />
                 </LinearLayout>
             </LinearLayout>
 

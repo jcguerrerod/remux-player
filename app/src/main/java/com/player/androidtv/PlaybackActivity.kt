@@ -35,8 +35,15 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import com.player.coremedia.jellyfin.JellyfinDirectPlayClient
+import com.player.coremedia.jellyfin.JellyfinMetadataMapper
 import com.player.coremedia.player.DolbyVisionProcessingMode
 import com.player.coremedia.player.RemuxExoPlayerFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -137,6 +144,22 @@ class PlaybackActivity : Activity() {
     private var movieSize: String = "56.73 GB"
     private var movieVideoCodec: String = "DOLBY VISION P8.1"
     private var movieAudioCodec: String = "DOLBY ATMOS"
+    private var explicitIs4k: Boolean? = null
+    private var explicitHdrType: String? = null
+    private var explicitDvProfile: String? = null
+    private var explicitAudioBadge: String? = null
+    private var explicitChannelsBadge: String? = null
+    private var explicitChapters: List<MovieChapter> = emptyList()
+
+    private var jellyfinServerUrl: String? = null
+    private var jellyfinToken: String? = null
+    private var jellyfinItemId: String? = null
+    private var jellyfinMediaSourceId: String? = null
+    private var jellyfinClient: JellyfinDirectPlayClient? = null
+    private var sessionReportedStarted = false
+    private var lastServerProgressReportAtMs = 0L
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private lateinit var btnChapters: Button
     private var currentDvMode: DolbyVisionProcessingMode = DolbyVisionProcessingMode.P8_TRANSMUTE
     private val handler = Handler(Looper.getMainLooper())
@@ -256,102 +279,7 @@ class PlaybackActivity : Activity() {
 
     private fun initMovieChapters(title: String, durationMs: Long) {
         currentChapters = when {
-            title.contains("Odyssey", ignoreCase = true) -> listOf(
-                MovieChapter("Chapter 01: The Sack of Troy", 0L),
-                MovieChapter("Chapter 02: Island of Cicones", 562353L),
-                MovieChapter("Chapter 03: Land of the Lotus-Eaters", 1158824L),
-                MovieChapter("Chapter 04: The Cyclops Polyphemus", 1377960L),
-                MovieChapter("Chapter 05: Aeolus and the Winds", 1909658L),
-                MovieChapter("Chapter 06: The Laestrygonians", 2696027L),
-                MovieChapter("Chapter 07: Circe's Isle of Aeaea", 3181095L),
-                MovieChapter("Chapter 08: Journey to the Underworld", 3553967L),
-                MovieChapter("Chapter 09: Shades of the Dead", 4092130L),
-                MovieChapter("Chapter 10: Song of the Sirens", 4834496L),
-                MovieChapter("Chapter 11: Scylla and Charybdis", 5506376L),
-                MovieChapter("Chapter 12: Cattle of the Sun God", 5921457L),
-                MovieChapter("Chapter 13: The Wrath of Zeus", 6408569L),
-                MovieChapter("Chapter 14: Calypso's Paradise", 7033193L),
-                MovieChapter("Chapter 15: Kingdom of the Phaeacians", 7558760L),
-                MovieChapter("Chapter 16: Return to Ithaca", 7985728L),
-                MovieChapter("Chapter 17: In Disguise as a Beggar", 8254246L),
-                MovieChapter("Chapter 18: Penelope's Challenge of the Bow", 8883875L),
-                MovieChapter("Chapter 19: The Slaughter of the Suitors", 9777977L),
-                MovieChapter("Chapter 20: Peace in Ithaca & Credits", 9941140L)
-            )
-            title.contains("Whiplash", ignoreCase = true) -> listOf(
-                MovieChapter("Chapter 1: Overture", 0L),
-                MovieChapter("Chapter 2: Studio Band", 411828L),
-                MovieChapter("Chapter 3: Caravan", 874457L),
-                MovieChapter("Chapter 4: Overbeck", 1466382L),
-                MovieChapter("Chapter 5: Dunellen Competition", 1806096L),
-                MovieChapter("Chapter 6: First Chair", 2143975L),
-                MovieChapter("Chapter 7: Blood on the Kit", 2611359L),
-                MovieChapter("Chapter 8: Whiplash", 2815312L),
-                MovieChapter("Chapter 9: Double Time", 3192481L),
-                MovieChapter("Chapter 10: The Bus", 3757504L),
-                MovieChapter("Chapter 11: The Car Crash", 4230560L),
-                MovieChapter("Chapter 12: Expulsion", 4443606L),
-                MovieChapter("Chapter 13: Jazz Club Reunion", 4668789L),
-                MovieChapter("Chapter 14: JVC Jazz Festival", 4986106L),
-                MovieChapter("Chapter 15: Not Quite My Tempo", 5128290L),
-                MovieChapter("Chapter 16: Grand Finale Solo", 5516219L)
-            )
-            title.contains("Apocalypse", ignoreCase = true) -> listOf(
-                MovieChapter("Chapter 1: The End / Saigon", 0L),
-                MovieChapter("Chapter 2: The Mission", 565273L),
-                MovieChapter("Chapter 3: Up the River", 1224431L),
-                MovieChapter("Chapter 4: Kilgore / Air Cav", 1564312L),
-                MovieChapter("Chapter 5: Ride of the Valkyries", 1921169L),
-                MovieChapter("Chapter 6: Smell of Napalm", 2097428L),
-                MovieChapter("Chapter 7: Tiger in the Jungle", 2749079L),
-                MovieChapter("Chapter 8: Letters from Home", 3018014L),
-                MovieChapter("Chapter 9: The USO Show", 3565728L),
-                MovieChapter("Chapter 10: Hau Phat / Heavy Rain", 4133838L),
-                MovieChapter("Chapter 11: The Sampan Incident", 4536406L),
-                MovieChapter("Chapter 12: Do Lung Bridge", 4855141L),
-                MovieChapter("Chapter 13: Kurtz's Dossier", 5439183L),
-                MovieChapter("Chapter 14: French Plantation", 5781192L),
-                MovieChapter("Chapter 15: Arrow Attack", 6250869L),
-                MovieChapter("Chapter 16: Kurtz's Compound", 6776186L),
-                MovieChapter("Chapter 17: Dennis Hopper / The Cage", 7310177L),
-                MovieChapter("Chapter 18: The Horror, The Horror", 8058341L)
-            )
-            title.contains("Raiders", ignoreCase = true) -> listOf(
-                MovieChapter("Chapter 1: South America, 1936", 0L),
-                MovieChapter("Chapter 2: The Golden Idol & Boulder", 510000L),
-                MovieChapter("Chapter 3: Marshall College", 855000L),
-                MovieChapter("Chapter 4: Army Intelligence", 1260000L),
-                MovieChapter("Chapter 5: The Raven / Nepal", 1725000L),
-                MovieChapter("Chapter 6: Streets of Cairo", 2300000L),
-                MovieChapter("Chapter 7: The Map Room", 2830000L),
-                MovieChapter("Chapter 8: The Well of Souls", 3390000L),
-                MovieChapter("Chapter 9: Flying Wing Brawl & Escape", 4180000L),
-                MovieChapter("Chapter 10: Desert Convoy Chase", 4875000L),
-                MovieChapter("Chapter 11: Aboard the Bantu Wind", 5520000L),
-                MovieChapter("Chapter 12: U-Boat Submarine Base", 5960000L),
-                MovieChapter("Chapter 13: Opening the Ark", 6420000L),
-                MovieChapter("Chapter 14: Washington / Hangar 51", 6730000L)
-            )
-            title.contains("Nightmare", ignoreCase = true) -> listOf(
-                MovieChapter("Chapter 1: This Is Halloween", 0L),
-                MovieChapter("Chapter 2: Jack's Lament", 435000L),
-                MovieChapter("Chapter 3: Christmas Town", 920000L),
-                MovieChapter("Chapter 4: Town Meeting", 1510000L),
-                MovieChapter("Chapter 5: Making Christmas", 2140000L),
-                MovieChapter("Chapter 6: Kidnap the Sandy Claws", 2715000L),
-                MovieChapter("Chapter 7: Jack Takes Flight", 3380000L),
-                MovieChapter("Chapter 8: Graveyard Battle", 3960000L),
-                MovieChapter("Chapter 9: Snow in Halloween Town", 4335000L)
-            )
-            title.contains("Hail", ignoreCase = true) -> listOf(
-                MovieChapter("Chapter 1: Awakening in the Dark", 0L),
-                MovieChapter("Chapter 2: The Petrova Enigma", 1120000L),
-                MovieChapter("Chapter 3: First Contact with Rocky", 2295000L),
-                MovieChapter("Chapter 4: The Xenonite Solution", 3570000L),
-                MovieChapter("Chapter 5: Farming Taumoebas", 5110000L),
-                MovieChapter("Chapter 6: The Journey Home", 6765000L),
-                MovieChapter("Chapter 7: A Renewed Sun", 8060000L)
-            )
+            explicitChapters.isNotEmpty() -> explicitChapters
             durationMs > 0 -> {
                 val numChapters = 10
                 val step = durationMs / numChapters
@@ -448,6 +376,20 @@ class PlaybackActivity : Activity() {
                     .putLong("duration_${normTitle}", dur)
                     .apply()
             }
+        }
+        reportProgressToJellyfin(pos, !p.isPlaying)
+    }
+
+    private fun reportProgressToJellyfin(positionMs: Long, isPaused: Boolean) {
+        val client = jellyfinClient ?: return
+        val itemId = jellyfinItemId ?: return
+        val token = jellyfinToken ?: return
+        val now = System.currentTimeMillis()
+        if (!isPaused && now - lastServerProgressReportAtMs < 5000L) return
+        lastServerProgressReportAtMs = now
+        val ticks = JellyfinMetadataMapper.msToTicks(positionMs)
+        ioScope.launch {
+            client.reportProgress(itemId, ticks, token, isPaused)
         }
     }
 
@@ -648,74 +590,13 @@ class PlaybackActivity : Activity() {
         val incomingUri: Uri? = intent.data
         if (incomingUri != null) {
             streamUrl = incomingUri.toString()
-            var title = intent.getStringExtra("MOVIE_TITLE")
+            movieTitle = intent.getStringExtra("MOVIE_TITLE")
                 ?: intent.getStringExtra("title")
                 ?: intent.getStringExtra("android.intent.extra.TITLE")
                 ?: incomingUri.getQueryParameter("title")
-                ?: incomingUri.lastPathSegment ?: "Jellyfin Video"
-            val explicitYear = intent.getStringExtra("MOVIE_YEAR")
-            if (!explicitYear.isNullOrBlank()) {
-                movieYear = explicitYear
-            }
+                ?: incomingUri.lastPathSegment ?: "Direct Play Video"
 
-            if (title.contains("Raiders", ignoreCase = true)) {
-                title = "Raiders of the Lost Ark"
-                movieYear = "1981"
-                movieDuration = "1h 55m"
-                movieGenre = "Movie  ·  Action  ·  Adventure"
-                movieSynopsis = "Archeologist and adventurer Indiana Jones is hired by the US government to find the Ark of the Covenant before the Nazis obtain its awesome powers."
-                movieDirector = "Steven Spielberg"
-                movieActors = "Harrison Ford, Karen Allen, Paul Freeman"
-                movieSize = "56.73 GB"
-                movieVideoCodec = "DOLBY VISION P8.1"
-                movieAudioCodec = "DOLBY ATMOS"
-            } else if (title.contains("Nightmare", ignoreCase = true)) {
-                title = "The Nightmare Before Christmas"
-                movieYear = "1993"
-                movieDuration = "1h 16m"
-                movieGenre = "Movie  ·  Animation  ·  Family"
-                movieSynopsis = "Jack Skellington, king of Halloween Town, discovers Christmas Town, but his attempts to bring Christmas to his home cause confusion and danger."
-                movieDirector = "Henry Selick (Story: Tim Burton)"
-                movieActors = "Danny Elfman, Chris Sarandon, Catherine O'Hara"
-                movieSize = "42.15 GB"
-                movieVideoCodec = "DOLBY VISION P8.1"
-                movieAudioCodec = "DOLBY TRUEHD ATMOS"
-            } else if (title.contains("Apocalypse", ignoreCase = true)) {
-                title = "Apocalypse Now"
-                movieYear = "1979"
-                movieDuration = "2h 27m"
-                movieGenre = "Movie  ·  War  ·  Drama"
-                movieSynopsis = "During the Vietnam War, Captain Willard is assigned a classified mission to journey deep into Cambodia and terminate rogue Special Forces Colonel Kurtz."
-                movieDirector = "Francis Ford Coppola"
-                movieActors = "Marlon Brando, Martin Sheen, Robert Duvall, Laurence Fishburne"
-                movieSize = "30.33 GB"
-                movieVideoCodec = "1080P BLU-RAY"
-                movieAudioCodec = "DOLBY TRUEHD"
-            } else if (title.contains("Hail Mary", ignoreCase = true) || title.contains("Hail", ignoreCase = true)) {
-                title = "Project Hail Mary"
-                movieYear = "2026"
-                movieDuration = "2h 35m"
-                movieGenre = "Movie  ·  Sci-Fi  ·  Adventure"
-                movieSynopsis = "The sole survivor of a desperate interstellar mission awakens with amnesia, discovering the fate of humanity and Earth's survival rests squarely on his shoulders."
-                movieDirector = "Phil Lord, Christopher Miller"
-                movieActors = "Ryan Gosling, Sandra Hüller, Milana Vayntrub"
-                movieSize = "81.29 GB"
-                movieVideoCodec = "DOLBY VISION P7 MEL"
-                movieAudioCodec = "DOLBY ATMOS"
-            } else if (title.contains("Whiplash", ignoreCase = true)) {
-                title = "Whiplash"
-                movieYear = "2014"
-                movieDuration = "1h 46m"
-                movieGenre = "Movie  ·  Drama  ·  Music"
-                movieSynopsis = "An ambitious young jazz drummer enters an elite music conservatory, where he is driven past human limits by a ruthless and uncompromising instructor."
-                movieDirector = "Damien Chazelle"
-                movieActors = "Miles Teller, J.K. Simmons, Paul Reiser, Melissa Benoist"
-                movieSize = "23.46 GB"
-                movieVideoCodec = "1080P AVC"
-                movieAudioCodec = "DTS-HD MASTER AUDIO"
-            }
-            movieTitle = title
-
+            intent.getStringExtra("MOVIE_YEAR")?.let { if (it.isNotBlank()) movieYear = it }
             intent.getStringExtra("MOVIE_DURATION")?.let { if (it.isNotBlank()) movieDuration = it }
             intent.getStringExtra("MOVIE_GENRE")?.let { if (it.isNotBlank()) movieGenre = it }
             intent.getStringExtra("MOVIE_SYNOPSIS")?.let { if (it.isNotBlank()) movieSynopsis = it }
@@ -724,17 +605,42 @@ class PlaybackActivity : Activity() {
             intent.getStringExtra("MOVIE_SIZE")?.let { if (it.isNotBlank()) movieSize = it }
             intent.getStringExtra("MOVIE_VIDEO_CODEC")?.let { if (it.isNotBlank()) movieVideoCodec = it }
             intent.getStringExtra("MOVIE_AUDIO_CODEC")?.let { if (it.isNotBlank()) movieAudioCodec = it }
+            if (intent.hasExtra("MOVIE_IS_4K")) {
+                explicitIs4k = intent.getBooleanExtra("MOVIE_IS_4K", false)
+            }
+            explicitHdrType = intent.getStringExtra("MOVIE_HDR_TYPE")
+            explicitDvProfile = intent.getStringExtra("MOVIE_DV_PROFILE")
+            explicitAudioBadge = intent.getStringExtra("MOVIE_AUDIO_BADGE")
+            explicitChannelsBadge = intent.getStringExtra("MOVIE_CHANNELS_BADGE")
+            explicitChapters = JellyfinMetadataMapper.deserializeChapters(
+                intent.getStringExtra("MOVIE_CHAPTERS_JSON")
+            ).map { MovieChapter(it.title, it.startTimeMs) }
+
+            jellyfinServerUrl = intent.getStringExtra("JELLYFIN_SERVER_URL")
+            jellyfinToken = intent.getStringExtra("JELLYFIN_TOKEN")
+            jellyfinItemId = intent.getStringExtra("JELLYFIN_ITEM_ID")
+            jellyfinMediaSourceId = intent.getStringExtra("JELLYFIN_MEDIA_SOURCE_ID")
+            if (!jellyfinServerUrl.isNullOrBlank() && !jellyfinToken.isNullOrBlank() && !jellyfinItemId.isNullOrBlank()) {
+                jellyfinClient = JellyfinDirectPlayClient(jellyfinServerUrl!!)
+            }
         } else {
-            movieTitle = "Raiders of the Lost Ark"
-            movieYear = "1981"
-            movieDuration = "1h 55m"
-            movieGenre = "Movie  ·  Action  ·  Adventure"
-            movieSynopsis = "Archeologist and adventurer Indiana Jones is hired by the US government to find the Ark of the Covenant before the Nazis obtain its awesome powers."
-            movieDirector = "Steven Spielberg"
-            movieActors = "Harrison Ford, Karen Allen, Paul Freeman"
-            movieSize = "56.73 GB"
-            movieVideoCodec = "DOLBY VISION P8.1"
-            movieAudioCodec = "DOLBY ATMOS"
+            val fallback = OfflineDemoCatalog.getMovies("http://192.168.100.108:8096").first()
+            movieTitle = fallback.title
+            movieYear = fallback.year
+            movieDuration = fallback.durationText
+            movieGenre = fallback.genreText
+            movieSynopsis = fallback.synopsis
+            movieDirector = fallback.director
+            movieActors = fallback.actors
+            movieSize = fallback.sizeText
+            movieVideoCodec = fallback.videoCodecLabel
+            movieAudioCodec = fallback.audioCodecLabel
+            explicitIs4k = fallback.is4k
+            explicitHdrType = fallback.dynamicRange.name
+            explicitDvProfile = fallback.dvProfile
+            explicitAudioBadge = fallback.audioBadge
+            explicitChannelsBadge = fallback.channelsBadge
+            explicitChapters = fallback.chapters.map { MovieChapter(it.title, it.startTimeMs) }
         }
     }
 
@@ -794,32 +700,28 @@ class PlaybackActivity : Activity() {
         tvPlayerYear.text = movieYear
         tvPlayerTitle.text = movieTitle
 
-        val isExplicitSdr = movieTitle.contains("Apocalypse", ignoreCase = true) ||
-                movieTitle.contains("Whiplash", ignoreCase = true) ||
-                movieVideoCodec.contains("1080P", ignoreCase = true) ||
-                movieVideoCodec.contains("AVC", ignoreCase = true) ||
-                movieVideoCodec.contains("SDR", ignoreCase = true)
-        val isExplicitHdr10 = movieTitle.contains("Odyssey", ignoreCase = true) ||
-                movieVideoCodec.contains("HDR10", ignoreCase = true) ||
-                (movieVideoCodec.contains("HDR", ignoreCase = true) && !movieVideoCodec.contains("VISION", ignoreCase = true))
-        val isExplicitDv = !isExplicitSdr && !isExplicitHdr10 && (
-                movieTitle.contains("Raiders", ignoreCase = true) ||
-                movieTitle.contains("Nightmare", ignoreCase = true) ||
-                movieTitle.contains("Hail", ignoreCase = true) ||
-                movieVideoCodec.contains("VISION", ignoreCase = true) ||
-                movieVideoCodec.contains("DV", ignoreCase = true)
-        )
-        val is4k = !isExplicitSdr && (
-                movieTitle.contains("Raiders", ignoreCase = true) ||
-                movieTitle.contains("Nightmare", ignoreCase = true) ||
-                movieTitle.contains("Hail", ignoreCase = true) ||
-                movieTitle.contains("Odyssey", ignoreCase = true) ||
-                movieVideoCodec.contains("4K", ignoreCase = true) ||
-                movieVideoCodec.contains("2160", ignoreCase = true)
-        )
+        val hdrHint = explicitHdrType?.uppercase(Locale.US) ?: ""
+        val isExplicitSdr = hdrHint == "SDR" ||
+                (hdrHint.isEmpty() && (movieVideoCodec.contains("1080P", ignoreCase = true) ||
+                        movieVideoCodec.contains("AVC", ignoreCase = true) ||
+                        movieVideoCodec.contains("SDR", ignoreCase = true)))
+        val isExplicitHlg = hdrHint == "HLG" ||
+                (hdrHint.isEmpty() && movieVideoCodec.contains("HLG", ignoreCase = true))
+        val isExplicitHdr10 = hdrHint == "HDR10" ||
+                (hdrHint.isEmpty() && (movieVideoCodec.contains("HDR10", ignoreCase = true) ||
+                        (movieVideoCodec.contains("HDR", ignoreCase = true) && !movieVideoCodec.contains("VISION", ignoreCase = true))))
+        val isExplicitDv = hdrHint == "DOLBY_VISION" ||
+                (hdrHint.isEmpty() && (movieVideoCodec.contains("VISION", ignoreCase = true) ||
+                        movieVideoCodec.contains("DV", ignoreCase = true)))
+        val is4k = explicitIs4k ?: (!isExplicitSdr && (movieVideoCodec.contains("4K", ignoreCase = true) ||
+                movieVideoCodec.contains("2160", ignoreCase = true) ||
+                isExplicitDv || isExplicitHdr10 || isExplicitHlg))
 
         badgeResolution.text = if (is4k) "4K" else "HD"
         badgeResolution.visibility = View.VISIBLE
+        if (!explicitDvProfile.isNullOrBlank()) {
+            currentDvProfile = explicitDvProfile!!
+        }
 
         when {
             isExplicitSdr -> {
@@ -828,6 +730,15 @@ class PlaybackActivity : Activity() {
                 btnDvMode.visibility = View.GONE
                 btnChapters.nextFocusRightId = R.id.btnLibrary
                 btnLibrary.nextFocusLeftId = R.id.btnChapters
+            }
+            isExplicitHlg -> {
+                currentDynamicRange = VideoDynamicRange.HLG
+                badgeHdr.visibility = View.VISIBLE
+                badgeHdr.text = "HLG"
+                btnDvMode.visibility = View.VISIBLE
+                btnDvMode.text = "HLG"
+                btnChapters.nextFocusRightId = R.id.btnDvMode
+                btnLibrary.nextFocusLeftId = R.id.btnDvMode
             }
             isExplicitHdr10 -> {
                 currentDynamicRange = VideoDynamicRange.HDR10
@@ -860,9 +771,15 @@ class PlaybackActivity : Activity() {
             }
         }
 
-        badgeAudio.text = "AUDIO BITSTREAM"
+        badgeAudio.text = explicitAudioBadge?.takeIf { it.isNotBlank() } ?: "AUDIO BITSTREAM"
         badgeAudio.visibility = View.VISIBLE
-        badgeChannels.visibility = View.GONE
+        val initialChannels = explicitChannelsBadge?.takeIf { it.isNotBlank() }
+        if (initialChannels != null) {
+            badgeChannels.text = initialChannels
+            badgeChannels.visibility = View.VISIBLE
+        } else {
+            badgeChannels.visibility = View.GONE
+        }
     }
 
     private fun setupListeners() {
@@ -1020,6 +937,18 @@ class PlaybackActivity : Activity() {
                         if (duration > 0 && !isScrubbing) {
                             val remaining = (duration - exo.currentPosition).coerceAtLeast(0)
                             tvRemainingTime.text = "-${formatTimeMs(remaining)}"
+                        }
+                        if (!sessionReportedStarted) {
+                            sessionReportedStarted = true
+                            val client = jellyfinClient
+                            val itemId = jellyfinItemId
+                            val token = jellyfinToken
+                            if (client != null && !itemId.isNullOrBlank() && !token.isNullOrBlank()) {
+                                val srcId = jellyfinMediaSourceId ?: itemId
+                                ioScope.launch {
+                                    client.startPlaybackSession(itemId, srcId, token)
+                                }
+                            }
                         }
 
                         if (isSeeking) {
@@ -2683,7 +2612,24 @@ class PlaybackActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        val finalPosMs = player?.currentPosition ?: 0L
         savePlaybackProgress()
+        val client = jellyfinClient
+        val itemId = jellyfinItemId
+        val token = jellyfinToken
+        if (client != null) {
+            jellyfinClient = null
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    if (!itemId.isNullOrBlank() && !token.isNullOrBlank()) {
+                        client.reportStop(itemId, JellyfinMetadataMapper.msToTicks(finalPosMs), token)
+                    }
+                } finally {
+                    client.close()
+                }
+            }
+        }
+        ioScope.cancel()
         handler.removeCallbacksAndMessages(null)
         AutoFrameRateManager.restoreDefaultMode(this)
         ClientSideFrameExtractor.release()
