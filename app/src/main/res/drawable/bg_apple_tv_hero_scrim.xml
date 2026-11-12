@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <gradient
-        android:type="linear"
-        android:angle="270"
-        android:startColor="#20000000"
-        android:centerColor="#800A0C13"
-        android:endColor="#F208090E" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Left-to-right cinema vignette to protect Hero Title, Synopsis & Cast/Director -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="0"
+                android:startColor="#CC06080D"
+                android:centerColor="#4006080D"
+                android:endColor="#9006080D" />
+        </shape>
+    </item>
+    <!-- Top-to-bottom deep cinema anchor so bottom shelf + metadata pop cleanly -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#9E05070C"
+                android:centerColor="#45080A11"
+                android:endColor="#F506070B" />
+        </shape>
+    </item>
+</layer-list>

@@ -54,10 +54,14 @@
                 android:layout_weight="1"
                 android:layout_marginStart="16dp"
                 android:text="REMUX PLAYER"
-                android:textColor="#8E8E93"
+                android:textColor="#AEAEB2"
                 android:textSize="12sp"
                 android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.08" />
+                android:letterSpacing="0.08"
+                android:shadowColor="#A0000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="4" />
 
             <!-- Apple TV Unified Vector Technology Pills -->
             <LinearLayout
@@ -500,7 +504,7 @@
         android:id="@+id/modalOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#1A000000"
+        android:background="#4804060A"
         android:clickable="true"
         android:focusable="true"
         android:visibility="gone">

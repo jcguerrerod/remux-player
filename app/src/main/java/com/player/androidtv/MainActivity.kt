@@ -1,11 +1,9 @@
 package com.player.androidtv
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -13,12 +11,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.text.TextUtils
 import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -29,20 +27,26 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
+import com.player.androidtv.media.ImageCacheHelper
+import com.player.androidtv.security.TokenVault
+import com.player.androidtv.ui.LiquidGlassHelper
 import com.player.coremedia.jellyfin.DynamicRangeType
 import com.player.coremedia.jellyfin.JellyfinDirectPlayClient
 import com.player.coremedia.jellyfin.JellyfinMetadataMapper
 import com.player.coremedia.jellyfin.JellyfinMovie
 import com.player.coremedia.jellyfin.JellyfinSession
 import com.player.coremedia.jellyfin.JellyfinShow
+import com.player.coremedia.security.NetworkUrlSecurity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.atomic.AtomicReference
 
 class MainActivity : Activity() {
 
@@ -86,13 +90,41 @@ class MainActivity : Activity() {
     private lateinit var shelfScrollView: android.widget.HorizontalScrollView
     private lateinit var llCardShelf: LinearLayout
 
+    // Blur target for floating Liquid Glass sheets
+    private lateinit var mainContentBlurTarget: FrameLayout
+
     // Episode Picker Sheet views
     private lateinit var episodesModalOverlay: FrameLayout
+    private lateinit var episodesModalCard: View
     private lateinit var tvEpisodesSeriesTitle: TextView
     private lateinit var tvEpisodesSeriesMeta: TextView
     private lateinit var btnCloseEpisodes: TextView
     private lateinit var llSeasonsContainer: LinearLayout
     private lateinit var llEpisodesContainer: LinearLayout
+
+    // Title Details Liquid Glass Sheet views
+    private lateinit var detailsModalOverlay: FrameLayout
+    private lateinit var detailsModalCard: View
+    private lateinit var tvDetailsModalTitle: TextView
+    private lateinit var tvDetailsModalSub: TextView
+    private lateinit var tvDetailsVideoSpec: TextView
+    private lateinit var tvDetailsAudioSpec: TextView
+    private lateinit var tvDetailsFileSpec: TextView
+    private lateinit var tvDetailsSynopsis: TextView
+    private lateinit var tvDetailsCrew: TextView
+    private lateinit var btnCloseDetails: TextView
+    private lateinit var btnDetailsPlayNow: Button
+
+    // Jellyfin Server Connection Liquid Glass Sheet views
+    private lateinit var connectModalOverlay: FrameLayout
+    private lateinit var connectModalCard: View
+    private lateinit var btnCloseConnect: TextView
+    private lateinit var etServerUrl: EditText
+    private lateinit var etUsername: EditText
+    private lateinit var etPassword: EditText
+    private lateinit var tvConnectError: TextView
+    private lateinit var btnConnectDisconnect: Button
+    private lateinit var btnConnectSubmit: Button
 
     private var serverBaseUrl: String = "http://192.168.100.108:8096"
     private var activeSession: JellyfinSession? = null
@@ -100,15 +132,22 @@ class MainActivity : Activity() {
     private var selectedMovieIndex = 0
     private var selectedShowIndex = 0
     private var activeEpisodesShow: JellyfinShow? = null
+    private var activeDetailsMovie: JellyfinMovie? = null
     private var selectedSeason = 1
     private var isBackdropPrimary = true
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingBackdropRunnable: Runnable? = null
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val imageFetchDispatcher = Dispatchers.IO.limitedParallelism(4)
+    private var preloadMoviesJob: Job? = null
+    private var preloadShowsJob: Job? = null
 
-    // RAM caches for fluid 60 FPS navigation without dropped frames
-    private val backdropBitmaps = HashMap<String, Bitmap>()
-    private val cardBitmaps = HashMap<String, Bitmap>()
+    private val clientLock = Any()
+    private val cachedClientRef = AtomicReference<Pair<String, JellyfinDirectPlayClient>?>(null)
+
+    // Bounded LRU image cache for 60 FPS navigation without memory bloat
+    private val imageCache = ImageCacheHelper()
     private val cardProgressBars = HashMap<String, Pair<View, View>>()
     private val cardImageViews = HashMap<String, ImageView>()
 
@@ -156,12 +195,36 @@ class MainActivity : Activity() {
         shelfScrollView.overScrollMode = View.OVER_SCROLL_NEVER
         llCardShelf = findViewById(R.id.llCardShelf)
 
+        mainContentBlurTarget = findViewById(R.id.mainContentBlurTarget)
         episodesModalOverlay = findViewById(R.id.episodesModalOverlay)
+        episodesModalCard = findViewById(R.id.episodesModalCard)
         tvEpisodesSeriesTitle = findViewById(R.id.tvEpisodesSeriesTitle)
         tvEpisodesSeriesMeta = findViewById(R.id.tvEpisodesSeriesMeta)
         btnCloseEpisodes = findViewById(R.id.btnCloseEpisodes)
         llSeasonsContainer = findViewById(R.id.llSeasonsContainer)
         llEpisodesContainer = findViewById(R.id.llEpisodesContainer)
+
+        detailsModalOverlay = findViewById(R.id.detailsModalOverlay)
+        detailsModalCard = findViewById(R.id.detailsModalCard)
+        tvDetailsModalTitle = findViewById(R.id.tvDetailsModalTitle)
+        tvDetailsModalSub = findViewById(R.id.tvDetailsModalSub)
+        tvDetailsVideoSpec = findViewById(R.id.tvDetailsVideoSpec)
+        tvDetailsAudioSpec = findViewById(R.id.tvDetailsAudioSpec)
+        tvDetailsFileSpec = findViewById(R.id.tvDetailsFileSpec)
+        tvDetailsSynopsis = findViewById(R.id.tvDetailsSynopsis)
+        tvDetailsCrew = findViewById(R.id.tvDetailsCrew)
+        btnCloseDetails = findViewById(R.id.btnCloseDetails)
+        btnDetailsPlayNow = findViewById(R.id.btnDetailsPlayNow)
+
+        connectModalOverlay = findViewById(R.id.connectModalOverlay)
+        connectModalCard = findViewById(R.id.connectModalCard)
+        btnCloseConnect = findViewById(R.id.btnCloseConnect)
+        etServerUrl = findViewById(R.id.etServerUrl)
+        etUsername = findViewById(R.id.etUsername)
+        etPassword = findViewById(R.id.etPassword)
+        tvConnectError = findViewById(R.id.tvConnectError)
+        btnConnectDisconnect = findViewById(R.id.btnConnectDisconnect)
+        btnConnectSubmit = findViewById(R.id.btnConnectSubmit)
 
         btnPlayDirect.requestFocus()
         btnPlayDirect.setOnClickListener {
@@ -195,20 +258,50 @@ class MainActivity : Activity() {
         btnTabShows.setOnFocusChangeListener { _, _ -> updateTabPillsUi() }
         btnCloseEpisodes.setOnClickListener { closeEpisodesModal() }
         episodesModalOverlay.setOnClickListener { closeEpisodesModal() }
+        btnCloseDetails.setOnClickListener { closeDetailsModal() }
+        detailsModalOverlay.setOnClickListener { closeDetailsModal() }
+        btnDetailsPlayNow.setOnClickListener {
+            val movie = activeDetailsMovie ?: return@setOnClickListener
+            closeDetailsModal()
+            launchPlayback(movie)
+        }
+        btnCloseConnect.setOnClickListener { closeConnectModal() }
+        connectModalOverlay.setOnClickListener { closeConnectModal() }
+        btnConnectDisconnect.setOnClickListener {
+            closeConnectModal()
+            disconnectJellyfinSession()
+        }
+        btnConnectSubmit.setOnClickListener { submitJellyfinConnect() }
+        etPassword.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitJellyfinConnect()
+                true
+            } else {
+                false
+            }
+        }
         serverBadge.setOnClickListener {
             showJellyfinConnectDialog()
         }
         updateTabPillsUi()
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (::episodesModalOverlay.isInitialized && episodesModalOverlay.visibility == View.VISIBLE) {
-            closeEpisodesModal()
-            return
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (::connectModalOverlay.isInitialized && connectModalOverlay.visibility == View.VISIBLE) {
+                closeConnectModal()
+                return true
+            }
+            if (::detailsModalOverlay.isInitialized && detailsModalOverlay.visibility == View.VISIBLE) {
+                closeDetailsModal()
+                return true
+            }
+            if (::episodesModalOverlay.isInitialized && episodesModalOverlay.visibility == View.VISIBLE) {
+                closeEpisodesModal()
+                return true
+            }
         }
-        @Suppress("DEPRECATION")
-        super.onBackPressed()
+        return super.dispatchKeyEvent(event)
     }
 
     private fun updateTabPillsUi() {
@@ -217,29 +310,12 @@ class MainActivity : Activity() {
     }
 
     private fun applyTabPillStyle(tabView: TextView, isSelected: Boolean) {
-        val density = resources.displayMetrics.density
-        val focused = tabView.isFocused
-        val bgColor = when {
-            focused -> Color.parseColor("#FFFFFF")
-            isSelected -> Color.parseColor("#992C2C2E")
-            else -> Color.parseColor("#661C1C1E")
-        }
-        val textColor = when {
-            focused -> Color.parseColor("#000000")
-            isSelected -> Color.parseColor("#FFFFFF")
-            else -> Color.parseColor("#E5E5EA")
-        }
-        tabView.background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 17f * density
-            setColor(bgColor)
-            if (isSelected && !focused) {
-                setStroke((1 * density).toInt(), Color.parseColor("#88FFFFFF"))
-            } else if (!focused) {
-                setStroke((1 * density).toInt(), Color.parseColor("#2EFFFFFF"))
-            }
-        }
-        tabView.setTextColor(textColor)
+        LiquidGlassHelper.styleGlassTabPill(
+            view = tabView,
+            focused = tabView.isFocused,
+            selected = isSelected,
+            cornerRadiusDp = 17f
+        )
     }
 
     private fun switchCatalogTab(tab: CatalogTab) {
@@ -252,16 +328,33 @@ class MainActivity : Activity() {
         updateCurrentHero(animate = true)
     }
 
+    private fun getOrCreateClient(serverUrl: String): JellyfinDirectPlayClient {
+        val normalized = serverUrl.trim().trimEnd('/')
+        synchronized(clientLock) {
+            val current = cachedClientRef.get()
+            if (current != null && current.first == normalized) {
+                return current.second
+            }
+            current?.second?.close()
+            val fresh = JellyfinDirectPlayClient(normalized)
+            cachedClientRef.set(normalized to fresh)
+            return fresh
+        }
+    }
+
     private fun loadInitialCatalogAndSyncJellyfin() {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val savedUrl = prefs.getString(KEY_JF_URL, null)
-        val savedToken = prefs.getString(KEY_JF_TOKEN, null)
+        val savedToken = TokenVault.readAndMigrateToken(prefs, KEY_JF_TOKEN)
         val savedUserId = prefs.getString(KEY_JF_USER_ID, null)
         val savedUserName = prefs.getString(KEY_JF_USER_NAME, "") ?: ""
         val savedServerName = prefs.getString(KEY_JF_SERVER_NAME, "") ?: ""
 
         if (!savedUrl.isNullOrBlank()) {
-            serverBaseUrl = savedUrl
+            when (val validation = NetworkUrlSecurity.validateServerUrl(savedUrl)) {
+                is NetworkUrlSecurity.ServerUrlResult.Valid -> serverBaseUrl = validation.normalizedUrl
+                is NetworkUrlSecurity.ServerUrlResult.Invalid -> Log.w(TAG, "Ignored invalid stored URL: ${validation.reason}")
+            }
         }
 
         // Immediately render offline showcase catalog so UI appears at 0ms without blocking
@@ -275,7 +368,7 @@ class MainActivity : Activity() {
         updateCurrentHero(animate = false)
 
         if (!savedUrl.isNullOrBlank() && !savedToken.isNullOrBlank() && !savedUserId.isNullOrBlank()) {
-            val session = JellyfinSession(savedUrl, savedToken, savedUserId, savedUserName, savedServerName)
+            val session = JellyfinSession(serverBaseUrl, savedToken, savedUserId, savedUserName, savedServerName)
             activeSession = session
             updateServerBadgeUi(connected = true, label = if (savedServerName.isNotBlank()) "Jellyfin · $savedServerName" else "Jellyfin Connected")
             syncLibraryFromJellyfin(session)
@@ -287,9 +380,8 @@ class MainActivity : Activity() {
 
     private fun probeLocalJellyfinServer() {
         ioScope.launch {
-            val client = JellyfinDirectPlayClient(serverBaseUrl)
+            val client = getOrCreateClient(serverBaseUrl)
             val info = client.testConnection()
-            client.close()
             if (info != null) {
                 withContext(Dispatchers.Main) {
                     if (activeSession == null) {
@@ -302,16 +394,16 @@ class MainActivity : Activity() {
 
     private fun syncLibraryFromJellyfin(session: JellyfinSession) {
         ioScope.launch {
-            val client = JellyfinDirectPlayClient(session.serverUrl)
+            val client = getOrCreateClient(session.serverUrl)
             val serverInfo = client.testConnection()
             val liveMovies = client.fetchMovies(session)
             val liveShows = client.fetchTvShows(session)
-            client.close()
 
             withContext(Dispatchers.Main) {
                 val resolvedName = serverInfo?.serverName?.takeIf { it.isNotBlank() }
                     ?: session.serverName.ifBlank { "Live Server" }
                 if (liveMovies.isNotEmpty() || liveShows.isNotEmpty()) {
+                    imageCache.clearAll()
                     if (liveMovies.isNotEmpty()) {
                         movies = liveMovies
                         selectedMovieIndex = 0
@@ -322,8 +414,6 @@ class MainActivity : Activity() {
                         selectedShowIndex = 0
                         preloadShowBitmapsAsync(liveShows)
                     }
-                    backdropBitmaps.clear()
-                    cardBitmaps.clear()
                     rebuildCurrentShelf()
                     updateCurrentHero(animate = true)
                     val totalCount = liveMovies.size + liveShows.size
@@ -364,9 +454,8 @@ class MainActivity : Activity() {
 
         activeSession?.let { session ->
             ioScope.launch {
-                val client = JellyfinDirectPlayClient(session.serverUrl)
+                val client = getOrCreateClient(session.serverUrl)
                 client.setPlayedStatus(session, movie.id, nextPlayed)
-                client.close()
             }
         }
 
@@ -378,116 +467,151 @@ class MainActivity : Activity() {
     }
 
     private fun showMovieDetailsDialog(movie: JellyfinMovie) {
-        val lines = buildString {
-            appendLine("${movie.title} (${movie.year})")
-            appendLine("${movie.durationText}  ·  ${movie.genreText}")
-            if (movie.sizeText.isNotBlank()) appendLine("File Size: ${movie.sizeText}")
-            appendLine()
-            appendLine("Video: ${if (movie.is4k) "4K UHD" else "1080p HD"} · ${movie.dynamicRange.name.replace('_', ' ')} ${movie.dvProfile}".trim())
-            appendLine("Audio: ${movie.audioBadge} ${movie.channelsBadge}".trim())
-            appendLine("Chapters: ${movie.chapters.size}")
-            if (movie.director.isNotBlank()) appendLine("Director: ${movie.director}")
-            if (movie.actors.isNotBlank()) appendLine("Cast: ${movie.actors}")
-            if (movie.synopsis.isNotBlank()) {
-                appendLine()
-                append(movie.synopsis)
-            }
-        }
+        activeDetailsMovie = movie
+        tvDetailsModalTitle.text = movie.title
+        tvDetailsModalSub.text = listOfNotNull(
+            movie.year.takeIf { it.isNotBlank() },
+            movie.genreText.takeIf { it.isNotBlank() },
+            movie.durationText.takeIf { it.isNotBlank() }
+        ).joinToString("  ·  ")
 
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Title Details")
-            .setMessage(lines.trim())
-            .setPositiveButton("Close", null)
-            .show()
+        val resLabel = if (movie.is4k) "4K UHD" else "1080p HD"
+        val rangeLabel = when (movie.dynamicRange) {
+            DynamicRangeType.DOLBY_VISION -> "Dolby Vision ${movie.dvProfile}".trim()
+            DynamicRangeType.HDR10 -> "HDR10"
+            DynamicRangeType.HLG -> "HLG"
+            DynamicRangeType.SDR -> "SDR"
+        }
+        tvDetailsVideoSpec.text = "$resLabel · $rangeLabel"
+        tvDetailsAudioSpec.text = listOfNotNull(
+            movie.audioBadge.takeIf { it.isNotBlank() },
+            movie.channelsBadge.takeIf { it.isNotBlank() }
+        ).joinToString(" · ")
+        val sizePart = movie.sizeText.takeIf { it.isNotBlank() } ?: "Direct Stream"
+        tvDetailsFileSpec.text = "$sizePart · ${movie.chapters.size} Ch."
+        tvDetailsSynopsis.text = movie.synopsis.ifBlank { "Direct Play Blu-ray / Master Stream ready for local lossless playback." }
+
+        val crewLines = listOfNotNull(
+            movie.director.takeIf { it.isNotBlank() }?.let { "Director: $it" },
+            movie.actors.takeIf { it.isNotBlank() }?.let { "Cast: $it" }
+        ).joinToString("\n")
+        tvDetailsCrew.text = crewLines
+        tvDetailsCrew.visibility = if (crewLines.isNotBlank()) View.VISIBLE else View.GONE
+
+        LiquidGlassHelper.showModalOverlay(
+            overlay = detailsModalOverlay,
+            sheetCard = detailsModalCard,
+            blurTarget = mainContentBlurTarget
+        ) {
+            btnDetailsPlayNow.requestFocus()
+        }
+    }
+
+    private fun closeDetailsModal() {
+        LiquidGlassHelper.hideModalOverlay(
+            overlay = detailsModalOverlay,
+            sheetCard = detailsModalCard,
+            blurTarget = mainContentBlurTarget
+        ) {
+            activeDetailsMovie = null
+            btnDetails.requestFocus()
+        }
     }
 
     private fun showJellyfinConnectDialog() {
-        val density = resources.displayMetrics.density
-        val pad = (20 * density).toInt()
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad / 2, pad, pad / 2)
+        etServerUrl.setText(activeSession?.serverUrl ?: serverBaseUrl)
+        etUsername.setText(activeSession?.userName ?: "")
+        etPassword.setText("")
+        tvConnectError.visibility = View.GONE
+        btnConnectSubmit.isEnabled = true
+        btnConnectSubmit.text = "Connect"
+        btnConnectDisconnect.visibility = if (activeSession != null) View.VISIBLE else View.GONE
+
+        LiquidGlassHelper.showModalOverlay(
+            overlay = connectModalOverlay,
+            sheetCard = connectModalCard,
+            blurTarget = mainContentBlurTarget
+        ) {
+            etServerUrl.requestFocus()
+        }
+    }
+
+    private fun closeConnectModal() {
+        LiquidGlassHelper.hideModalOverlay(
+            overlay = connectModalOverlay,
+            sheetCard = connectModalCard,
+            blurTarget = mainContentBlurTarget
+        ) {
+            etPassword.setText("")
+            tvConnectError.visibility = View.GONE
+            serverBadge.requestFocus()
+        }
+    }
+
+    private fun submitJellyfinConnect() {
+        val rawUrl = etServerUrl.text.toString()
+        val username = etUsername.text.toString().trim()
+        val password = etPassword.text.toString()
+
+        val urlCheck = NetworkUrlSecurity.validateServerUrl(rawUrl)
+        if (urlCheck is NetworkUrlSecurity.ServerUrlResult.Invalid) {
+            tvConnectError.text = urlCheck.reason
+            tvConnectError.visibility = View.VISIBLE
+            return
+        }
+        if (username.isBlank()) {
+            tvConnectError.text = "Enter a valid Jellyfin username"
+            tvConnectError.visibility = View.VISIBLE
+            return
         }
 
-        val urlInput = EditText(this).apply {
-            hint = "Server URL (e.g. http://192.168.100.108:8096)"
-            setText(activeSession?.serverUrl ?: serverBaseUrl)
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.parseColor("#8E8E93"))
-            setSingleLine(true)
-        }
-        val userInput = EditText(this).apply {
-            hint = "Username"
-            setText(activeSession?.userName ?: "")
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.parseColor("#8E8E93"))
-            setSingleLine(true)
-        }
-        val passInput = EditText(this).apply {
-            hint = "Password"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.parseColor("#8E8E93"))
-            setSingleLine(true)
-        }
-
-        container.addView(urlInput)
-        container.addView(userInput)
-        container.addView(passInput)
-
-        val builder = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Jellyfin Server Connection")
-            .setView(container)
-            .setPositiveButton("Connect") { _, _ ->
-                val url = urlInput.text.toString().trim().trimEnd('/')
-                val username = userInput.text.toString().trim()
-                val password = passInput.text.toString()
-                if (url.isBlank() || username.isBlank()) {
-                    Toast.makeText(this, "Enter server URL and username", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                authenticateAndConnect(url, username, password)
-            }
-            .setNegativeButton("Cancel", null)
-
-        if (activeSession != null) {
-            builder.setNeutralButton("Use Offline Demo") { _, _ ->
-                disconnectJellyfinSession()
-            }
-        }
-        builder.show()
+        val safeUrl = (urlCheck as NetworkUrlSecurity.ServerUrlResult.Valid).normalizedUrl
+        tvConnectError.visibility = View.GONE
+        btnConnectSubmit.isEnabled = false
+        btnConnectSubmit.text = "Connecting..."
+        authenticateAndConnect(safeUrl, username, password)
     }
 
     private fun authenticateAndConnect(url: String, username: String, password: String) {
         updateServerBadgeUi(connected = false, label = "Connecting...")
         ioScope.launch {
-            val client = JellyfinDirectPlayClient(url)
+            val client = getOrCreateClient(url)
             val info = client.testConnection()
             if (info == null) {
-                client.close()
                 withContext(Dispatchers.Main) {
                     updateServerBadgeUi(connected = activeSession != null, label = activeSession?.serverName?.let { "Jellyfin · $it" } ?: "Connect Jellyfin")
-                    Toast.makeText(this@MainActivity, "Could not reach Jellyfin at $url", Toast.LENGTH_LONG).show()
+                    btnConnectSubmit.isEnabled = true
+                    btnConnectSubmit.text = "Connect"
+                    if (connectModalOverlay.visibility == View.VISIBLE) {
+                        tvConnectError.text = "Could not reach Jellyfin at $url"
+                        tvConnectError.visibility = View.VISIBLE
+                    } else {
+                        Toast.makeText(this@MainActivity, "Could not reach Jellyfin server", Toast.LENGTH_LONG).show()
+                    }
                 }
                 return@launch
             }
 
             val session = client.authenticateByName(username, password, info.serverName)
-            client.close()
             withContext(Dispatchers.Main) {
+                btnConnectSubmit.isEnabled = true
+                btnConnectSubmit.text = "Connect"
                 if (session == null) {
-                    updateServerBadgeUi(connected = false, label = "Connect Jellyfin")
-                    Toast.makeText(this@MainActivity, "Invalid username or password", Toast.LENGTH_LONG).show()
+                    updateServerBadgeUi(connected = activeSession != null, label = activeSession?.serverName?.let { "Jellyfin · $it" } ?: "Connect Jellyfin")
+                    tvConnectError.text = "Invalid username or password"
+                    tvConnectError.visibility = View.VISIBLE
                 } else {
                     serverBaseUrl = session.serverUrl
                     activeSession = session
-                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    val editor = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                         .putString(KEY_JF_URL, session.serverUrl)
-                        .putString(KEY_JF_TOKEN, session.accessToken)
                         .putString(KEY_JF_USER_ID, session.userId)
                         .putString(KEY_JF_USER_NAME, session.userName)
                         .putString(KEY_JF_SERVER_NAME, session.serverName)
-                        .apply()
+                    TokenVault.writeToken(editor, KEY_JF_TOKEN, session.accessToken)
+                    editor.apply()
+
+                    closeConnectModal()
                     Toast.makeText(this@MainActivity, "Connected to ${info.serverName}", Toast.LENGTH_SHORT).show()
                     syncLibraryFromJellyfin(session)
                 }
@@ -506,8 +630,7 @@ class MainActivity : Activity() {
         tvShows = OfflineDemoCatalog.getTvShows(serverBaseUrl)
         selectedMovieIndex = 0
         selectedShowIndex = 0
-        backdropBitmaps.clear()
-        cardBitmaps.clear()
+        imageCache.clearAll()
         rebuildCurrentShelf()
         updateCurrentHero(animate = true)
         preloadMovieBitmapsAsync(movies)
@@ -516,107 +639,49 @@ class MainActivity : Activity() {
     }
 
     private fun preloadMovieBitmapsAsync(catalog: List<JellyfinMovie>) {
-        ioScope.launch {
-            val backdropOptions = BitmapFactory.Options().apply {
-                inSampleSize = 2
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-            for ((idx, movie) in catalog.withIndex()) {
-                val backdropKey = movie.backdropUrl ?: movie.backdropAsset ?: ""
-                if (backdropKey.isNotEmpty()) {
-                    val bmp = loadBitmap(movie.backdropUrl, movie.backdropAsset, backdropOptions)
-                    if (bmp != null) {
-                        synchronized(backdropBitmaps) {
-                            backdropBitmaps[backdropKey] = bmp
-                        }
-                        if (currentTab == CatalogTab.MOVIES && idx == selectedMovieIndex) {
-                            withContext(Dispatchers.Main) {
-                                ivHeroBackdrop.setImageBitmap(bmp)
-                                ivHeroBackdrop.alpha = 1f
-                            }
+        preloadMoviesJob?.cancel()
+        preloadMoviesJob = ioScope.launch(imageFetchDispatcher) {
+            catalog.mapIndexed { idx, movie ->
+                async {
+                    val bmp = imageCache.loadBackdrop(movie.backdropUrl, movie.backdropAsset, assets)
+                    if (bmp != null && currentTab == CatalogTab.MOVIES && idx == selectedMovieIndex) {
+                        withContext(Dispatchers.Main) {
+                            ivHeroBackdrop.setImageBitmap(bmp)
+                            ivHeroBackdrop.alpha = 1f
                         }
                     }
-                }
-
-                val cardKey = movie.cardUrl ?: movie.cardAsset ?: ""
-                if (cardKey.isNotEmpty()) {
-                    val cardBmp = loadBitmap(movie.cardUrl, movie.cardAsset, null)
+                    val cardBmp = imageCache.loadCardThumbnail(movie.cardUrl, movie.cardAsset, assets)
                     if (cardBmp != null) {
-                        synchronized(cardBitmaps) {
-                            cardBitmaps[cardKey] = cardBmp
-                        }
                         withContext(Dispatchers.Main) {
                             cardImageViews[movie.id]?.setImageBitmap(cardBmp)
                         }
                     }
                 }
-            }
+            }.awaitAll()
         }
     }
 
     private fun preloadShowBitmapsAsync(shows: List<JellyfinShow>) {
-        ioScope.launch {
-            val backdropOptions = BitmapFactory.Options().apply {
-                inSampleSize = 2
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-            for ((idx, show) in shows.withIndex()) {
-                val backdropKey = show.backdropUrl ?: show.backdropAsset ?: ""
-                if (backdropKey.isNotEmpty()) {
-                    val bmp = loadBitmap(show.backdropUrl, show.backdropAsset, backdropOptions)
-                    if (bmp != null) {
-                        synchronized(backdropBitmaps) {
-                            backdropBitmaps[backdropKey] = bmp
-                        }
-                        if (currentTab == CatalogTab.TV_SHOWS && idx == selectedShowIndex) {
-                            withContext(Dispatchers.Main) {
-                                ivHeroBackdrop.setImageBitmap(bmp)
-                                ivHeroBackdrop.alpha = 1f
-                            }
+        preloadShowsJob?.cancel()
+        preloadShowsJob = ioScope.launch(imageFetchDispatcher) {
+            shows.mapIndexed { idx, show ->
+                async {
+                    val bmp = imageCache.loadBackdrop(show.backdropUrl, show.backdropAsset, assets)
+                    if (bmp != null && currentTab == CatalogTab.TV_SHOWS && idx == selectedShowIndex) {
+                        withContext(Dispatchers.Main) {
+                            ivHeroBackdrop.setImageBitmap(bmp)
+                            ivHeroBackdrop.alpha = 1f
                         }
                     }
-                }
-
-                val cardKey = show.cardUrl ?: show.cardAsset ?: ""
-                if (cardKey.isNotEmpty()) {
-                    val cardBmp = loadBitmap(show.cardUrl, show.cardAsset, null)
+                    val cardBmp = imageCache.loadCardThumbnail(show.cardUrl, show.cardAsset, assets)
                     if (cardBmp != null) {
-                        synchronized(cardBitmaps) {
-                            cardBitmaps[cardKey] = cardBmp
-                        }
                         withContext(Dispatchers.Main) {
                             cardImageViews[show.id]?.setImageBitmap(cardBmp)
                         }
                     }
                 }
-            }
+            }.awaitAll()
         }
-    }
-
-    private fun loadBitmap(remoteUrl: String?, assetPath: String?, options: BitmapFactory.Options?): Bitmap? {
-        if (!remoteUrl.isNullOrBlank()) {
-            try {
-                val conn = URL(remoteUrl).openConnection() as HttpURLConnection
-                conn.connectTimeout = 4000
-                conn.readTimeout = 6000
-                conn.useCaches = true
-                conn.inputStream.use { stream ->
-                    return BitmapFactory.decodeStream(stream, null, options)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Remote image load failed: $remoteUrl", e)
-            }
-        }
-        if (!assetPath.isNullOrBlank()) {
-            try {
-                assets.open(assetPath).use { stream ->
-                    return BitmapFactory.decodeStream(stream, null, options)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Asset image load failed: $assetPath", e)
-            }
-        }
-        return null
     }
 
     private fun playbackDisplayTitle(movie: JellyfinMovie): String {
@@ -679,6 +744,13 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        pendingBackdropRunnable?.let { mainHandler.removeCallbacks(it) }
+        preloadMoviesJob?.cancel()
+        preloadShowsJob?.cancel()
+        synchronized(clientLock) {
+            cachedClientRef.getAndSet(null)?.second?.close()
+        }
+        imageCache.clearAll()
         ioScope.cancel()
     }
 
@@ -838,7 +910,7 @@ class MainActivity : Activity() {
             setPadding((14 * density).toInt(), (10 * density).toInt(), (14 * density).toInt(), (10 * density).toInt())
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.parseColor("#252836"), Color.parseColor("#121318"))
+                intArrayOf(Color.parseColor("#2E3446"), Color.parseColor("#181B25"), Color.parseColor("#0E1016"))
             )
         }
         val tvFallbackTitle = TextView(this).apply {
@@ -871,15 +943,12 @@ class MainActivity : Activity() {
         cardImageViews[itemId] = imageView
 
         val cardKey = cardUrl ?: cardAsset ?: ""
-        val cachedCard = synchronized(cardBitmaps) { cardBitmaps[cardKey] }
+        val cachedCard = imageCache.getCachedCard(cardKey)
         if (cachedCard != null) {
             imageView.setImageBitmap(cachedCard)
         } else if (!cardAsset.isNullOrBlank()) {
-            try {
-                assets.open(cardAsset).use { stream ->
-                    imageView.setImageBitmap(BitmapFactory.decodeStream(stream))
-                }
-            } catch (_: Exception) {}
+            val assetCard = imageCache.loadCardThumbnail(null, cardAsset, assets)
+            if (assetCard != null) imageView.setImageBitmap(assetCard)
         }
 
         val borderOverlay = View(this).apply {
@@ -1110,31 +1179,22 @@ class MainActivity : Activity() {
 
         val crossfadeTask = Runnable {
             val key = backdropUrl ?: backdropAsset ?: ""
-            val bmp = if (key.isNotEmpty()) synchronized(backdropBitmaps) { backdropBitmaps[key] } else null
-            val resolved = bmp ?: if (!backdropAsset.isNullOrBlank()) {
-                val opt = BitmapFactory.Options().apply {
-                    inSampleSize = 2
-                    inPreferredConfig = Bitmap.Config.RGB_565
-                }
-                try {
-                    assets.open(backdropAsset).use { stream ->
-                        BitmapFactory.decodeStream(stream, null, opt)
-                    }
-                } catch (_: Exception) { null }
+            val cached = imageCache.getCachedBackdrop(key)
+            val resolved = cached ?: if (!backdropAsset.isNullOrBlank()) {
+                imageCache.loadBackdrop(null, backdropAsset, assets)
             } else null
 
-            ivHeroBackdrop.animate().cancel()
-            ivHeroBackdropAlt.animate().cancel()
-            if (isBackdropPrimary) {
-                ivHeroBackdropAlt.setImageBitmap(resolved)
-                ivHeroBackdropAlt.animate().alpha(if (resolved != null) 1f else 0f).setDuration(220).start()
-                ivHeroBackdrop.animate().alpha(0f).setDuration(220).start()
-                isBackdropPrimary = false
-            } else {
-                ivHeroBackdrop.setImageBitmap(resolved)
-                ivHeroBackdrop.animate().alpha(if (resolved != null) 1f else 0f).setDuration(220).start()
-                ivHeroBackdropAlt.animate().alpha(0f).setDuration(220).start()
-                isBackdropPrimary = true
+            applyBackdropCrossfade(resolved)
+
+            if (resolved == null && !backdropUrl.isNullOrBlank()) {
+                ioScope.launch(imageFetchDispatcher) {
+                    val fetched = imageCache.loadBackdrop(backdropUrl, backdropAsset, assets)
+                    if (fetched != null) {
+                        withContext(Dispatchers.Main) {
+                            applyBackdropCrossfade(fetched)
+                        }
+                    }
+                }
             }
         }
 
@@ -1143,6 +1203,22 @@ class MainActivity : Activity() {
             mainHandler.postDelayed(crossfadeTask, 120)
         } else {
             crossfadeTask.run()
+        }
+    }
+
+    private fun applyBackdropCrossfade(resolved: Bitmap?) {
+        ivHeroBackdrop.animate().cancel()
+        ivHeroBackdropAlt.animate().cancel()
+        if (isBackdropPrimary) {
+            ivHeroBackdropAlt.setImageBitmap(resolved)
+            ivHeroBackdropAlt.animate().alpha(if (resolved != null) 1f else 0f).setDuration(220).start()
+            ivHeroBackdrop.animate().alpha(0f).setDuration(220).start()
+            isBackdropPrimary = false
+        } else {
+            ivHeroBackdrop.setImageBitmap(resolved)
+            ivHeroBackdrop.animate().alpha(if (resolved != null) 1f else 0f).setDuration(220).start()
+            ivHeroBackdropAlt.animate().alpha(0f).setDuration(220).start()
+            isBackdropPrimary = true
         }
     }
 
@@ -1181,9 +1257,8 @@ class MainActivity : Activity() {
         }
         activeSession?.let { session ->
             ioScope.launch {
-                val client = JellyfinDirectPlayClient(session.serverUrl)
+                val client = getOrCreateClient(session.serverUrl)
                 client.setPlayedStatus(session, episode.id, nextPlayed)
-                client.close()
             }
         }
         Toast.makeText(
@@ -1198,7 +1273,11 @@ class MainActivity : Activity() {
         tvEpisodesSeriesTitle.text = show.title
         val seasonLabel = if (show.seasonsCount == 1) "1 Season" else "${show.seasonsCount} Seasons"
         tvEpisodesSeriesMeta.text = "${show.year}  ·  $seasonLabel  ·  Direct Play"
-        episodesModalOverlay.visibility = View.VISIBLE
+        LiquidGlassHelper.showModalOverlay(
+            overlay = episodesModalOverlay,
+            sheetCard = episodesModalCard,
+            blurTarget = mainContentBlurTarget
+        )
 
         if (show.episodes.isNotEmpty()) {
             renderEpisodesSheetContent(show)
@@ -1223,9 +1302,8 @@ class MainActivity : Activity() {
         btnCloseEpisodes.requestFocus()
 
         ioScope.launch {
-            val client = JellyfinDirectPlayClient(session.serverUrl)
+            val client = getOrCreateClient(session.serverUrl)
             val fetched = client.fetchEpisodes(session, show.id)
-            client.close()
 
             withContext(Dispatchers.Main) {
                 val seasonsDetected = fetched.mapNotNull { it.seasonNumber }.distinct().size.coerceAtLeast(show.seasonsCount)
@@ -1243,9 +1321,14 @@ class MainActivity : Activity() {
     }
 
     private fun closeEpisodesModal() {
-        episodesModalOverlay.visibility = View.GONE
-        activeEpisodesShow = null
-        btnPlayDirect.requestFocus()
+        LiquidGlassHelper.hideModalOverlay(
+            overlay = episodesModalOverlay,
+            sheetCard = episodesModalCard,
+            blurTarget = mainContentBlurTarget
+        ) {
+            activeEpisodesShow = null
+            btnPlayDirect.requestFocus()
+        }
     }
 
     private fun renderEpisodesSheetContent(show: JellyfinShow) {
@@ -1290,18 +1373,12 @@ class MainActivity : Activity() {
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
 
                 fun refreshPillStyle(focused: Boolean) {
-                    val bgColor = when {
-                        focused -> Color.parseColor("#FFFFFF")
-                        isActive -> Color.parseColor("#3DFFFFFF")
-                        else -> Color.parseColor("#18FFFFFF")
-                    }
-                    val txtColor = if (focused) Color.BLACK else Color.WHITE
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 16f * density
-                        setColor(bgColor)
-                    }
-                    setTextColor(txtColor)
+                    LiquidGlassHelper.styleGlassTabPill(
+                        view = this,
+                        focused = focused,
+                        selected = isActive,
+                        cornerRadiusDp = 16f
+                    )
                 }
 
                 refreshPillStyle(false)
@@ -1332,20 +1409,8 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 isFocusable = true
                 isClickable = true
+                setBackgroundResource(R.drawable.bg_apple_tv_sheet_row)
                 setPadding((16 * density).toInt(), (12 * density).toInt(), (16 * density).toInt(), (12 * density).toInt())
-
-                fun applyRowBg(focused: Boolean) {
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 12f * density
-                        setColor(if (focused) Color.parseColor("#33FFFFFF") else Color.parseColor("#14FFFFFF"))
-                        if (focused) {
-                            setStroke((1.5f * density).toInt(), Color.WHITE)
-                        }
-                    }
-                }
-                applyRowBg(false)
-                setOnFocusChangeListener { _, hasFocus -> applyRowBg(hasFocus) }
                 setOnClickListener {
                     closeEpisodesModal()
                     launchPlayback(episode)
@@ -1414,6 +1479,10 @@ class MainActivity : Activity() {
     }
 
     private fun launchPlayback(movie: JellyfinMovie) {
+        if (!NetworkUrlSecurity.validateMediaPlaybackUri(movie.streamUrl)) {
+            Toast.makeText(this, "Blocked invalid or unsafe media stream URL", Toast.LENGTH_SHORT).show()
+            return
+        }
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val (pos, dur) = getSavedProgress(prefs, movie)
         val seekPos = if (dur > 0L && pos > 5000L && pos < dur - 30000L) pos else androidx.media3.common.C.TIME_UNSET

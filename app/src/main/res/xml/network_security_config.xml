@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Local Jellyfin servers on home LAN/VPN (e.g. 192.168.x.x, 10.x.x.x, Tailscale) commonly
+        serve direct HTTP streams on arbitrary DHCP IPs, while NetworkUrlSecurity restricts http://
+        to private/local hosts at runtime and requires https:// for any public internet host.
+        User-added root certificates are explicitly disallowed on all connections.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

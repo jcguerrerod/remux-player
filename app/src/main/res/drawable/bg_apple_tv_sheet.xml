@@ -1,33 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Base frosted liquid glass body -->
+    <!-- Deep translucent frosted obsidian body -->
     <item>
         <shape android:shape="rectangle">
             <gradient
-                android:angle="270"
-                android:startColor="#F0151926"
-                android:centerColor="#EA10121C"
-                android:endColor="#F20A0C13"
+                android:angle="315"
+                android:startColor="#EB1E2433"
+                android:centerColor="#E612151F"
+                android:endColor="#EE0A0C12"
                 android:type="linear" />
-            <corners android:radius="22dp" />
-            <stroke
-                android:width="1.2dp"
-                android:color="#40FFFFFF" />
+            <corners android:radius="26dp" />
         </shape>
     </item>
 
-    <!-- Top specular liquid glass reflection highlight -->
-    <item android:bottom="80dp">
+    <!-- Diagonal liquid glass specular sheen (scales cleanly for any sheet height) -->
+    <item>
         <shape android:shape="rectangle">
-            <corners
-                android:topLeftRadius="21dp"
-                android:topRightRadius="21dp"
-                android:bottomLeftRadius="0dp"
-                android:bottomRightRadius="0dp" />
+            <corners android:radius="26dp" />
             <gradient
-                android:angle="270"
-                android:startColor="#2AFFFFFF"
-                android:endColor="#00FFFFFF" />
+                android:angle="300"
+                android:startColor="#24FFFFFF"
+                android:centerColor="#08FFFFFF"
+                android:endColor="#00FFFFFF"
+                android:type="linear" />
+        </shape>
+    </item>
+
+    <!-- Crisp specular rim -->
+    <item android:bottom="1dp" android:left="1dp" android:right="1dp" android:top="1dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="25dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#52FFFFFF" />
+            <solid android:color="@android:color/transparent" />
         </shape>
     </item>
 </layer-list>

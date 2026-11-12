@@ -333,14 +333,6 @@ object ClientSideFrameExtractor {
         }
     }
 
-    /**
-     * Proactively pre-warms keyframes around current playback position and key milestone points.
-     */
-    fun proactivePrewarm(url: String, currentPositionMs: Long, durationMs: Long) {
-        // Intentionally no-op: Proactive seeking to 10%, 25%, 50%, 75% on large network Remux files
-        // causes severe 100% disk thrashing on mechanical hard drives and starves player streaming.
-    }
-
     fun release() {
         synchronized(this) {
             pendingRequestTimeMs = null

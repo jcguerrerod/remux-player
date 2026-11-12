@@ -74,7 +74,13 @@ object RemuxExoPlayerFactory {
             } == true
         } else false
 
-        val baseCaps = AudioCapabilities.getCapabilities(context)
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+
+        @Suppress("DEPRECATION")
+        val baseCaps = AudioCapabilities.getCapabilities(context, audioAttributes, null)
         val supportedEncodings = mutableSetOf(
             AudioFormat.ENCODING_PCM_16BIT,
             AudioFormat.ENCODING_PCM_FLOAT,
@@ -86,6 +92,7 @@ object RemuxExoPlayerFactory {
         if (hasHdmiOutput || baseCaps.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)) {
             supportedEncodings.add(AudioFormat.ENCODING_DOLBY_TRUEHD)
         }
+        @Suppress("DEPRECATION")
         val effectiveAudioCapabilities = AudioCapabilities(
             supportedEncodings.toIntArray(),
             8
@@ -397,6 +404,7 @@ object RemuxExoPlayerFactory {
                     .setOffloadBufferDurationUs(10_000_000)  // 10s offload buffer
                     .build()
 
+                @Suppress("DEPRECATION")
                 return DefaultAudioSink.Builder(context)
                     .setAudioCapabilities(effectiveAudioCapabilities)
                     .setEnableFloatOutput(true)
@@ -405,9 +413,9 @@ object RemuxExoPlayerFactory {
             }
         }
 
-        // High-Throughput HTTP DataSource Pipeline with persistent Keep-Alive
+        // High-Throughput HTTP DataSource Pipeline with persistent Keep-Alive (disallow HTTPS->HTTP downgrades)
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(true)
+            .setAllowCrossProtocolRedirects(false)
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(30000)
             .setKeepPostFor302Redirects(true)
@@ -421,11 +429,6 @@ object RemuxExoPlayerFactory {
 
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
             .setDataSourceFactory(httpDataSourceFactory)
-
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-            .build()
 
         // Calibrated 96 MB RAM buffer with 0s back buffer for zero-copy 4K UHD Blu-ray Remux
         val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)

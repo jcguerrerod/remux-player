@@ -5,6 +5,12 @@
     android:layout_height="match_parent"
     android:background="#08090E">
 
+    <!-- MAIN CANVAS (Blurred dynamically on API 31+ behind open Liquid Glass sheets) -->
+    <FrameLayout
+        android:id="@+id/mainContentBlurTarget"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
     <!-- FULLSCREEN CINEMATIC HERO BACKDROP (Smooth Apple TV Crossfade) -->
     <ImageView
         android:id="@+id/ivHeroBackdrop"
@@ -59,17 +65,25 @@
                     android:textColor="#FFFFFF"
                     android:textSize="20sp"
                     android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.08" />
+                    android:letterSpacing="0.08"
+                    android:shadowColor="#B0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="6" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:text="PLAYER"
-                    android:textColor="#8E8E93"
+                    android:textColor="#AEAEB2"
                     android:textSize="20sp"
                     android:fontFamily="sans-serif-light"
-                    android:letterSpacing="0.08" />
+                    android:letterSpacing="0.08"
+                    android:shadowColor="#B0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="6" />
             </LinearLayout>
 
             <!-- Apple TV Top Navigation Segment Pills -->
@@ -189,7 +203,11 @@
                     android:maxLines="2"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-black"
-                    android:letterSpacing="0.03" />
+                    android:letterSpacing="0.03"
+                    android:shadowColor="#C0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="2"
+                    android:shadowRadius="10" />
 
                 <!-- Genre and Release Year Row -->
                 <TextView
@@ -199,9 +217,13 @@
                     android:layout_marginTop="4dp"
                     android:singleLine="true"
                     android:text="Movie  ·  Action  ·  Adventure  ·  1981"
-                    android:textColor="#A1A1A6"
+                    android:textColor="#C7C7CC"
                     android:textSize="12sp"
-                    android:fontFamily="sans-serif" />
+                    android:fontFamily="sans-serif"
+                    android:shadowColor="#B0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="6" />
 
                 <!-- 3-line Synopsis -->
                 <TextView
@@ -213,9 +235,13 @@
                     android:ellipsize="end"
                     android:lineSpacingExtra="2dp"
                     android:text="Archaeology professor Indiana Jones ventures across the globe to uncover the legendary Ark of the Covenant before insidious Nazi forces can seize its ancient power."
-                    android:textColor="#C7C7CC"
+                    android:textColor="#E5E5EA"
                     android:textSize="12sp"
-                    android:fontFamily="sans-serif" />
+                    android:fontFamily="sans-serif"
+                    android:shadowColor="#B0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="6" />
 
                 <!-- Fila de Metadatos y Logos Oficiales (Foto 4 Apple TV) -->
                 <LinearLayout
@@ -376,10 +402,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Cast  Harrison Ford, Karen Allen, Paul Freeman, John Rhys-Davies"
-                    android:textColor="#8E8E93"
+                    android:textColor="#D1D1D6"
                     android:textSize="12sp"
                     android:lineSpacingExtra="3dp"
-                    android:fontFamily="sans-serif" />
+                    android:fontFamily="sans-serif"
+                    android:shadowColor="#C0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="7" />
 
                 <TextView
                     android:id="@+id/tvHeroDirector"
@@ -387,9 +417,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="Director  Steven Spielberg"
-                    android:textColor="#8E8E93"
+                    android:textColor="#D1D1D6"
                     android:textSize="12sp"
-                    android:fontFamily="sans-serif" />
+                    android:fontFamily="sans-serif"
+                    android:shadowColor="#C0000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="7" />
             </LinearLayout>
         </LinearLayout>
 
@@ -408,10 +442,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Movies"
-                android:textColor="#8E8E93"
+                android:textColor="#C7C7CC"
                 android:textSize="13sp"
                 android:letterSpacing="0.04"
                 android:fontFamily="sans-serif-medium"
+                android:shadowColor="#B0000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="6"
                 android:layout_marginBottom="4dp" />
 
             <HorizontalScrollView
@@ -439,23 +477,25 @@
             </HorizontalScrollView>
         </LinearLayout>
     </RelativeLayout>
+    </FrameLayout>
 
-    <!-- APPLE TV TRANSLUCENT EPISODE PICKER OVERLAY (TV Shows) -->
+    <!-- APPLE TV LIQUID GLASS EPISODE PICKER OVERLAY (TV Shows) -->
     <FrameLayout
         android:id="@+id/episodesModalOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#CC050609"
+        android:background="#8C04060A"
         android:clickable="true"
         android:focusable="false"
         android:visibility="gone">
 
         <LinearLayout
-            android:layout_width="680dp"
+            android:id="@+id/episodesModalCard"
+            android:layout_width="700dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:background="@drawable/bg_apple_tv_sheet"
-            android:elevation="24dp"
+            android:elevation="28dp"
             android:orientation="vertical"
             android:padding="28dp">
 
@@ -543,6 +583,435 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
             </ScrollView>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- APPLE TV LIQUID GLASS TITLE DETAILS SHEET -->
+    <FrameLayout
+        android:id="@+id/detailsModalOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#8C04060A"
+        android:clickable="true"
+        android:focusable="false"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/detailsModalCard"
+            android:layout_width="660dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_apple_tv_sheet"
+            android:elevation="28dp"
+            android:orientation="vertical"
+            android:padding="28dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvDetailsModalTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="0.02"
+                        android:text="Title"
+                        android:textColor="#FFFFFF"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:id="@+id/tvDetailsModalSub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:fontFamily="sans-serif"
+                        android:text="2024  ·  4K UHD"
+                        android:textColor="#AEAEB2"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnCloseDetails"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_apple_tv_pill_secondary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:nextFocusDown="@+id/btnDetailsPlayNow"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:text="Close"
+                    android:textColor="@color/apple_btn_text_selector"
+                    android:textSize="12.5sp" />
+            </LinearLayout>
+
+            <!-- Technical Spec Frosted Tiles -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_apple_tv_detail_card"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.05"
+                        android:text="VIDEO"
+                        android:textColor="#8E8E93"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:id="@+id/tvDetailsVideoSpec"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="4K Dolby Vision"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_apple_tv_detail_card"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.05"
+                        android:text="AUDIO"
+                        android:textColor="#8E8E93"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:id="@+id/tvDetailsAudioSpec"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="Dolby Atmos 7.1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_apple_tv_detail_card"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.05"
+                        android:text="FILE"
+                        android:textColor="#8E8E93"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:id="@+id/tvDetailsFileSpec"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="Direct Play"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="14dp"
+                android:background="#24FFFFFF" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="170dp"
+                android:overScrollMode="never"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvDetailsSynopsis"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="#E5E5EA"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvDetailsCrew"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="sans-serif"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="#AEAEB2"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </ScrollView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnDetailsPlayNow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_apple_tv_pill_primary"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:nextFocusUp="@+id/btnCloseDetails"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:text="Play Direct Stream"
+                    android:textAllCaps="false"
+                    android:textColor="@color/apple_btn_text_selector"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- APPLE TV LIQUID GLASS JELLYFIN CONNECTION SHEET -->
+    <FrameLayout
+        android:id="@+id/connectModalOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#8C04060A"
+        android:clickable="true"
+        android:focusable="false"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/connectModalCard"
+            android:layout_width="560dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_apple_tv_sheet"
+            android:elevation="28dp"
+            android:orientation="vertical"
+            android:padding="28dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="0.02"
+                        android:text="Jellyfin Server"
+                        android:textColor="#FFFFFF"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:id="@+id/tvConnectSecurityHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="sans-serif"
+                        android:text="LAN Direct Play · Tokens sealed via Android Keystore"
+                        android:textColor="#AEAEB2"
+                        android:textSize="11.5sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnCloseConnect"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_apple_tv_pill_secondary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:nextFocusDown="@+id/etServerUrl"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="Cancel"
+                    android:textColor="@color/apple_btn_text_selector"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:text="SERVER URL"
+                android:textColor="#8E8E93"
+                android:textSize="10.5sp" />
+
+            <EditText
+                android:id="@+id/etServerUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_apple_tv_input"
+                android:fontFamily="sans-serif"
+                android:hint="http://192.168.100.108:8096"
+                android:imeOptions="actionNext"
+                android:inputType="textUri"
+                android:nextFocusDown="@+id/etUsername"
+                android:nextFocusUp="@+id/btnCloseConnect"
+                android:singleLine="true"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#6E6E73"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:text="USERNAME"
+                android:textColor="#8E8E93"
+                android:textSize="10.5sp" />
+
+            <EditText
+                android:id="@+id/etUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_apple_tv_input"
+                android:fontFamily="sans-serif"
+                android:hint="Username"
+                android:imeOptions="actionNext"
+                android:inputType="textNoSuggestions"
+                android:nextFocusDown="@+id/etPassword"
+                android:nextFocusUp="@+id/etServerUrl"
+                android:singleLine="true"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#6E6E73"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:text="PASSWORD"
+                android:textColor="#8E8E93"
+                android:textSize="10.5sp" />
+
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_apple_tv_input"
+                android:fontFamily="sans-serif"
+                android:hint="Optional for passwordless local accounts"
+                android:imeOptions="actionDone"
+                android:inputType="textPassword"
+                android:nextFocusDown="@+id/btnConnectSubmit"
+                android:nextFocusUp="@+id/etUsername"
+                android:singleLine="true"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#6E6E73"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvConnectError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="#FF6961"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnConnectDisconnect"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/bg_apple_tv_pill_danger"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:nextFocusRight="@+id/btnConnectSubmit"
+                    android:nextFocusUp="@+id/etPassword"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:text="Use Offline Demo"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12.5sp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btnConnectSubmit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_apple_tv_pill_primary"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:nextFocusLeft="@+id/btnConnectDisconnect"
+                    android:nextFocusUp="@+id/etPassword"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:text="Connect"
+                    android:textAllCaps="false"
+                    android:textColor="@color/apple_btn_text_selector"
+                    android:textSize="12.5sp" />
+            </LinearLayout>
         </LinearLayout>
     </FrameLayout>
 

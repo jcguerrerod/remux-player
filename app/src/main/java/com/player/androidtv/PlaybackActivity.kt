@@ -39,6 +39,7 @@ import com.player.coremedia.jellyfin.JellyfinDirectPlayClient
 import com.player.coremedia.jellyfin.JellyfinMetadataMapper
 import com.player.coremedia.player.DolbyVisionProcessingMode
 import com.player.coremedia.player.RemuxExoPlayerFactory
+import com.player.coremedia.security.NetworkUrlSecurity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -190,7 +191,7 @@ class PlaybackActivity : Activity() {
 
                     if (duration > 0) {
                         if (currentChapters.isEmpty()) {
-                            initMovieChapters(movieTitle, duration)
+                            initMovieChapters(duration)
                         }
                         val progress = ((current * 1000) / duration).toInt()
                         timelineSeekBar.progress = progress
@@ -277,7 +278,7 @@ class PlaybackActivity : Activity() {
         scheduleHudHide()
     }
 
-    private fun initMovieChapters(title: String, durationMs: Long) {
+    private fun initMovieChapters(durationMs: Long) {
         currentChapters = when {
             explicitChapters.isNotEmpty() -> explicitChapters
             durationMs > 0 -> {
@@ -340,7 +341,7 @@ class PlaybackActivity : Activity() {
             tvScrubChapterTitle.text = targetChapter.title
             tvScrubChapterTitle.visibility = View.VISIBLE
             updateScrubPreviewPosition(scrubTargetMs, duration)
-            loadScrubThumbnail(movieTitle, scrubTargetMs)
+            loadScrubThumbnail(scrubTargetMs)
         } else {
             isSeeking = true
             p.seekTo(targetMs)
@@ -457,7 +458,7 @@ class PlaybackActivity : Activity() {
             }
 
             updateScrubPreviewPosition(scrubTargetMs, duration)
-            loadScrubThumbnail(movieTitle, scrubTargetMs)
+            loadScrubThumbnail(scrubTargetMs)
 
             val interval = when (speedMagnitude) {
                 1 -> 350L
@@ -589,7 +590,13 @@ class PlaybackActivity : Activity() {
     private fun parseIntent() {
         val incomingUri: Uri? = intent.data
         if (incomingUri != null) {
-            streamUrl = incomingUri.toString()
+            val rawIncoming = incomingUri.toString()
+            if (!NetworkUrlSecurity.validateMediaPlaybackUri(rawIncoming)) {
+                Log.w("PlaybackActivity", "Blocked unsafe inbound playback URI")
+                finish()
+                return
+            }
+            streamUrl = rawIncoming
             movieTitle = intent.getStringExtra("MOVIE_TITLE")
                 ?: intent.getStringExtra("title")
                 ?: intent.getStringExtra("android.intent.extra.TITLE")
@@ -616,7 +623,9 @@ class PlaybackActivity : Activity() {
                 intent.getStringExtra("MOVIE_CHAPTERS_JSON")
             ).map { MovieChapter(it.title, it.startTimeMs) }
 
-            jellyfinServerUrl = intent.getStringExtra("JELLYFIN_SERVER_URL")
+            jellyfinServerUrl = intent.getStringExtra("JELLYFIN_SERVER_URL")?.let { raw ->
+                (NetworkUrlSecurity.validateServerUrl(raw) as? NetworkUrlSecurity.ServerUrlResult.Valid)?.normalizedUrl
+            }
             jellyfinToken = intent.getStringExtra("JELLYFIN_TOKEN")
             jellyfinItemId = intent.getStringExtra("JELLYFIN_ITEM_ID")
             jellyfinMediaSourceId = intent.getStringExtra("JELLYFIN_MEDIA_SOURCE_ID")
@@ -641,6 +650,9 @@ class PlaybackActivity : Activity() {
             explicitAudioBadge = fallback.audioBadge
             explicitChannelsBadge = fallback.channelsBadge
             explicitChapters = fallback.chapters.map { MovieChapter(it.title, it.startTimeMs) }
+        }
+        if (explicitChapters.isNotEmpty()) {
+            currentChapters = explicitChapters
         }
     }
 
@@ -829,7 +841,7 @@ class PlaybackActivity : Activity() {
                             if (isScrubbing) {
                                 scrubTargetMs = newPos
                                 updateScrubPreviewPosition(scrubTargetMs, duration)
-                                loadScrubThumbnail(movieTitle, scrubTargetMs)
+                                loadScrubThumbnail(scrubTargetMs)
                             } else {
                                 val ratio = (progress.toFloat() / 1000f).coerceIn(0f, 1f)
                                 val usableWidth = (timelineSeekBar.width - timelineSeekBar.paddingStart - timelineSeekBar.paddingEnd).coerceAtLeast(1)
@@ -1037,7 +1049,6 @@ class PlaybackActivity : Activity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        Log.d("PlaybackActivity", "dispatchKeyEvent: code=${event.keyCode}, action=${event.action}, focus=${currentFocus?.javaClass?.simpleName}")
         if (event.action == KeyEvent.ACTION_UP) {
             if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                 handler.removeCallbacks(scrubTransitionRunnable)
@@ -1046,7 +1057,7 @@ class PlaybackActivity : Activity() {
             return super.dispatchKeyEvent(event)
         }
         if (event.action == KeyEvent.ACTION_DOWN) {
-            val focus = currentFocus
+            val currentFocusView = currentFocus
 
             if (modalOverlay.visibility == View.VISIBLE) {
                 when (event.keyCode) {
@@ -1058,7 +1069,7 @@ class PlaybackActivity : Activity() {
                     }
                     KeyEvent.KEYCODE_DPAD_DOWN -> {
                         val lastChild = (0 until llModalListContainer.childCount).map { llModalListContainer.getChildAt(it) }.lastOrNull()
-                        if (focus == lastChild) {
+                        if (currentFocusView == lastChild) {
                             val targetBtn = if (activeModalType == ModalType.AUDIO) btnAudioTrack else btnSubtitles
                             closeModal()
                             targetBtn.requestFocus()
@@ -1067,7 +1078,7 @@ class PlaybackActivity : Activity() {
                     }
                     KeyEvent.KEYCODE_DPAD_UP -> {
                         val firstChild = llModalListContainer.getChildAt(0)
-                        if (focus == firstChild) {
+                        if (currentFocusView == firstChild) {
                             return true
                         }
                     }
@@ -1085,6 +1096,21 @@ class PlaybackActivity : Activity() {
                     }
                 }
                 return super.dispatchKeyEvent(event)
+            }
+
+            if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                if (isScrubbing) {
+                    cancelScrubbing()
+                    return true
+                }
+                if (hudOverlay.visibility == View.VISIBLE && hudOverlay.alpha > 0.5f) {
+                    hudOverlay.animate().alpha(0f).setDuration(200).withEndAction {
+                        hudOverlay.visibility = View.GONE
+                    }.start()
+                    return true
+                }
+                finish()
+                return true
             }
 
             val isHudVisible = (hudOverlay.visibility == View.VISIBLE && hudOverlay.alpha > 0.5f)
@@ -1108,8 +1134,8 @@ class PlaybackActivity : Activity() {
                     return true
                 }
                 if (isHudVisible) {
-                    if (focus != null && focus != timelineSeekBar && focus.isClickable) {
-                        focus.performClick()
+                    if (currentFocusView != null && currentFocusView != timelineSeekBar && currentFocusView.isClickable) {
+                        currentFocusView.performClick()
                         return true
                     }
                     togglePlayPause()
@@ -1128,18 +1154,18 @@ class PlaybackActivity : Activity() {
                         jumpToPreviousChapter()
                         return true
                     }
-                    if (focus == btnBack) {
+                    if (currentFocusView == btnBack) {
                         return true
                     }
-                    if (focus == timelineSeekBar) {
+                    if (currentFocusView == timelineSeekBar) {
                         btnSubtitles.requestFocus()
                         return true
                     }
-                    if (focus == btnSubtitles || focus == btnAudioTrack) {
+                    if (currentFocusView == btnSubtitles || currentFocusView == btnAudioTrack) {
                         btnBack.requestFocus()
                         return true
                     }
-                    if (focus == btnChapters || focus == btnDvMode || focus == btnLibrary) {
+                    if (currentFocusView == btnChapters || currentFocusView == btnDvMode || currentFocusView == btnLibrary) {
                         timelineSeekBar.requestFocus()
                         return true
                     }
@@ -1149,15 +1175,15 @@ class PlaybackActivity : Activity() {
                         jumpToNextChapter()
                         return true
                     }
-                    if (focus == btnBack) {
+                    if (currentFocusView == btnBack) {
                         btnSubtitles.requestFocus()
                         return true
                     }
-                    if (focus == btnSubtitles || focus == btnAudioTrack) {
+                    if (currentFocusView == btnSubtitles || currentFocusView == btnAudioTrack) {
                         timelineSeekBar.requestFocus()
                         return true
                     }
-                    if (focus == timelineSeekBar) {
+                    if (currentFocusView == timelineSeekBar) {
                         btnChapters.requestFocus()
                         return true
                     }
@@ -1175,9 +1201,8 @@ class PlaybackActivity : Activity() {
                         handleScrubKey(-1, event.repeatCount)
                         return true
                     }
-                    val focus = currentFocus
-                    if (hudOverlay.visibility == View.VISIBLE && focus != null && focus != timelineSeekBar) {
-                        when (focus) {
+                    if (hudOverlay.visibility == View.VISIBLE && currentFocusView != null && currentFocusView != timelineSeekBar) {
+                        when (currentFocusView) {
                             btnAudioTrack -> { btnSubtitles.requestFocus(); return true }
                             btnSubtitles -> { /* edge of top icons row, allow skip */ }
                             btnLibrary -> {
@@ -1211,9 +1236,8 @@ class PlaybackActivity : Activity() {
                         handleScrubKey(1, event.repeatCount)
                         return true
                     }
-                    val focus = currentFocus
-                    if (hudOverlay.visibility == View.VISIBLE && focus != null && focus != timelineSeekBar) {
-                        when (focus) {
+                    if (hudOverlay.visibility == View.VISIBLE && currentFocusView != null && currentFocusView != timelineSeekBar) {
+                        when (currentFocusView) {
                             btnChapters -> {
                                 if (btnDvMode.visibility == View.VISIBLE) btnDvMode.requestFocus() else btnLibrary.requestFocus()
                                 return true
@@ -1367,7 +1391,7 @@ class PlaybackActivity : Activity() {
         }
 
         updateScrubPreviewPosition(scrubTargetMs, duration)
-        loadScrubThumbnail(movieTitle, scrubTargetMs)
+        loadScrubThumbnail(scrubTargetMs)
         llScrubPreviewContainer.bringToFront()
 
         handler.removeCallbacks(scrubTickerRunnable)
@@ -1462,7 +1486,7 @@ class PlaybackActivity : Activity() {
      * Apple TV 60 FPS tonemapped frame loading.
      * Instantaneous RAM retrieval (0ms).
      */
-    private fun loadScrubThumbnail(movieTitle: String, targetMs: Long) {
+    private fun loadScrubThumbnail(targetMs: Long) {
         val folder = getPreviewFolder()
         val dur = player?.duration?.takeIf { it > 0 } ?: 1L
 
@@ -1523,10 +1547,6 @@ class PlaybackActivity : Activity() {
                 }
             }
         }
-    }
-
-    private fun flashCenterIndicator(text: String) {
-        // Completely silenced Apple TV style (replaced by cinematic flPlayPauseBadge animation)
     }
 
     private fun updateTrackBadges(tracks: Tracks) {
@@ -2052,7 +2072,7 @@ class PlaybackActivity : Activity() {
     }
 
     private fun openDvModeModal() {
-        val exo = player ?: return
+        player ?: return
         activeModalType = ModalType.DV_MODE
 
         if (currentDynamicRange == VideoDynamicRange.HDR10) {
@@ -2217,7 +2237,8 @@ class PlaybackActivity : Activity() {
         val exo = player ?: return
         activeModalType = ModalType.CHAPTERS
 
-        val countText = if (currentChapters.isNotEmpty()) "${currentChapters.size} CHAPTERS" else "CHAPTERS"
+        val chaptersToShow = if (currentChapters.isNotEmpty()) currentChapters else explicitChapters
+        val countText = if (chaptersToShow.isNotEmpty()) "${chaptersToShow.size} CHAPTERS" else "CHAPTERS"
         showModal(
             title = "Chapters",
             badge = countText,
@@ -2227,12 +2248,24 @@ class PlaybackActivity : Activity() {
         llModalListContainer.removeAllViews()
         val inflater = LayoutInflater.from(this)
 
+        if (chaptersToShow.isEmpty()) {
+            val emptyView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
+            emptyView.findViewById<ImageView>(R.id.ivTrackCheck).visibility = View.INVISIBLE
+            emptyView.findViewById<TextView>(R.id.tvTrackTitle).text = "No chapters in stream"
+            emptyView.findViewById<TextView>(R.id.tvTrackBadge).visibility = View.GONE
+            emptyView.findViewById<TextView>(R.id.tvTrackBadgeSecondary).visibility = View.GONE
+            emptyView.setOnClickListener { closeModal() }
+            llModalListContainer.addView(emptyView)
+            emptyView.requestFocus()
+            return
+        }
+
         val currentPos = exo.currentPosition
         val activeChapter = getCurrentChapter(currentPos)
 
         var activeItemView: View? = null
 
-        for ((index, chapter) in currentChapters.withIndex()) {
+        for ((index, chapter) in chaptersToShow.withIndex()) {
             val itemView = inflater.inflate(R.layout.item_track_selection, llModalListContainer, false)
             val ivCheck = itemView.findViewById<ImageView>(R.id.ivTrackCheck)
             val tvTitle = itemView.findViewById<TextView>(R.id.tvTrackTitle)
@@ -2290,15 +2323,25 @@ class PlaybackActivity : Activity() {
         val screenW = resources.displayMetrics.widthPixels
         val screenH = resources.displayMetrics.heightPixels
 
-        // Determine bottom margin: clean 14dp directly above buttons
+        // Determine bottom margin: always float cleanly above header row (1981 / Title) & SeekBar
+        val minHudClearancePx = run {
+            val headerLoc = IntArray(2)
+            llPlayerHeaderRow.getLocationOnScreen(headerLoc)
+            val aboveHeader = screenH - headerLoc[1] + (10 * density).toInt()
+            if (headerLoc[1] > 0) aboveHeader.coerceAtLeast((182 * density).toInt()) else (196 * density).toInt()
+        }
         val targetBottomMargin = if (anchorButton != null) {
             val loc = IntArray(2)
             anchorButton.getLocationOnScreen(loc)
             val btnTop = loc[1]
-            val calculatedBottom = screenH - btnTop
-            if (calculatedBottom in 80..420) calculatedBottom + (14 * density).toInt() else (186 * density).toInt()
+            val calculatedBottom = screenH - btnTop + (14 * density).toInt()
+            if (calculatedBottom in 80..420) {
+                calculatedBottom.coerceAtLeast(minHudClearancePx)
+            } else {
+                minHudClearancePx
+            }
         } else {
-            (186 * density).toInt()
+            minHudClearancePx
         }
 
         val lp = modalCard.layoutParams as FrameLayout.LayoutParams
@@ -2589,25 +2632,6 @@ class PlaybackActivity : Activity() {
         } else {
             String.format(Locale.US, "%02d:%02d", minutes, seconds)
         }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (modalOverlay.visibility == View.VISIBLE) {
-            closeModal()
-            return
-        }
-        if (isScrubbing) {
-            cancelScrubbing()
-            return
-        }
-        if (hudOverlay.visibility == View.VISIBLE && hudOverlay.alpha > 0.5f) {
-            hudOverlay.animate().alpha(0f).setDuration(200).withEndAction {
-                hudOverlay.visibility = View.GONE
-            }.start()
-            return
-        }
-        super.onBackPressed()
     }
 
     override fun onDestroy() {
