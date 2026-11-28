@@ -35,7 +35,7 @@ A native, high-performance **Android TV** media player inspired by **Apple TV+ (
 | :---: | :---: |
 | ![Player HUD](docs/screenshots/05_player_hud.png) | ![Player Scrubbing](docs/screenshots/06_player_scrubbing.png) |
 
-| Live Audio Track Selector (`TrueHD Atmos` vs `DD+ Atmos`) |
+| Live Transparent Audio Track Selector |
 | :---: |
 | ![Player Audio Menu](docs/screenshots/07_player_audio_menu.png) |
 
