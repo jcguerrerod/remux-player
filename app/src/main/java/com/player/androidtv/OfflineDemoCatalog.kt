@@ -35,6 +35,8 @@ object OfflineDemoCatalog {
                 director = "Steven Spielberg",
                 backdropAsset = "backdrops/raiders.jpg",
                 cardAsset = "backdrops/raiders_card.jpg",
+                logoUrl = "$cleanBase/Items/64d42058033b8bbedaa0c9a6b3f42c6b/Images/Logo?maxWidth=800&format=png",
+                tmdbId = "85",
                 streamUrl = "$cleanBase/Videos/64d42058-033b-8bbe-daa0-c9a6b3f42c6b/stream.mkv?Static=true",
                 chapters = listOf(
                     JellyfinChapter("Chapter 1: South America, 1936", 0L),
@@ -73,6 +75,8 @@ object OfflineDemoCatalog {
                 director = "Henry Selick (Story: Tim Burton)",
                 backdropAsset = "backdrops/nightmare.jpg",
                 cardAsset = "backdrops/nightmare_card.jpg",
+                logoUrl = "$cleanBase/Items/ab56ab193dea37a4d273c4db2be3678e/Images/Logo?maxWidth=800&format=png",
+                tmdbId = "9479",
                 streamUrl = "$cleanBase/Videos/ab56ab19-3dea-37a4-d273-c4db2be3678e/stream.mkv?Static=true",
                 chapters = listOf(
                     JellyfinChapter("Chapter 1: This Is Halloween", 0L),
@@ -106,6 +110,8 @@ object OfflineDemoCatalog {
                 director = "Francis Ford Coppola",
                 backdropAsset = "backdrops/apocalypse.jpg",
                 cardAsset = "backdrops/apocalypse_card.jpg",
+                logoUrl = "$cleanBase/Items/cee3c58c3ab90224626bc991aafc2cc5/Images/Logo?maxWidth=800&format=png",
+                tmdbId = "28",
                 streamUrl = "$cleanBase/Videos/cee3c58c-3ab9-0224-626b-c991aafc2cc5/stream.mkv?Static=true",
                 chapters = listOf(
                     JellyfinChapter("Chapter 1: The End / Saigon", 0L),
@@ -148,6 +154,8 @@ object OfflineDemoCatalog {
                 director = "Phil Lord, Christopher Miller",
                 backdropAsset = "backdrops/hailmary.jpg",
                 cardAsset = "backdrops/hailmary_card.jpg",
+                logoUrl = "$cleanBase/Items/dfabf08a80ba1cc35d200aecccaf0952/Images/Logo?maxWidth=800&format=png",
+                tmdbId = "687163",
                 streamUrl = "$cleanBase/Videos/dfabf08a-80ba-1cc3-5d20-0aecccaf0952/stream.mkv?Static=true",
                 chapters = listOf(
                     JellyfinChapter("Chapter 1: Awakening in the Dark", 0L),
@@ -179,6 +187,8 @@ object OfflineDemoCatalog {
                 director = "Damien Chazelle",
                 backdropAsset = "backdrops/whiplash.jpg",
                 cardAsset = "backdrops/whiplash_card.jpg",
+                logoUrl = "$cleanBase/Items/c525a0a99404ceea8e69c3ca1565b03a/Images/Logo?maxWidth=800&format=png",
+                tmdbId = "244786",
                 streamUrl = "$cleanBase/Videos/c525a0a9-9404-ceea-8e69-c3ca1565b03a/stream.mkv?Static=true",
                 chapters = listOf(
                     JellyfinChapter("Chapter 1: Overture", 0L),

@@ -9,7 +9,6 @@ import android.util.Log
 import android.util.LruCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -25,10 +24,11 @@ import java.util.concurrent.ConcurrentHashMap
  * High-performance client-side video keyframe and thumbnail extraction engine.
  * Features:
  * 1. Multi-tier caching: Tier 1 RAM LRU (120 bitmaps), Tier 2 Disk Cache (SSD/Flash).
- * 2. Direction-aware lookahead pre-extraction (10s, 30s, 60s, 120s along scrub trajectory).
- * 3. Proactive timeline pre-warming during idle and playback states.
+ * 2. Multi-strategy frame decoding: Unscaled native + CPU downscaling to avoid hardware decoder scaling bugs.
+ * 3. Direction-aware lookahead pre-extraction (10s, 30s, 60s along scrub trajectory).
  * 4. Thread-safe serialized MediaMetadataRetriever access with native mutex.
  * 5. Instant nearest-neighbor frame retrieval to eliminate blank scrub cards.
+ * 6. Blank/black frame detection and rejection to guarantee real movie content.
  */
 object ClientSideFrameExtractor {
 
@@ -62,18 +62,44 @@ object ClientSideFrameExtractor {
             }
             cacheDir = dir
 
-            // Background prune: clean thumbnails older than 7 days
+            // Background prune: purge empty/corrupt black files (<= 1500 bytes) and thumbnails older than 7 days
             scope.launch {
                 try {
                     val cutoff = System.currentTimeMillis() - (7L * 24 * 3600 * 1000L)
                     dir.listFiles()?.forEach { file ->
-                        if (file.lastModified() < cutoff) {
+                        if (file.length() <= 1500 || file.lastModified() < cutoff) {
                             file.delete()
                         }
                     }
                 } catch (ignored: Exception) {}
             }
         }
+    }
+
+    /**
+     * Inspects sample pixels across the bitmap to determine if it is a blank/black frame.
+     * Android MediaMetadataRetriever often returns solid black when seek fails or on EOF.
+     */
+    fun isBlackFrame(bitmap: Bitmap): Boolean {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= 0 || h <= 0) return true
+        val stepX = (w / 6).coerceAtLeast(1)
+        val stepY = (h / 6).coerceAtLeast(1)
+        var nonBlackCount = 0
+        for (x in stepX until w step stepX) {
+            for (y in stepY until h step stepY) {
+                val pixel = bitmap.getPixel(x, y)
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
+                if (r > 12 || g > 12 || b > 12) {
+                    nonBlackCount++
+                    if (nonBlackCount >= 2) return false
+                }
+            }
+        }
+        return true
     }
 
     private fun hashUrl(url: String): String {
@@ -102,15 +128,30 @@ object ClientSideFrameExtractor {
     }
 
     @Synchronized
-    fun setDataSource(url: String) {
-        if (url.isBlank() || (currentSourceUrl == url && retriever != null)) return
-        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
-            currentSourceUrl = url
-            return
-        }
+    fun setDataSource(url: String, extraHeaders: Map<String, String>? = null) {
+        if (url.isBlank() || (currentSourceUrl == url && (retriever != null || isInitializing))) return
 
         currentSourceUrl = url
         isInitializing = true
+
+        // Fast disk indexing for instant nearest-neighbor cache hit
+        scope.launch {
+            try {
+                val hash = hashUrl(url)
+                val dir = cacheDir
+                if (dir != null && dir.exists()) {
+                    dir.listFiles()?.forEach { file ->
+                        val name = file.name
+                        if (name.startsWith("thumb_${hash}_") && name.endsWith(".jpg") && file.length() > 1500) {
+                            val secStr = name.removePrefix("thumb_${hash}_").removeSuffix(".jpg")
+                            secStr.toLongOrNull()?.let { sec ->
+                                trackTimestamp(url, sec)
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
 
         scope.launch {
             try {
@@ -120,20 +161,37 @@ object ClientSideFrameExtractor {
                     old?.release()
 
                     val mmr = MediaMetadataRetriever()
-                    val headers = HashMap<String, String>()
-                    headers["Connection"] = "keep-alive"
-                    headers["Accept-Encoding"] = "identity"
-                    headers["User-Agent"] = "RemuxPlayer-AndroidTV/2.0"
-                    mmr.setDataSource(url, headers)
+                    if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
+                        val headers = HashMap<String, String>()
+                        headers["Connection"] = "keep-alive"
+                        headers["Accept-Encoding"] = "identity"
+                        headers["User-Agent"] = "RemuxPlayer-AndroidTV/2.0"
+                        extraHeaders?.forEach { (k, v) -> headers[k] = v }
+                        mmr.setDataSource(url, headers)
+                    } else {
+                        mmr.setDataSource(url)
+                    }
                     retriever = mmr
                     isInitializing = false
-                    Log.i(TAG, "MediaMetadataRetriever initialized for stream")
+                    Log.i(TAG, "MediaMetadataRetriever initialized for stream: $url")
                 }
             } catch (e: Exception) {
                 isInitializing = false
                 Log.w(TAG, "Could not initialize MediaMetadataRetriever: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Injects an externally decoded frame (e.g. server-side chapter thumbnail or surface snapshot) into the cache.
+     */
+    fun registerFrame(url: String, timeMs: Long, bitmap: Bitmap) {
+        if (isBlackFrame(bitmap)) return
+        val quantizedSec = (timeMs / 2000L) * 2L
+        val cacheKey = "$url#$quantizedSec"
+        frameCache.put(cacheKey, bitmap)
+        trackTimestamp(url, quantizedSec)
+        saveToDisk(url, quantizedSec, bitmap)
     }
 
     /**
@@ -144,7 +202,7 @@ object ClientSideFrameExtractor {
         val targetSec = (timeMs / 2000L) * 2L
         val exactKey = "$url#$targetSec"
         val exact = frameCache.get(exactKey)
-        if (exact != null) return exact
+        if (exact != null && !isBlackFrame(exact)) return exact
 
         val list = cachedTimestamps[url] ?: return null
         synchronized(list) {
@@ -152,13 +210,26 @@ object ClientSideFrameExtractor {
             var minDiff = Long.MAX_VALUE
             for (sec in list) {
                 val diff = Math.abs(sec - targetSec)
-                if (diff < minDiff && diff <= 120) { // Within 2 minutes
+                if (diff < minDiff && diff <= 120) { // Nearest neighbor within 2 minutes
                     minDiff = diff
                     closestSec = sec
                 }
             }
             if (closestSec != null) {
-                return frameCache.get("$url#$closestSec")
+                val found = frameCache.get("$url#$closestSec")
+                if (found != null && !isBlackFrame(found)) return found
+
+                // Check disk cache
+                val diskFile = getDiskFile(url, closestSec)
+                if (diskFile != null && diskFile.exists() && diskFile.length() > 1500) {
+                    try {
+                        val bmp = BitmapFactory.decodeFile(diskFile.absolutePath)
+                        if (bmp != null && !isBlackFrame(bmp)) {
+                            frameCache.put("$url#$closestSec", bmp)
+                            return bmp
+                        }
+                    } catch (_: Exception) {}
+                }
             }
         }
         return null
@@ -174,7 +245,7 @@ object ClientSideFrameExtractor {
 
         // Tier 1: In-Memory RAM Cache (Instant 0ms)
         val ramBitmap = frameCache.get(cacheKey)
-        if (ramBitmap != null) {
+        if (ramBitmap != null && !isBlackFrame(ramBitmap)) {
             onFrameReady(ramBitmap)
             prefetchAround(url, timeMs, direction)
             return true
@@ -182,22 +253,20 @@ object ClientSideFrameExtractor {
 
         // Tier 2: Local Disk Cache (2-4ms)
         val diskFile = getDiskFile(url, quantizedSec)
-        if (diskFile != null && diskFile.exists()) {
+        if (diskFile != null && diskFile.exists() && diskFile.length() > 1500) {
             scope.launch {
                 val bmp = BitmapFactory.decodeFile(diskFile.absolutePath)
-                if (bmp != null) {
+                if (bmp != null && !isBlackFrame(bmp)) {
                     frameCache.put(cacheKey, bmp)
                     trackTimestamp(url, quantizedSec)
                     withContext(Dispatchers.Main) {
                         onFrameReady(bmp)
                     }
                     prefetchAround(url, timeMs, direction)
+                } else {
+                    diskFile.delete() // Purge corrupt or solid black file
                 }
             }
-            return false
-        }
-
-        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
             return false
         }
 
@@ -226,9 +295,7 @@ object ClientSideFrameExtractor {
                     } ?: break
 
                     extractAndCache(url, targetMs, cb)
-                    if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
-                        prefetchAround(url, targetMs, direction)
-                    }
+                    prefetchAround(url, targetMs, direction)
                 }
             } finally {
                 isWorkerRunning = false
@@ -250,28 +317,114 @@ object ClientSideFrameExtractor {
             waitCount++
         }
 
-        val mmr = retriever ?: return
+        val mmr = retriever
+        if (mmr == null) {
+            Log.w(TAG, "extractAndCache: retriever is null for $url")
+            return
+        }
         val timeUs = timeMs * 1000L
+        Log.i(TAG, "extractAndCache starting for $timeMs ms (timeUs=$timeUs)")
 
         val bitmap = retrieverMutex.withLock {
+            var extracted: Bitmap? = null
+
+            // Strategy 1: Native unscaled frame with OPTION_CLOSEST_SYNC + CPU scaling
+            // Decodes native resolution directly to avoid emulator/driver downscaling artifacts
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                    mmr.getScaledFrameAtTime(
-                        timeUs,
-                        MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
-                        320,
-                        180
-                    )
+                val raw = mmr.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                if (raw != null) {
+                    val isBlack = isBlackFrame(raw)
+                    Log.i(TAG, "Strategy 1: raw=${raw.width}x${raw.height}, isBlack=$isBlack")
+                    if (!isBlack) {
+                        extracted = Bitmap.createScaledBitmap(raw, 320, 180, true)
+                        if (raw != extracted) raw.recycle()
+                    }
                 } else {
-                    mmr.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    Log.i(TAG, "Strategy 1: returned null")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Frame extraction error at $timeMs ms: ${e.message}")
-                null
+                Log.w(TAG, "Strategy 1 failed at $timeMs ms: ${e.message}")
             }
+
+            // Strategy 2: Native unscaled frame with OPTION_CLOSEST + CPU scaling
+            if (extracted == null) {
+                try {
+                    val raw = mmr.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                    if (raw != null) {
+                        val isBlack = isBlackFrame(raw)
+                        Log.i(TAG, "Strategy 2: raw=${raw.width}x${raw.height}, isBlack=$isBlack")
+                        if (!isBlack) {
+                            extracted = Bitmap.createScaledBitmap(raw, 320, 180, true)
+                            if (raw != extracted) raw.recycle()
+                        }
+                    } else {
+                        Log.i(TAG, "Strategy 2: returned null")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Strategy 2 failed at $timeMs ms: ${e.message}")
+                }
+            }
+
+            // Strategy 3: Default frame extraction without seek option + CPU scaling
+            if (extracted == null) {
+                try {
+                    val raw = mmr.getFrameAtTime(timeUs)
+                    if (raw != null) {
+                        val isBlack = isBlackFrame(raw)
+                        Log.i(TAG, "Strategy 3: raw=${raw.width}x${raw.height}, isBlack=$isBlack")
+                        if (!isBlack) {
+                            extracted = Bitmap.createScaledBitmap(raw, 320, 180, true)
+                            if (raw != extracted) raw.recycle()
+                        }
+                    } else {
+                        Log.i(TAG, "Strategy 3: returned null")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Strategy 3 failed at $timeMs ms: ${e.message}")
+                }
+            }
+
+            // Strategy 4: Scaled frame on supported hardware (API 27+)
+            if (extracted == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                try {
+                    val scaled = mmr.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST, 320, 180)
+                    if (scaled != null) {
+                        val isBlack = isBlackFrame(scaled)
+                        Log.i(TAG, "Strategy 4: scaled=${scaled.width}x${scaled.height}, isBlack=$isBlack")
+                        if (!isBlack) {
+                            extracted = scaled
+                        }
+                    } else {
+                        Log.i(TAG, "Strategy 4: returned null")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Strategy 4 failed at $timeMs ms: ${e.message}")
+                }
+            }
+
+            // Strategy 5: Scaled frame with OPTION_CLOSEST_SYNC (API 27+)
+            if (extracted == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                try {
+                    val scaled = mmr.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 320, 180)
+                    if (scaled != null) {
+                        val isBlack = isBlackFrame(scaled)
+                        Log.i(TAG, "Strategy 5: scaled=${scaled.width}x${scaled.height}, isBlack=$isBlack")
+                        if (!isBlack) {
+                            extracted = scaled
+                        }
+                    } else {
+                        Log.i(TAG, "Strategy 5: returned null")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Strategy 5 failed at $timeMs ms: ${e.message}")
+                }
+            }
+
+            extracted
         }
 
-        if (bitmap != null) {
+        Log.i(TAG, "extractAndCache finished: bitmap!=null is ${bitmap != null}")
+        if (bitmap != null && !isBlackFrame(bitmap)) {
             frameCache.put(cacheKey, bitmap)
             trackTimestamp(url, quantizedSec)
             saveToDisk(url, quantizedSec, bitmap)
@@ -285,8 +438,9 @@ object ClientSideFrameExtractor {
     }
 
     private fun saveToDisk(url: String, quantizedSec: Long, bitmap: Bitmap) {
+        if (isBlackFrame(bitmap)) return // Never persist empty/black frames
         val diskFile = getDiskFile(url, quantizedSec) ?: return
-        if (diskFile.exists()) return
+        if (diskFile.exists() && diskFile.length() > 1500) return
         scope.launch {
             try {
                 FileOutputStream(diskFile).use { out ->
@@ -300,15 +454,12 @@ object ClientSideFrameExtractor {
      * Proactively prefetch neighboring keyframes along the user's scrub direction.
      */
     private fun prefetchAround(url: String, timeMs: Long, direction: Int) {
-        // Strictly prevent random seek storms across remote network media (e.g. 88 GB remuxes on mechanical HDDs)
-        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
-            return
-        }
         scope.launch {
-            val offsets = if (direction >= 0) {
-                longArrayOf(10_000L, 30_000L, 60_000L, 120_000L)
+            val isRemote = url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)
+            val offsets = if (isRemote) {
+                if (direction >= 0) longArrayOf(15_000L, 30_000L) else longArrayOf(-15_000L, -30_000L)
             } else {
-                longArrayOf(-10_000L, -30_000L, -60_000L, -120_000L)
+                if (direction >= 0) longArrayOf(10_000L, 30_000L, 60_000L) else longArrayOf(-10_000L, -30_000L, -60_000L)
             }
 
             for (offset in offsets) {
@@ -319,11 +470,13 @@ object ClientSideFrameExtractor {
                 if (frameCache.get(key) != null) continue
 
                 val diskFile = getDiskFile(url, qSec)
-                if (diskFile != null && diskFile.exists()) {
+                if (diskFile != null && diskFile.exists() && diskFile.length() > 1500) {
                     val bmp = BitmapFactory.decodeFile(diskFile.absolutePath)
-                    if (bmp != null) {
+                    if (bmp != null && !isBlackFrame(bmp)) {
                         frameCache.put(key, bmp)
                         trackTimestamp(url, qSec)
+                    } else {
+                        diskFile.delete()
                     }
                     continue
                 }

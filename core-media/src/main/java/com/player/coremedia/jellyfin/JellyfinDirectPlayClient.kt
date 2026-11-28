@@ -85,7 +85,7 @@ class JellyfinDirectPlayClient(
                 parameter("Recursive", "true")
                 parameter(
                     "Fields",
-                    "Overview,Genres,People,MediaSources,MediaStreams,Chapters,RunTimeTicks,ProductionYear"
+                    "Overview,Genres,People,MediaSources,MediaStreams,Chapters,RunTimeTicks,ProductionYear,ProviderIds,ImageTags,ParentLogoImageTag,ParentLogoItemId"
                 )
                 parameter("SortBy", "DateCreated,SortName")
                 parameter("SortOrder", "Descending")
@@ -111,7 +111,7 @@ class JellyfinDirectPlayClient(
                 header("Authorization", buildAuthHeader(session.accessToken))
                 parameter("IncludeItemTypes", "Series")
                 parameter("Recursive", "true")
-                parameter("Fields", "Overview,Genres,People,ProductionYear,ChildCount")
+                parameter("Fields", "Overview,Genres,People,ProductionYear,ChildCount,ProviderIds,ImageTags,ParentLogoImageTag,ParentLogoItemId")
                 parameter("SortBy", "DateCreated,SortName")
                 parameter("SortOrder", "Descending")
             }
@@ -137,8 +137,36 @@ class JellyfinDirectPlayClient(
                 parameter("UserId", session.userId)
                 parameter(
                     "Fields",
-                    "Overview,MediaSources,MediaStreams,Chapters,RunTimeTicks,ProductionYear"
+                    "Overview,MediaSources,MediaStreams,Chapters,RunTimeTicks,ProductionYear,SeriesName,ParentIndexNumber,IndexNumber,SeriesId,ProviderIds,ImageTags,ParentLogoImageTag,ParentLogoItemId"
                 )
+            }
+            if (!response.status.isSuccess()) return emptyList()
+            JellyfinMetadataMapper.parseEpisodesResponse(
+                response.bodyAsText(),
+                session.serverUrl,
+                session.accessToken
+            )
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Obtiene todos los episodios de la biblioteca del usuario para asociar metadata real
+     * a cada serie de manera inmediata.
+     */
+    suspend fun fetchAllEpisodes(session: JellyfinSession): List<JellyfinMovie> {
+        return try {
+            val response = client.get("${session.serverUrl}/Users/${session.userId}/Items") {
+                header("X-Emby-Token", session.accessToken)
+                header("Authorization", buildAuthHeader(session.accessToken))
+                parameter("IncludeItemTypes", "Episode")
+                parameter("Recursive", "true")
+                parameter(
+                    "Fields",
+                    "Overview,MediaSources,MediaStreams,Chapters,RunTimeTicks,ProductionYear,SeriesName,ParentIndexNumber,IndexNumber,SeriesId,ProviderIds,ImageTags,ParentLogoImageTag,ParentLogoItemId"
+                )
+                parameter("SortBy", "SortName")
             }
             if (!response.status.isSuccess()) return emptyList()
             JellyfinMetadataMapper.parseEpisodesResponse(

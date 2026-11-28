@@ -13,3 +13,6 @@ captures/
 .externalNativeBuild
 __pycache__/
 *.pyc
+libdovi-ffi/target/
+design_assets/
+/*.py

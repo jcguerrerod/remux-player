@@ -3,121 +3,81 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#08090E">
+    android:background="@color/tvos_canvas_bg">
 
-    <!-- MAIN CANVAS (Blurred dynamically on API 31+ behind open Liquid Glass sheets) -->
+    <!-- MAIN CANVAS -->
     <FrameLayout
         android:id="@+id/mainContentBlurTarget"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    <!-- FULLSCREEN CINEMATIC HERO BACKDROP (Smooth Apple TV Crossfade) -->
-    <ImageView
-        android:id="@+id/ivHeroBackdrop"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:contentDescription="Cinematic Background 1" />
-
-    <ImageView
-        android:id="@+id/ivHeroBackdropAlt"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:alpha="0"
-        android:contentDescription="Cinematic Background 2" />
-
-    <!-- CINEMATIC APPLE TV+ SCRIM GRADIENT -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_apple_tv_hero_scrim" />
-
-    <!-- CONTENEDOR PRINCIPAL DE CONTENIDOS -->
-    <RelativeLayout
-        android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipChildren="false"
-        android:clipToPadding="false"
-        android:paddingStart="48dp"
-        android:paddingEnd="48dp"
-        android:paddingTop="32dp"
-        android:paddingBottom="28dp">
+        android:clipToPadding="false">
 
-        <!-- CABECERA SUTIL: LOGO REMUX PLAYER Y ESTADO SERVIDOR -->
-        <LinearLayout
-            android:id="@+id/topBar"
+        <!-- FULLSCREEN CINEMATIC 4K BACKDROP -->
+        <ImageView
+            android:id="@+id/ivHeroBackdrop"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="Cinematic Background 1" />
 
+        <ImageView
+            android:id="@+id/ivHeroBackdropAlt"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:alpha="0"
+            android:contentDescription="Cinematic Background 2" />
+
+        <!-- CINEMATIC APPLE TV+ BOTTOM SCRIM GRADIENT -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_apple_tv_hero_scrim" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingStart="48dp"
+            android:paddingEnd="48dp"
+            android:paddingTop="22dp"
+            android:paddingBottom="18dp">
+
+            <!-- ULTRA-MINIMAL SYMMETRICAL TOP NAV (Centered tvOS 18 segmented dock) -->
             <LinearLayout
+                android:id="@+id/topBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="REMUX"
-                    android:textColor="#FFFFFF"
-                    android:textSize="20sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.08"
-                    android:shadowColor="#B0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="6" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:text="PLAYER"
-                    android:textColor="#AEAEB2"
-                    android:textSize="20sp"
-                    android:fontFamily="sans-serif-light"
-                    android:letterSpacing="0.08"
-                    android:shadowColor="#B0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="6" />
-            </LinearLayout>
-
-            <!-- Apple TV Top Navigation Segment Pills -->
-            <LinearLayout
-                android:id="@+id/topNavTabs"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="28dp"
+                android:layout_alignParentTop="true"
+                android:layout_centerHorizontal="true"
+                android:background="@drawable/bg_tvos_nav_dock"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:padding="4dp">
 
                 <TextView
                     android:id="@+id/btnTabMovies"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:background="@drawable/bg_apple_tv_pill_secondary"
+                    android:layout_width="102dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_tvos_nav_text_tab"
                     android:clickable="true"
                     android:focusable="true"
                     android:fontFamily="sans-serif-medium"
                     android:gravity="center"
                     android:nextFocusDown="@+id/btnPlayDirect"
                     android:nextFocusRight="@+id/btnTabShows"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
                     android:text="Movies"
                     android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12sp" />
+                    android:textSize="12.5sp" />
 
                 <TextView
                     android:id="@+id/btnTabShows"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_apple_tv_pill_secondary"
+                    android:layout_width="102dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_tvos_nav_text_tab"
                     android:clickable="true"
                     android:focusable="true"
                     android:fontFamily="sans-serif-medium"
@@ -125,379 +85,398 @@
                     android:nextFocusDown="@+id/btnPlayDirect"
                     android:nextFocusLeft="@+id/btnTabMovies"
                     android:nextFocusRight="@+id/serverBadge"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
                     android:text="TV Shows"
                     android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12sp" />
-            </LinearLayout>
+                    android:textSize="12.5sp" />
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <!-- Badge / Selector Servidor Jellyfin (Apple TV Glass Pill) -->
-            <LinearLayout
-                android:id="@+id/serverBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:background="@drawable/bg_apple_tv_pill_secondary"
-                android:paddingStart="14dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="4dp"
-                android:gravity="center_vertical"
-                android:focusable="true"
-                android:clickable="true"
-                android:nextFocusLeft="@+id/btnTabShows"
-                android:nextFocusDown="@+id/btnPlayDirect"
-                android:visibility="visible">
-
-                <View
-                    android:id="@+id/serverStatusDot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:background="@drawable/bg_badge_directplay" />
-
-                <TextView
-                    android:id="@+id/tvServerInfo"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:duplicateParentState="true"
-                    android:text="Connect Jellyfin"
-                    android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="11.5sp"
-                    android:fontFamily="sans-serif-medium" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- MOVIE SYNOPSIS AND INFO SECTION (Apple TV Style) -->
-        <LinearLayout
-            android:id="@+id/heroContentContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/topBar"
-            android:layout_above="@id/bottomShelfSection"
-            android:layout_marginTop="6dp"
-            android:layout_marginBottom="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <!-- Left Column: Title, Genre, Synopsis, Badges, and Action Buttons -->
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="2.0"
-                android:orientation="vertical">
-
-                <!-- Apple TV Bold Uppercase Title -->
-                <TextView
-                    android:id="@+id/tvHeroTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="RAIDERS OF THE LOST ARK"
-                    android:textColor="#FFFFFF"
-                    android:textSize="28sp"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-black"
-                    android:letterSpacing="0.03"
-                    android:shadowColor="#C0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="2"
-                    android:shadowRadius="10" />
-
-                <!-- Genre and Release Year Row -->
-                <TextView
-                    android:id="@+id/tvHeroGenre"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:singleLine="true"
-                    android:text="Movie  ·  Action  ·  Adventure  ·  1981"
-                    android:textColor="#C7C7CC"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif"
-                    android:shadowColor="#B0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="6" />
-
-                <!-- 3-line Synopsis -->
-                <TextView
-                    android:id="@+id/tvHeroSynopsis"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:maxLines="3"
-                    android:ellipsize="end"
-                    android:lineSpacingExtra="2dp"
-                    android:text="Archaeology professor Indiana Jones ventures across the globe to uncover the legendary Ark of the Covenant before insidious Nazi forces can seize its ancient power."
-                    android:textColor="#E5E5EA"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif"
-                    android:shadowColor="#B0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="6" />
-
-                <!-- Fila de Metadatos y Logos Oficiales (Foto 4 Apple TV) -->
                 <LinearLayout
-                    android:id="@+id/llBadgesRow"
-                    android:layout_width="wrap_content"
-                    android:layout_height="22dp"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:id="@+id/serverBadge"
+                    android:layout_width="102dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_tvos_nav_text_tab"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:nextFocusDown="@+id/btnPlayDirect"
+                    android:nextFocusLeft="@+id/btnTabShows">
+
+                    <View
+                        android:id="@+id/serverStatusDot"
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:background="@drawable/bg_card_watched_badge"
+                        android:visibility="gone" />
 
                     <TextView
-                        android:id="@+id/tvMetadataText"
+                        android:id="@+id/tvServerInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="1981  ·  1h 55m  ·  56.73 GB"
-                        android:textColor="#D1D1D6"
-                        android:textSize="12sp"
-                        android:fontFamily="sans-serif-medium" />
-
-                    <!-- Resolution Pill: 4K or HD -->
-                    <TextView
-                        android:id="@+id/badgeResolution"
-                        android:layout_width="wrap_content"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="12dp"
-                        android:background="@drawable/bg_apple_tv_badge"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:paddingStart="6dp"
-                        android:paddingEnd="6dp"
-                        android:text="4K"
-                        android:textColor="#FFFFFF"
-                        android:textSize="10.5sp"
-                        android:fontFamily="sans-serif-bold"
-                        android:letterSpacing="0.06" />
-
-                    <!-- HDR / Dolby Vision Pill -->
-                    <TextView
-                        android:id="@+id/badgeHdr"
-                        android:layout_width="wrap_content"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_apple_tv_badge"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:paddingStart="6dp"
-                        android:paddingEnd="6dp"
-                        android:text="DOLBY VISION"
-                        android:textColor="#FFFFFF"
-                        android:textSize="10.5sp"
+                        android:duplicateParentState="true"
                         android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05" />
-
-
-                    <!-- Audio Codec Pill: DOLBY ATMOS / DTS-HD MA / DOLBY AUDIO / TRUEHD -->
-                    <TextView
-                        android:id="@+id/badgeAudio"
-                        android:layout_width="wrap_content"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_apple_tv_badge"
                         android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:paddingStart="6dp"
-                        android:paddingEnd="6dp"
-                        android:text="DOLBY ATMOS"
-                        android:textColor="#FFFFFF"
-                        android:textSize="10.5sp"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05" />
-
-                    <!-- Audio Channels Pill: 5.1 / 7.1 -->
-                    <TextView
-                        android:id="@+id/badgeChannels"
-                        android:layout_width="wrap_content"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_apple_tv_badge"
-                        android:gravity="center"
-                        android:includeFontPadding="false"
-                        android:paddingStart="6dp"
-                        android:paddingEnd="6dp"
-                        android:text="7.1"
-                        android:textColor="#FFFFFF"
-                        android:textSize="10.5sp"
-                        android:fontFamily="sans-serif-bold"
-                        android:letterSpacing="0.05" />
+                        android:singleLine="true"
+                        android:text="Settings"
+                        android:textColor="@color/apple_btn_text_selector"
+                        android:textSize="12.5sp" />
                 </LinearLayout>
+            </LinearLayout>
 
-                <!-- Main Apple TV Action Buttons -->
+            <!-- DISEÑO 11: APPLE TV+ CENTERED CINEMA HERO -->
+            <FrameLayout
+                android:id="@+id/heroAreaContainer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_below="@id/topBar"
+                android:layout_above="@id/bottomShelfSection"
+                android:layout_marginBottom="10dp">
+
                 <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="10dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:id="@+id/heroContentContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="12dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-                    <!-- Primary White Apple TV Pill: Play with Icon and Duration -->
+                    <!-- Centered Graphical ClearLogo -->
+                    <ImageView
+                        android:id="@+id/ivHeroLogo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxHeight="92dp"
+                        android:maxWidth="460dp"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone"
+                        android:layout_marginBottom="6dp"
+                        android:contentDescription="Movie Logo" />
+
+                    <!-- Centered Bold Title Fallback -->
+                    <TextView
+                        android:id="@+id/tvHeroTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="PROJECT HAIL MARY"
+                        android:textColor="@color/tvos_text_primary"
+                        android:textSize="34sp"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="0.03"
+                        android:shadowColor="#CC000000"
+                        android:shadowDx="0"
+                        android:shadowDy="2"
+                        android:shadowRadius="12" />
+
+                    <!-- Centered 1-Line Apple TV+ Metadata + Official Dolby / 4K Marks -->
+                    <LinearLayout
+                        android:id="@+id/llBadgesRow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvHeroGenre"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:singleLine="true"
+                            android:text="Sci-Fi  ·  2026  ·  2h 18m"
+                            android:textColor="@color/tvos_text_secondary"
+                            android:textSize="12.5sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:shadowColor="#B0000000"
+                            android:shadowDx="0"
+                            android:shadowDy="1"
+                            android:shadowRadius="6" />
+
+                        <ImageView
+                            android:id="@+id/ivHeroResolution"
+                            android:layout_width="wrap_content"
+                            android:layout_height="12dp"
+                            android:layout_marginStart="11dp"
+                            android:adjustViewBounds="true"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_logo_4k"
+                            android:visibility="gone"
+                            android:contentDescription="Resolution" />
+
+                        <TextView
+                            android:id="@+id/badgeResolution"
+                            android:layout_width="wrap_content"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="10dp"
+                            android:background="@drawable/bg_badge_apple_resolution"
+                            android:paddingStart="5.5dp"
+                            android:paddingEnd="5.5dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="4K"
+                            android:textColor="#18181E"
+                            android:textSize="9.5sp"
+                            android:fontFamily="sans-serif-black"
+                            android:letterSpacing="0.03"
+                            android:visibility="gone" />
+
+                        <ImageView
+                            android:id="@+id/ivHeroDolbyVision"
+                            android:layout_width="wrap_content"
+                            android:layout_height="15dp"
+                            android:layout_marginStart="9dp"
+                            android:alpha="0.90"
+                            android:adjustViewBounds="true"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_logo_dolby_vision"
+                            android:visibility="gone"
+                            android:contentDescription="Dynamic Range" />
+
+                        <TextView
+                            android:id="@+id/badgeHdr"
+                            android:layout_width="wrap_content"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_badge_cinema_outline"
+                            android:paddingStart="5.5dp"
+                            android:paddingEnd="5.5dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="HLG"
+                            android:textColor="#D8FFFFFF"
+                            android:textSize="9.5sp"
+                            android:fontFamily="sans-serif-bold"
+                            android:letterSpacing="0.04"
+                            android:visibility="gone" />
+
+                        <ImageView
+                            android:id="@+id/ivHeroAudioCarrier"
+                            android:layout_width="wrap_content"
+                            android:layout_height="13.5dp"
+                            android:layout_marginStart="9dp"
+                            android:alpha="0.90"
+                            android:adjustViewBounds="true"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_logo_dolby_truehd"
+                            android:visibility="gone"
+                            android:contentDescription="Audio Codec Carrier" />
+
+                        <ImageView
+                            android:id="@+id/ivHeroDolbyAtmos"
+                            android:layout_width="wrap_content"
+                            android:layout_height="15dp"
+                            android:layout_marginStart="9dp"
+                            android:alpha="0.90"
+                            android:adjustViewBounds="true"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_logo_dolby_atmos"
+                            android:visibility="gone"
+                            android:contentDescription="Audio Format" />
+
+                        <TextView
+                            android:id="@+id/badgeAudio"
+                            android:layout_width="wrap_content"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_badge_cinema_outline"
+                            android:paddingStart="5.5dp"
+                            android:paddingEnd="5.5dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="FLAC"
+                            android:textColor="#D8FFFFFF"
+                            android:textSize="9.5sp"
+                            android:fontFamily="sans-serif-bold"
+                            android:letterSpacing="0.04"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/badgeChannels"
+                            android:layout_width="wrap_content"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_badge_cinema_outline"
+                            android:paddingStart="5.5dp"
+                            android:paddingEnd="5.5dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="7.1"
+                            android:textColor="#D8FFFFFF"
+                            android:textSize="9.5sp"
+                            android:fontFamily="sans-serif-bold"
+                            android:letterSpacing="0.04"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <!-- Centered Clean 10dp Squircle Primary CTA (Exact Diseño 11) -->
                     <Button
                         android:id="@+id/btnPlayDirect"
                         android:layout_width="wrap_content"
-                        android:layout_height="40dp"
+                        android:layout_height="42dp"
+                        android:minWidth="156dp"
+                        android:layout_marginTop="14dp"
                         android:background="@drawable/bg_apple_tv_pill_primary"
                         android:drawableStart="@drawable/ic_play_arrow"
-                        android:drawableTint="@color/apple_btn_text_selector"
+                        android:drawableTint="@color/apple_primary_btn_text_selector"
                         android:drawablePadding="8dp"
-                        android:text="1h 55m"
-                        android:textColor="@color/apple_btn_text_selector"
-                        android:textSize="13sp"
-                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:text="Play"
+                        android:textColor="@color/apple_primary_btn_text_selector"
+                        android:textSize="13.5sp"
+                        android:fontFamily="sans-serif-bold"
                         android:textAllCaps="false"
-                        android:paddingStart="20dp"
-                        android:paddingEnd="20dp"
+                        android:paddingStart="46dp"
+                        android:paddingEnd="46dp"
+                        android:elevation="8dp"
                         android:focusable="true"
                         android:nextFocusUp="@+id/btnTabMovies"
-                        android:nextFocusDown="@+id/shelfScrollView" />
+                        android:nextFocusDown="@+id/btnCheck" />
 
-                    <!-- Circular Checkmark Button -->
-                    <ImageButton
-                        android:id="@+id/btnCheck"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="10dp"
-                        android:background="@drawable/bg_apple_tv_circle_button"
-                        android:src="@drawable/ic_check"
-                        android:tint="@color/apple_btn_tint_selector"
-                        android:focusable="true"
-                        android:nextFocusUp="@+id/btnTabMovies"
-                        android:nextFocusDown="@+id/shelfScrollView"
-                        android:contentDescription="Toggle Watched" />
+                    <!-- Centered Minimal Ghost Secondary Actions Directly Below Play (Exact Diseño 11) -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <!-- Circular Info Button -->
-                    <ImageButton
-                        android:id="@+id/btnDetails"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="10dp"
-                        android:background="@drawable/bg_apple_tv_circle_button"
-                        android:src="@drawable/ic_info"
-                        android:tint="@color/apple_btn_tint_selector"
-                        android:focusable="true"
-                        android:nextFocusUp="@+id/btnTabShows"
-                        android:nextFocusDown="@+id/shelfScrollView"
-                        android:contentDescription="Movie Details" />
+                        <Button
+                            android:id="@+id/btnCheck"
+                            android:layout_width="wrap_content"
+                            android:layout_height="32dp"
+                            android:background="@drawable/bg_watched_toggle_button"
+                            android:drawableStart="@drawable/ic_check"
+                            android:drawableTint="@color/watched_btn_tint_selector"
+                            android:drawablePadding="6dp"
+                            android:gravity="center"
+                            android:text="Mark Watched"
+                            android:textColor="@color/apple_btn_text_selector"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textAllCaps="false"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="14dp"
+                            android:focusable="true"
+                            android:nextFocusUp="@+id/btnPlayDirect"
+                            android:nextFocusRight="@+id/btnDetails"
+                            android:nextFocusDown="@+id/shelfScrollView" />
+
+                        <Button
+                            android:id="@+id/btnDetails"
+                            android:layout_width="wrap_content"
+                            android:layout_height="32dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_tvos_nav_text_tab"
+                            android:drawableStart="@drawable/ic_info"
+                            android:drawableTint="@color/apple_btn_tint_selector"
+                            android:drawablePadding="6dp"
+                            android:gravity="center"
+                            android:text="Details"
+                            android:textColor="@color/apple_btn_text_selector"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textAllCaps="false"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="14dp"
+                            android:focusable="true"
+                            android:nextFocusUp="@+id/btnPlayDirect"
+                            android:nextFocusLeft="@+id/btnCheck"
+                            android:nextFocusRight="@+id/btnRestart"
+                            android:nextFocusDown="@+id/shelfScrollView" />
+
+                        <Button
+                            android:id="@+id/btnRestart"
+                            android:layout_width="wrap_content"
+                            android:layout_height="32dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_tvos_nav_text_tab"
+                            android:drawableStart="@drawable/ic_restart"
+                            android:drawableTint="@color/apple_btn_tint_selector"
+                            android:drawablePadding="6dp"
+                            android:gravity="center"
+                            android:text="Restart"
+                            android:textColor="@color/apple_btn_text_selector"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textAllCaps="false"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="14dp"
+                            android:focusable="true"
+                            android:nextFocusUp="@+id/btnPlayDirect"
+                            android:nextFocusLeft="@+id/btnDetails"
+                            android:nextFocusDown="@+id/shelfScrollView"
+                            android:visibility="gone" />
+                    </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
+            </FrameLayout>
 
-            <!-- Right Column: Cast and Director -->
+            <!-- HORIZONTAL BOTTOM SHELF OF WIDESCREEN 16:9 CARDS (10dp Squircle Corners) -->
             <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="36dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvHeroCast"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Cast  Harrison Ford, Karen Allen, Paul Freeman, John Rhys-Davies"
-                    android:textColor="#D1D1D6"
-                    android:textSize="12sp"
-                    android:lineSpacingExtra="3dp"
-                    android:fontFamily="sans-serif"
-                    android:shadowColor="#C0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="7" />
-
-                <TextView
-                    android:id="@+id/tvHeroDirector"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Director  Steven Spielberg"
-                    android:textColor="#D1D1D6"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif"
-                    android:shadowColor="#C0000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="7" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- HORIZONTAL BOTTOM SHELF OF WIDESCREEN APPLE TV POSTER CARDS -->
-        <LinearLayout
-            android:id="@+id/bottomShelfSection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/tvShelfTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Movies"
-                android:textColor="#C7C7CC"
-                android:textSize="13sp"
-                android:letterSpacing="0.04"
-                android:fontFamily="sans-serif-medium"
-                android:shadowColor="#B0000000"
-                android:shadowDx="0"
-                android:shadowDy="1"
-                android:shadowRadius="6"
-                android:layout_marginBottom="4dp" />
-
-            <HorizontalScrollView
-                android:id="@+id/shelfScrollView"
+                android:id="@+id/bottomShelfSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:fadeScrollbars="false"
-                android:overScrollMode="never"
-                android:requiresFadingEdge="none"
+                android:layout_alignParentBottom="true"
+                android:layout_marginBottom="14dp"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:paddingStart="6dp"
-                android:paddingEnd="24dp"
-                android:paddingTop="12dp"
-                android:paddingBottom="16dp">
+                android:orientation="vertical">
 
-                <LinearLayout
-                    android:id="@+id/llCardShelf"
-                    android:layout_width="wrap_content"
+                <HorizontalScrollView
+                    android:id="@+id/shelfScrollView"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:fadeScrollbars="false"
+                    android:overScrollMode="never"
+                    android:requiresFadingEdge="none"
                     android:clipChildren="false"
                     android:clipToPadding="false"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
-        </LinearLayout>
-    </RelativeLayout>
+                    android:paddingStart="4dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <LinearLayout
+                        android:id="@+id/llCardShelf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+            </LinearLayout>
+        </RelativeLayout>
     </FrameLayout>
 
-    <!-- APPLE TV LIQUID GLASS EPISODE PICKER OVERLAY (TV Shows) -->
+    <!-- ========================================================================= -->
+    <!-- PANORAMIC tvOS BOTTOM DRAWER: EPISODES (16:9 Thumbnails + Seasons)        -->
+    <!-- ========================================================================= -->
     <FrameLayout
         android:id="@+id/episodesModalOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#8C04060A"
+        android:background="#6605070C"
         android:clickable="true"
         android:focusable="false"
         android:visibility="gone">
 
-        <LinearLayout
+        <com.player.androidtv.ui.LiquidGlassLayout
             android:id="@+id/episodesModalCard"
-            android:layout_width="700dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_apple_tv_sheet"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="42dp"
+            android:layout_marginEnd="42dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_tvos_bottom_drawer"
             android:elevation="28dp"
             android:orientation="vertical"
-            android:padding="28dp">
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:paddingTop="22dp"
+            android:paddingBottom="22dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -511,15 +490,27 @@
                     android:layout_weight="1"
                     android:orientation="vertical">
 
+                    <ImageView
+                        android:id="@+id/ivEpisodesModalLogo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxHeight="42dp"
+                        android:maxWidth="260dp"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitStart"
+                        android:visibility="gone"
+                        android:layout_marginBottom="2dp"
+                        android:contentDescription="Series Logo" />
+
                     <TextView
                         android:id="@+id/tvEpisodesSeriesTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-black"
-                        android:letterSpacing="0.03"
+                        android:letterSpacing="0.02"
                         android:text="SEVERANCE"
-                        android:textColor="#FFFFFF"
-                        android:textSize="22sp" />
+                        android:textColor="@color/tvos_text_primary"
+                        android:textSize="20sp" />
 
                     <TextView
                         android:id="@+id/tvEpisodesSeriesMeta"
@@ -528,52 +519,31 @@
                         android:layout_marginTop="2dp"
                         android:fontFamily="sans-serif"
                         android:text="Select Season &amp; Episode"
-                        android:textColor="#8E8E93"
-                        android:textSize="12sp" />
+                        android:textColor="@color/tvos_text_tertiary"
+                        android:textSize="11.5sp" />
                 </LinearLayout>
 
-                <TextView
-                    android:id="@+id/btnCloseEpisodes"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:background="@drawable/bg_apple_tv_pill_secondary"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:gravity="center"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:text="Close"
-                    android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <HorizontalScrollView
-                android:id="@+id/seasonsScrollView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:id="@+id/llSeasonsContainer"
+                <HorizontalScrollView
+                    android:id="@+id/seasonsScrollView"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
+                    android:overScrollMode="never"
+                    android:scrollbars="none">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="10dp"
-                android:background="#26FFFFFF" />
+                    <LinearLayout
+                        android:id="@+id/llSeasonsContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+            </LinearLayout>
 
             <ScrollView
                 android:id="@+id/episodesScrollView"
                 android:layout_width="match_parent"
-                android:layout_height="290dp"
+                android:layout_height="268dp"
+                android:layout_marginTop="14dp"
+                android:scrollbars="none"
                 android:fadeScrollbars="false"
                 android:overScrollMode="never">
 
@@ -583,28 +553,36 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
             </ScrollView>
-        </LinearLayout>
+        </com.player.androidtv.ui.LiquidGlassLayout>
     </FrameLayout>
 
-    <!-- APPLE TV LIQUID GLASS TITLE DETAILS SHEET -->
+    <!-- ========================================================================= -->
+    <!-- PANORAMIC tvOS BOTTOM DRAWER: MOVIE DETAILS                               -->
+    <!-- ========================================================================= -->
     <FrameLayout
         android:id="@+id/detailsModalOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#8C04060A"
+        android:background="#6605070C"
         android:clickable="true"
         android:focusable="false"
         android:visibility="gone">
 
-        <LinearLayout
+        <com.player.androidtv.ui.LiquidGlassLayout
             android:id="@+id/detailsModalCard"
-            android:layout_width="660dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_apple_tv_sheet"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="42dp"
+            android:layout_marginEnd="42dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_tvos_bottom_drawer"
             android:elevation="28dp"
             android:orientation="vertical"
-            android:padding="28dp">
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -617,6 +595,18 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/ivDetailsModalLogo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxHeight="46dp"
+                        android:maxWidth="280dp"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitStart"
+                        android:visibility="gone"
+                        android:layout_marginBottom="2dp"
+                        android:contentDescription="Movie Logo" />
 
                     <TextView
                         android:id="@+id/tvDetailsModalTitle"
@@ -625,269 +615,215 @@
                         android:fontFamily="sans-serif-black"
                         android:letterSpacing="0.02"
                         android:text="Title"
-                        android:textColor="#FFFFFF"
-                        android:textSize="22sp" />
+                        android:textColor="@color/tvos_text_primary"
+                        android:textSize="21sp" />
 
                     <TextView
                         android:id="@+id/tvDetailsModalSub"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:fontFamily="sans-serif"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="sans-serif-medium"
                         android:text="2024  ·  4K UHD"
-                        android:textColor="#AEAEB2"
-                        android:textSize="12.5sp" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnCloseDetails"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:background="@drawable/bg_apple_tv_pill_secondary"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:gravity="center"
-                    android:nextFocusDown="@+id/btnDetailsPlayNow"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:text="Close"
-                    android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12.5sp" />
-            </LinearLayout>
-
-            <!-- Technical Spec Frosted Tiles -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_tv_detail_card"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05"
-                        android:text="VIDEO"
-                        android:textColor="#8E8E93"
-                        android:textSize="10sp" />
-
-                    <TextView
-                        android:id="@+id/tvDetailsVideoSpec"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="4K Dolby Vision"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12.5sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_tv_detail_card"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05"
-                        android:text="AUDIO"
-                        android:textColor="#8E8E93"
-                        android:textSize="10sp" />
-
-                    <TextView
-                        android:id="@+id/tvDetailsAudioSpec"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="Dolby Atmos 7.1"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12.5sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_tv_detail_card"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.05"
-                        android:text="FILE"
-                        android:textColor="#8E8E93"
-                        android:textSize="10sp" />
-
-                    <TextView
-                        android:id="@+id/tvDetailsFileSpec"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="Direct Play"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12.5sp" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="14dp"
-                android:background="#24FFFFFF" />
-
-            <ScrollView
-                android:layout_width="match_parent"
-                android:layout_height="170dp"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvDetailsSynopsis"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif"
-                        android:lineSpacingExtra="4dp"
-                        android:textColor="#E5E5EA"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvDetailsCrew"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:fontFamily="sans-serif"
-                        android:lineSpacingExtra="3dp"
-                        android:textColor="#AEAEB2"
+                        android:textColor="@color/tvos_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
-            </ScrollView>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:gravity="end"
-                android:orientation="horizontal">
 
                 <Button
                     android:id="@+id/btnDetailsPlayNow"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
                     android:background="@drawable/bg_apple_tv_pill_primary"
+                    android:drawableStart="@drawable/ic_play_arrow"
+                    android:drawableTint="@color/apple_primary_btn_text_selector"
+                    android:drawablePadding="8dp"
                     android:focusable="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:nextFocusUp="@+id/btnCloseDetails"
-                    android:paddingStart="24dp"
-                    android:paddingEnd="24dp"
+                    android:fontFamily="sans-serif-bold"
+                    android:paddingStart="22dp"
+                    android:paddingEnd="22dp"
                     android:text="Play Direct Stream"
                     android:textAllCaps="false"
-                    android:textColor="@color/apple_btn_text_selector"
+                    android:textColor="@color/apple_primary_btn_text_selector"
                     android:textSize="13sp" />
             </LinearLayout>
-        </LinearLayout>
-    </FrameLayout>
-
-    <!-- APPLE TV LIQUID GLASS JELLYFIN CONNECTION SHEET -->
-    <FrameLayout
-        android:id="@+id/connectModalOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#8C04060A"
-        android:clickable="true"
-        android:focusable="false"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/connectModalCard"
-            android:layout_width="560dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:background="@drawable/bg_apple_tv_sheet"
-            android:elevation="28dp"
-            android:orientation="vertical"
-            android:padding="28dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
+                android:layout_marginTop="18dp"
                 android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="1.35"
+                    android:layout_marginEnd="24dp"
                     android:orientation="vertical">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tvDetailsSynopsis"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-black"
-                        android:letterSpacing="0.02"
-                        android:text="Jellyfin Server"
-                        android:textColor="#FFFFFF"
-                        android:textSize="22sp" />
+                        android:maxLines="4"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif"
+                        android:lineSpacingExtra="3.5dp"
+                        android:textColor="@color/tvos_text_primary"
+                        android:textSize="13sp" />
 
                     <TextView
-                        android:id="@+id/tvConnectSecurityHint"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tvDetailsCrew"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="sans-serif"
-                        android:text="LAN Direct Play · Tokens sealed via Android Keystore"
-                        android:textColor="#AEAEB2"
-                        android:textSize="11.5sp" />
+                        android:layout_marginTop="10dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="@color/tvos_text_secondary"
+                        android:textSize="12sp" />
                 </LinearLayout>
 
-                <TextView
-                    android:id="@+id/btnCloseConnect"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:background="@drawable/bg_apple_tv_pill_secondary"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:gravity="center"
-                    android:nextFocusDown="@+id/etServerUrl"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:text="Cancel"
-                    android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12sp" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.0"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_apple_tv_detail_card"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="64dp"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-bold"
+                            android:letterSpacing="0.06"
+                            android:text="VIDEO"
+                            android:textColor="@color/tvos_text_tertiary"
+                            android:textSize="10.5sp" />
+
+                        <TextView
+                            android:id="@+id/tvDetailsVideoSpec"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="4K UHD · Dolby Vision"
+                            android:textColor="@color/tvos_text_primary"
+                            android:textSize="12.5sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_apple_tv_detail_card"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="64dp"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-bold"
+                            android:letterSpacing="0.06"
+                            android:text="AUDIO"
+                            android:textColor="@color/tvos_text_tertiary"
+                            android:textSize="10.5sp" />
+
+                        <TextView
+                            android:id="@+id/tvDetailsAudioSpec"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="Dolby Atmos · 7.1"
+                            android:textColor="@color/tvos_text_primary"
+                            android:textSize="12.5sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_apple_tv_detail_card"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="64dp"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-bold"
+                            android:letterSpacing="0.06"
+                            android:text="FILE"
+                            android:textColor="@color/tvos_text_tertiary"
+                            android:textSize="10.5sp" />
+
+                        <TextView
+                            android:id="@+id/tvDetailsFileSpec"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="Direct Play"
+                            android:textColor="@color/tvos_text_primary"
+                            android:textSize="12.5sp" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
+        </com.player.androidtv.ui.LiquidGlassLayout>
+    </FrameLayout>
+
+    <!-- ========================================================================= -->
+    <!-- JELLYFIN SERVER CONNECTION SHEET                                          -->
+    <!-- ========================================================================= -->
+    <FrameLayout
+        android:id="@+id/connectModalOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#6605070C"
+        android:clickable="true"
+        android:focusable="false"
+        android:visibility="gone">
+
+        <com.player.androidtv.ui.LiquidGlassLayout
+            android:id="@+id/connectModalCard"
+            android:layout_width="540dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_tvos_bottom_drawer"
+            android:elevation="28dp"
+            android:orientation="vertical"
+            android:padding="28dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="0.02"
+                android:text="Jellyfin Server"
+                android:textColor="@color/tvos_text_primary"
+                android:textSize="21sp" />
+
+            <TextView
+                android:id="@+id/tvConnectSecurityHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif"
+                android:text="LAN Direct Play · Tokens sealed via Android Keystore"
+                android:textColor="@color/tvos_text_tertiary"
+                android:textSize="11.5sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="sans-serif-bold"
                 android:letterSpacing="0.05"
                 android:text="SERVER URL"
-                android:textColor="#8E8E93"
+                android:textColor="@color/tvos_text_tertiary"
                 android:textSize="10.5sp" />
 
             <EditText
@@ -901,20 +837,19 @@
                 android:imeOptions="actionNext"
                 android:inputType="textUri"
                 android:nextFocusDown="@+id/etUsername"
-                android:nextFocusUp="@+id/btnCloseConnect"
                 android:singleLine="true"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#6E6E73"
+                android:textColor="@color/tvos_text_primary"
+                android:textColorHint="@color/tvos_text_tertiary"
                 android:textSize="14sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="sans-serif-bold"
                 android:letterSpacing="0.05"
                 android:text="USERNAME"
-                android:textColor="#8E8E93"
+                android:textColor="@color/tvos_text_tertiary"
                 android:textSize="10.5sp" />
 
             <EditText
@@ -930,18 +865,18 @@
                 android:nextFocusDown="@+id/etPassword"
                 android:nextFocusUp="@+id/etServerUrl"
                 android:singleLine="true"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#6E6E73"
+                android:textColor="@color/tvos_text_primary"
+                android:textColorHint="@color/tvos_text_tertiary"
                 android:textSize="14sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="sans-serif-bold"
                 android:letterSpacing="0.05"
                 android:text="PASSWORD"
-                android:textColor="#8E8E93"
+                android:textColor="@color/tvos_text_tertiary"
                 android:textSize="10.5sp" />
 
             <EditText
@@ -957,8 +892,8 @@
                 android:nextFocusDown="@+id/btnConnectSubmit"
                 android:nextFocusUp="@+id/etUsername"
                 android:singleLine="true"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#6E6E73"
+                android:textColor="@color/tvos_text_primary"
+                android:textColorHint="@color/tvos_text_tertiary"
                 android:textSize="14sp" />
 
             <TextView
@@ -974,14 +909,14 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="22dp"
                 android:gravity="end"
                 android:orientation="horizontal">
 
                 <Button
                     android:id="@+id/btnConnectDisconnect"
                     android:layout_width="wrap_content"
-                    android:layout_height="38dp"
+                    android:layout_height="40dp"
                     android:layout_marginEnd="12dp"
                     android:background="@drawable/bg_apple_tv_pill_danger"
                     android:focusable="true"
@@ -990,7 +925,7 @@
                     android:nextFocusUp="@+id/etPassword"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
-                    android:text="Use Offline Demo"
+                    android:text="Disconnect"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF"
                     android:textSize="12.5sp"
@@ -999,20 +934,25 @@
                 <Button
                     android:id="@+id/btnConnectSubmit"
                     android:layout_width="wrap_content"
-                    android:layout_height="38dp"
+                    android:layout_height="40dp"
                     android:background="@drawable/bg_apple_tv_pill_primary"
                     android:focusable="true"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="sans-serif-bold"
                     android:nextFocusLeft="@+id/btnConnectDisconnect"
                     android:nextFocusUp="@+id/etPassword"
-                    android:paddingStart="24dp"
-                    android:paddingEnd="24dp"
+                    android:paddingStart="26dp"
+                    android:paddingEnd="26dp"
                     android:text="Connect"
                     android:textAllCaps="false"
-                    android:textColor="@color/apple_btn_text_selector"
-                    android:textSize="12.5sp" />
+                    android:textColor="@color/apple_primary_btn_text_selector"
+                    android:textSize="13sp" />
             </LinearLayout>
-        </LinearLayout>
+        </com.player.androidtv.ui.LiquidGlassLayout>
     </FrameLayout>
+
+    <!-- tvOS 18 Split View Settings Overlay (Diseño S1) -->
+    <include
+        android:id="@+id/settingsInclude"
+        layout="@layout/view_settings_overlay" />
 
 </FrameLayout>

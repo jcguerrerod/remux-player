@@ -7,7 +7,7 @@ description = "Zero-copy C-ABI wrapper around dolby_vision for on-the-fly P7 to 
 
 [lib]
 name = "dovi_ffi"
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib"]
 
 [dependencies]
 dolby_vision = { version = "3.3.0", default-features = false }

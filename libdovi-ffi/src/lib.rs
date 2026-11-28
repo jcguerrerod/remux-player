@@ -1,6 +1,6 @@
 use std::slice;
 use dolby_vision::rpu::dovi_rpu::DoviRpu;
-use dolby_vision::rpu::profiles::DoviProfile;
+use dolby_vision::rpu::ConversionMode;
 
 #[repr(C)]
 pub struct DoviResult {
@@ -35,9 +35,10 @@ pub unsafe extern "C" fn dovi_transmute_p7_to_p81(
 
     match parsed_rpu {
         Ok(mut rpu) => {
-            // Modo 1: Convertir P7 a P8.1 conservando metadatos dinámicos L1..L11
-            // y eliminando dependencias de Enhancement Layer (FEL).
-            if rpu.convert_with_mode(DoviProfile::Profile8, 1).is_err() {
+            // Conversión canónica a Profile 8.1 para decodificadores Android TV:
+            // Descarta dependencias de FEL/non-linear luma/chroma mapping redundante
+            // y preserva los metadatos dinámicos L1..L11 intactos.
+            if rpu.convert_with_mode(ConversionMode::To81).is_err() {
                 return DoviResult {
                     success: false,
                     out_size: 0,

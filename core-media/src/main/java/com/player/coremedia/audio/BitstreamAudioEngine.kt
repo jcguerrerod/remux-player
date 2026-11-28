@@ -38,8 +38,11 @@ class BitstreamAudioEngine(private val context: Context) {
         val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
 
         for (device in outputs) {
-            if (device.type == AudioDeviceInfo.TYPE_HDMI || device.type == AudioDeviceInfo.TYPE_HDMI_ARC) {
-                if (device.encodings.contains(encoding)) {
+            if (AudioEdidResolver.isHdmiOutputDevice(device)) {
+                val supportsRequested = device.encodings.contains(encoding) ||
+                    (encoding == AudioFormat.ENCODING_DTS_HD &&
+                        device.encodings.contains(AudioFormat.ENCODING_DTS_HD_MA))
+                if (supportsRequested) {
                     Log.i(TAG, "HDMI EDID verificado: Códec $encoding soportado por ${device.productName}")
                     return true
                 }

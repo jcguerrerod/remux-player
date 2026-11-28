@@ -151,7 +151,7 @@ class JellyfinMetadataMapperTest {
         assertTrue(hailMary.is4k)
         assertEquals(DynamicRangeType.DOLBY_VISION, hailMary.dynamicRange)
         assertEquals("P7", hailMary.dvProfile)
-        assertEquals("DOLBY ATMOS", hailMary.audioBadge)
+        assertEquals("TRUEHD ATMOS", hailMary.audioBadge)
         assertEquals("7.1", hailMary.channelsBadge)
     }
 
@@ -208,6 +208,131 @@ class JellyfinMetadataMapperTest {
         assertEquals("Ben Stiller", severance.director)
         assertTrue(severance.backdropUrl?.contains("/Items/series-101/Images/Backdrop") == true)
         assertTrue(severance.cardUrl?.contains("/Items/series-101/Images/Backdrop") == true)
+        assertFalse(severance.is4k)
+        assertEquals(DynamicRangeType.SDR, severance.dynamicRange)
+        assertEquals("", severance.audioBadge)
+        assertEquals("", severance.channelsBadge)
+        assertEquals("", severance.resolutionBadge)
+        assertTrue(severance.episodes.isEmpty())
+    }
+
+    @Test
+    fun `withEpisodes aggregates highest video quality and best audio codec across episodes`() {
+        val baseShow = JellyfinShow(
+            id = "show-sv",
+            title = "SILICON VALLEY",
+            year = "2014",
+            genreText = "TV Series · Comedy",
+            synopsis = "Tech startup journey",
+            actors = "Thomas Middleditch, Martin Starr",
+            director = "Mike Judge"
+        )
+        assertFalse(baseShow.is4k)
+        assertEquals(DynamicRangeType.SDR, baseShow.dynamicRange)
+
+        val ep1 = JellyfinMovie(
+            id = "sv-1",
+            title = "Minimum Viable Product",
+            year = "2014",
+            durationText = "28m",
+            durationMs = 1_680_000L,
+            genreText = "Episode · Comedy",
+            sizeText = "3.2 GB",
+            videoCodecLabel = "1080P AVC",
+            audioCodecLabel = "DTS 5.1",
+            is4k = false,
+            dynamicRange = DynamicRangeType.SDR,
+            dvProfile = "",
+            audioBadge = "DTS",
+            channelsBadge = "5.1",
+            synopsis = "Richard develops algorithm",
+            actors = "Thomas Middleditch",
+            director = "Mike Judge",
+            streamUrl = "http://localhost/sv1",
+            seriesName = "Silicon Valley",
+            seasonNumber = 1,
+            episodeNumber = 1,
+            resolutionBadge = "HD"
+        )
+
+        val ep2 = JellyfinMovie(
+            id = "sv-2",
+            title = "The Cap Table",
+            year = "2014",
+            durationText = "29m",
+            durationMs = 1_740_000L,
+            genreText = "Episode · Comedy",
+            sizeText = "3.4 GB",
+            videoCodecLabel = "1080P AVC",
+            audioCodecLabel = "DTS-HD MA 5.1",
+            is4k = false,
+            dynamicRange = DynamicRangeType.SDR,
+            dvProfile = "",
+            audioBadge = "DTS-HD MA",
+            channelsBadge = "5.1",
+            synopsis = "Peter Gregory stalls",
+            actors = "Thomas Middleditch",
+            director = "Mike Judge",
+            streamUrl = "http://localhost/sv2",
+            seriesName = "Silicon Valley",
+            seasonNumber = 2,
+            episodeNumber = 1,
+            resolutionBadge = "HD"
+        )
+
+        val aggregated = baseShow.withEpisodes(listOf(ep1, ep2))
+        assertEquals(2, aggregated.episodes.size)
+        assertEquals(2, aggregated.seasonsCount)
+        assertFalse(aggregated.is4k)
+        assertEquals("HD", aggregated.resolutionBadge)
+        assertEquals(DynamicRangeType.SDR, aggregated.dynamicRange)
+        assertEquals("DTS-HD MA", aggregated.audioBadge)
+        assertEquals("5.1", aggregated.channelsBadge)
+    }
+
+    @Test
+    fun `withEpisodes recognizes 4K Dolby Vision and Dolby Atmos when present`() {
+        val baseShow = JellyfinShow(
+            id = "show-mota",
+            title = "MASTERS OF THE AIR",
+            year = "2024",
+            genreText = "TV Series · War · Drama",
+            synopsis = "Bloody Hundredth in WWII",
+            actors = "Austin Butler, Callum Turner",
+            director = "Cary Joji Fukunaga"
+        )
+
+        val ep1 = JellyfinMovie(
+            id = "mota-1",
+            title = "Part One",
+            year = "2024",
+            durationText = "55m",
+            durationMs = 3_300_000L,
+            genreText = "Episode · War",
+            sizeText = "14.2 GB",
+            videoCodecLabel = "DOLBY VISION P8.1",
+            audioCodecLabel = "Dolby Atmos 5.1",
+            is4k = true,
+            dynamicRange = DynamicRangeType.DOLBY_VISION,
+            dvProfile = "P8.1",
+            audioBadge = "DOLBY ATMOS",
+            channelsBadge = "5.1",
+            synopsis = "First mission over Bremen",
+            actors = "Austin Butler",
+            director = "Cary Joji Fukunaga",
+            streamUrl = "http://localhost/mota1",
+            seriesName = "Masters of the Air",
+            seasonNumber = 1,
+            episodeNumber = 1,
+            resolutionBadge = "4K"
+        )
+
+        val aggregated = baseShow.withEpisodes(listOf(ep1))
+        assertTrue(aggregated.is4k)
+        assertEquals("4K", aggregated.resolutionBadge)
+        assertEquals(DynamicRangeType.DOLBY_VISION, aggregated.dynamicRange)
+        assertEquals("DOLBY ATMOS", aggregated.audioBadge)
+        assertEquals("5.1", aggregated.channelsBadge)
     }
 
     @Test
@@ -272,7 +397,7 @@ class JellyfinMetadataMapperTest {
         assertEquals("57m", ep1.durationText)
         assertTrue(ep1.is4k)
         assertEquals(DynamicRangeType.DOLBY_VISION, ep1.dynamicRange)
-        assertEquals("DOLBY ATMOS", ep1.audioBadge)
+        assertEquals("DD+ ATMOS", ep1.audioBadge)
         assertEquals(60_000L, ep1.playbackPositionMs)
         assertEquals(2, ep1.chapters.size)
         assertTrue(ep1.streamUrl.contains("/Videos/ep-101/stream.mkv?Static=true"))

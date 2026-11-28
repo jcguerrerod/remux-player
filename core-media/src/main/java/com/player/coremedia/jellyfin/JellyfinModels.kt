@@ -60,6 +60,8 @@ data class JellyfinMovie(
     val director: String,
     val backdropUrl: String? = null,
     val cardUrl: String? = null,
+    val logoUrl: String? = null,
+    val tmdbId: String? = null,
     val backdropAsset: String? = null,
     val cardAsset: String? = null,
     val streamUrl: String,
@@ -69,7 +71,9 @@ data class JellyfinMovie(
     val chapters: List<JellyfinChapter> = emptyList(),
     val seriesName: String? = null,
     val seasonNumber: Int? = null,
-    val episodeNumber: Int? = null
+    val episodeNumber: Int? = null,
+    val seriesId: String? = null,
+    val resolutionBadge: String = if (is4k) "4K" else "HD"
 ) {
     val episodeCode: String
         get() = if (seasonNumber != null && episodeNumber != null) {
@@ -90,14 +94,87 @@ data class JellyfinShow(
     val seasonsCount: Int = 1,
     val backdropUrl: String? = null,
     val cardUrl: String? = null,
+    val logoUrl: String? = null,
+    val tmdbId: String? = null,
     val backdropAsset: String? = null,
     val cardAsset: String? = null,
-    val is4k: Boolean = true,
-    val dynamicRange: DynamicRangeType = DynamicRangeType.HDR10,
-    val audioBadge: String = "DOLBY ATMOS",
-    val channelsBadge: String = "5.1",
+    val is4k: Boolean = false,
+    val dynamicRange: DynamicRangeType = DynamicRangeType.SDR,
+    val audioBadge: String = "",
+    val channelsBadge: String = "",
+    val resolutionBadge: String = "",
     val episodes: List<JellyfinMovie> = emptyList()
-)
+) {
+    /**
+     * Devuelve una copia de la serie con sus episodios asociados y la metadata técnica agregada
+     * (resolución máxima, rango dinámico más avanzado y mejor perfil de audio).
+     */
+    fun withEpisodes(newEpisodes: List<JellyfinMovie>): JellyfinShow {
+        if (newEpisodes.isEmpty()) {
+            return this.copy(episodes = newEpisodes)
+        }
+        val bestVideo = newEpisodes.maxByOrNull { ep ->
+            val rangeRank = when (ep.dynamicRange) {
+                DynamicRangeType.DOLBY_VISION -> 5
+                DynamicRangeType.HDR10 -> if (ep.videoCodecLabel.contains("HDR10+", ignoreCase = true)) 4 else 3
+                DynamicRangeType.HLG -> 2
+                DynamicRangeType.SDR -> 1
+            }
+            val resRank = when {
+                ep.is4k -> 20
+                ep.resolutionBadge.equals("HD", ignoreCase = true) -> 10
+                else -> 0
+            }
+            resRank + rangeRank
+        } ?: newEpisodes.first()
+
+        val bestAudio = newEpisodes.maxByOrNull { ep ->
+            val codecRank = when (ep.audioBadge) {
+                "TRUEHD ATMOS" -> 100
+                "DOLBY ATMOS" -> 98
+                "DTS:X" -> 95
+                "DOLBY TRUEHD" -> 90
+                "DTS-HD MA" -> 85
+                "FLAC" -> 75
+                "PCM" -> 72
+                "DD+ ATMOS" -> 68
+                "DOLBY DIGITAL PLUS" -> 60
+                "DTS" -> 55
+                "DOLBY AUDIO" -> 45
+                "AAC", "OPUS" -> 30
+                "MP3", "VORBIS" -> 20
+                else -> 10
+            }
+            val chRank = when (ep.channelsBadge) {
+                "7.1" -> 8
+                "5.1" -> 6
+                "2.0" -> 2
+                "1.0" -> 1
+                else -> 0
+            }
+            codecRank * 10 + chRank
+        } ?: newEpisodes.first()
+
+        val seasonsDetected = newEpisodes.mapNotNull { it.seasonNumber }.distinct().size.coerceAtLeast(seasonsCount)
+        val has4k = newEpisodes.any { it.is4k }
+        val aggregatedRes = when {
+            has4k -> "4K"
+            newEpisodes.any { it.resolutionBadge == "HD" } -> "HD"
+            newEpisodes.any { it.resolutionBadge == "SD" } -> "SD"
+            else -> bestVideo.resolutionBadge.ifBlank { if (has4k) "4K" else "HD" }
+        }
+
+        return this.copy(
+            episodes = newEpisodes,
+            seasonsCount = seasonsDetected,
+            is4k = has4k,
+            dynamicRange = bestVideo.dynamicRange,
+            audioBadge = bestAudio.audioBadge,
+            channelsBadge = bestAudio.channelsBadge,
+            resolutionBadge = aggregatedRes
+        )
+    }
+}
 
 object JellyfinMetadataMapper {
 
@@ -225,7 +302,8 @@ object JellyfinMetadataMapper {
         val genreText = (listOf("TV Series") + genresList).joinToString("  ·  ")
         val synopsis = item["Overview"]?.jsonPrimitive?.content ?: ""
         val (directors, actors) = extractCrew(item)
-        val (backdropUrl, cardUrl) = extractImages(item, id, baseUrl, token)
+        val extractedImages = extractImages(item, id, baseUrl, token)
+        val tmdbId = item["ProviderIds"]?.jsonObject?.get("Tmdb")?.jsonPrimitive?.content
         val seasonsCount = item["ChildCount"]?.jsonPrimitive?.intOrNull?.coerceAtLeast(1) ?: 1
 
         return JellyfinShow(
@@ -237,8 +315,15 @@ object JellyfinMetadataMapper {
             actors = actors.joinToString(", "),
             director = directors.joinToString(", "),
             seasonsCount = seasonsCount,
-            backdropUrl = backdropUrl,
-            cardUrl = cardUrl
+            backdropUrl = extractedImages.backdropUrl,
+            cardUrl = extractedImages.cardUrl,
+            logoUrl = extractedImages.logoUrl,
+            tmdbId = tmdbId,
+            is4k = false,
+            dynamicRange = DynamicRangeType.SDR,
+            audioBadge = "",
+            channelsBadge = "",
+            resolutionBadge = ""
         )
     }
 
@@ -259,28 +344,46 @@ object JellyfinMetadataMapper {
         return directors to actors
     }
 
-    private fun extractImages(item: JsonObject, id: String, baseUrl: String, token: String): Pair<String?, String?> {
+    data class ExtractedMediaImages(
+        val backdropUrl: String?,
+        val cardUrl: String?,
+        val logoUrl: String?
+    )
+
+    private fun extractImages(item: JsonObject, id: String, baseUrl: String, token: String): ExtractedMediaImages {
         val backdropTags = item["BackdropImageTags"]?.jsonArray
         val hasBackdrop = backdropTags != null && backdropTags.isNotEmpty()
         val imageTags = item["ImageTags"]?.jsonObject
         val hasThumb = imageTags?.containsKey("Thumb") == true
         val hasPrimary = imageTags?.containsKey("Primary") == true
+        val hasLogo = imageTags?.containsKey("Logo") == true
+        val parentLogoItemId = item["ParentLogoItemId"]?.jsonPrimitive?.content
+            ?: item["SeriesId"]?.jsonPrimitive?.content
+        val hasParentLogo = !item["ParentLogoImageTag"]?.jsonPrimitive?.content.isNullOrBlank()
+        val tokenQuery = if (token.isNotBlank()) "&api_key=$token" else ""
 
         val backdropUrl = if (hasBackdrop) {
-            "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=1920&quality=90&api_key=$token"
+            "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=1920&quality=90$tokenQuery"
         } else if (hasPrimary) {
-            "$baseUrl/Items/$id/Images/Primary?maxWidth=1920&quality=90&api_key=$token"
+            "$baseUrl/Items/$id/Images/Primary?maxWidth=1920&quality=90$tokenQuery"
         } else {
             null
         }
 
         val cardUrl = when {
-            hasThumb -> "$baseUrl/Items/$id/Images/Thumb?maxWidth=640&quality=90&api_key=$token"
-            hasBackdrop -> "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=640&quality=88&api_key=$token"
-            hasPrimary -> "$baseUrl/Items/$id/Images/Primary?maxWidth=640&quality=88&api_key=$token"
+            hasThumb -> "$baseUrl/Items/$id/Images/Thumb?maxWidth=640&quality=90$tokenQuery"
+            hasBackdrop -> "$baseUrl/Items/$id/Images/Backdrop/0?maxWidth=640&quality=88$tokenQuery"
+            hasPrimary -> "$baseUrl/Items/$id/Images/Primary?maxWidth=640&quality=88$tokenQuery"
             else -> null
         }
-        return backdropUrl to cardUrl
+
+        val logoUrl = when {
+            hasLogo -> "$baseUrl/Items/$id/Images/Logo?maxWidth=800&format=png$tokenQuery"
+            hasParentLogo && !parentLogoItemId.isNullOrBlank() -> "$baseUrl/Items/$parentLogoItemId/Images/Logo?maxWidth=800&format=png$tokenQuery"
+            else -> "$baseUrl/Items/$id/Images/Logo?maxWidth=800&format=png$tokenQuery"
+        }
+
+        return ExtractedMediaImages(backdropUrl, cardUrl, logoUrl)
     }
 
     private fun parsePlayableItem(item: JsonObject, baseUrl: String, token: String): JellyfinMovie? {
@@ -289,6 +392,7 @@ object JellyfinMetadataMapper {
         val itemType = item["Type"]?.jsonPrimitive?.content ?: "Movie"
         val isEpisode = itemType.equals("Episode", ignoreCase = true)
         val seriesName = item["SeriesName"]?.jsonPrimitive?.content
+        val seriesId = item["SeriesId"]?.jsonPrimitive?.content
         val seasonNum = item["ParentIndexNumber"]?.jsonPrimitive?.intOrNull
         val episodeNum = item["IndexNumber"]?.jsonPrimitive?.intOrNull
         val year = item["ProductionYear"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
@@ -315,25 +419,122 @@ object JellyfinMetadataMapper {
         val sizeBytes = primarySource?.get("Size")?.jsonPrimitive?.longOrNull ?: 0L
         val sizeText = formatFileSize(sizeBytes)
 
-        val streams = primarySource?.get("MediaStreams")?.jsonArray
-            ?: item["MediaStreams"]?.jsonArray
-            ?: JsonArray(emptyList())
+        // Aggregate all streams across every MediaSource so the landing page ALWAYS shows the highest video & audio quality available
+        val allStreams: List<JsonObject> = buildList {
+            if (mediaSources != null && mediaSources.isNotEmpty()) {
+                for (srcEl in mediaSources) {
+                    val srcStreams = srcEl.jsonObject["MediaStreams"]?.jsonArray ?: continue
+                    for (st in srcStreams) add(st.jsonObject)
+                }
+            }
+            if (isEmpty()) {
+                val fallbackStreams = item["MediaStreams"]?.jsonArray
+                if (fallbackStreams != null) {
+                    for (st in fallbackStreams) add(st.jsonObject)
+                }
+            }
+        }
 
-        val videoStream = streams.firstOrNull {
-            it.jsonObject["Type"]?.jsonPrimitive?.content.equals("Video", ignoreCase = true)
-        }?.jsonObject
+        val videoStreams = allStreams.filter {
+            it["Type"]?.jsonPrimitive?.content.equals("Video", ignoreCase = true)
+        }
+        val videoStream = videoStreams.maxByOrNull { vs ->
+            val w = vs["Width"]?.jsonPrimitive?.intOrNull ?: 0
+            val h = vs["Height"]?.jsonPrimitive?.intOrNull ?: 0
+            val resScore = when {
+                w >= 3600 || h >= 2000 -> 10_000L
+                w >= 1200 || h >= 700 -> 5_000L
+                w > 0 || h > 0 -> 1_000L
+                else -> 0L
+            }
+            val signals = buildString {
+                append(vs["VideoRangeType"]?.jsonPrimitive?.content ?: "").append(' ')
+                append(vs["VideoRange"]?.jsonPrimitive?.content ?: "").append(' ')
+                append(vs["DisplayTitle"]?.jsonPrimitive?.content ?: "").append(' ')
+                append(vs["Profile"]?.jsonPrimitive?.content ?: "")
+            }.uppercase(Locale.US)
+            val rangeScore = when {
+                signals.contains("DOVI") || signals.contains("DOLBY VISION") -> 4_000L
+                signals.contains("HDR10+") || signals.contains("HDR10PLUS") -> 3_500L
+                signals.contains("HDR") -> 3_000L
+                signals.contains("HLG") -> 2_000L
+                else -> 1_000L
+            }
+            val bitrateBonus = ((vs["BitRate"]?.jsonPrimitive?.longOrNull ?: 0L) / 1_000_000L).coerceAtMost(500L)
+            resScore + rangeScore + bitrateBonus
+        }
 
-        val audioStream = streams.firstOrNull {
-            val obj = it.jsonObject
-            obj["Type"]?.jsonPrimitive?.content.equals("Audio", ignoreCase = true) &&
-                obj["IsDefault"]?.jsonPrimitive?.booleanOrNull == true
-        }?.jsonObject ?: streams.firstOrNull {
-            it.jsonObject["Type"]?.jsonPrimitive?.content.equals("Audio", ignoreCase = true)
-        }?.jsonObject
+        val audioStreams = allStreams.filter {
+            it["Type"]?.jsonPrimitive?.content.equals("Audio", ignoreCase = true)
+        }
+        val nonCommentaryAudio = audioStreams.filterNot { au ->
+            val titleSig = "${au["DisplayTitle"]?.jsonPrimitive?.content ?: ""} ${au["Title"]?.jsonPrimitive?.content ?: ""}".lowercase(Locale.US)
+            titleSig.contains("commentary") || titleSig.contains("comentario")
+        }.ifEmpty { audioStreams }
+
+        fun resolveAudioBadge(au: JsonObject): String {
+            val codec = au["Codec"]?.jsonPrimitive?.content ?: ""
+            val profile = au["Profile"]?.jsonPrimitive?.content ?: ""
+            val title = au["DisplayTitle"]?.jsonPrimitive?.content ?: ""
+            val rawTitle = au["Title"]?.jsonPrimitive?.content ?: ""
+            val sig = "$codec $profile $title $rawTitle".uppercase(Locale.US)
+            val hasAtmos = sig.contains("ATMOS")
+            val isTrueHd = sig.contains("TRUEHD") || sig.contains("TRUE-HD") || sig.contains("MLP")
+            val isEac3 = sig.contains("EAC3") || sig.contains("E-AC-3") || sig.contains("EC-3") || sig.contains("DIGITAL PLUS") || sig.contains("DD+")
+            return when {
+                hasAtmos && isTrueHd -> "TRUEHD ATMOS"
+                hasAtmos && isEac3 -> "DD+ ATMOS"
+                hasAtmos -> "DOLBY ATMOS"
+                sig.contains("DTS:X") || sig.contains("DTSX") || sig.contains("DTS-X") -> "DTS:X"
+                isTrueHd -> "DOLBY TRUEHD"
+                sig.contains("DTS-HD") || sig.contains("DTSHD") || sig.contains("MASTER") -> "DTS-HD MA"
+                sig.contains("FLAC") -> "FLAC"
+                sig.contains("PCM") -> "PCM"
+                isEac3 -> "DOLBY DIGITAL PLUS"
+                sig.contains("DTS") || sig.contains("DCA") -> "DTS"
+                sig.contains("AC3") || sig.contains("DOLBY DIGITAL") -> "DOLBY AUDIO"
+                sig.contains("AAC") -> "AAC"
+                sig.contains("OPUS") -> "OPUS"
+                sig.contains("MP3") -> "MP3"
+                sig.contains("VORBIS") -> "VORBIS"
+                codec.isNotBlank() -> codec.uppercase(Locale.US)
+                else -> ""
+            }
+        }
+
+        fun scoreAudioStream(au: JsonObject): Int {
+            val badge = resolveAudioBadge(au)
+            val codecScore = when (badge) {
+                "TRUEHD ATMOS" -> 1000
+                "DOLBY ATMOS" -> 980
+                "DTS:X" -> 950
+                "DOLBY TRUEHD" -> 900
+                "DTS-HD MA" -> 850
+                "FLAC" -> 750
+                "PCM" -> 720
+                "DD+ ATMOS" -> 680
+                "DOLBY DIGITAL PLUS" -> 600
+                "DTS" -> 550
+                "DOLBY AUDIO" -> 450
+                "AAC", "OPUS" -> 300
+                "MP3", "VORBIS" -> 200
+                else -> 100
+            }
+            val ch = au["Channels"]?.jsonPrimitive?.intOrNull ?: 0
+            return codecScore + ch * 10
+        }
+
+        val audioStream = nonCommentaryAudio.maxByOrNull { scoreAudioStream(it) }
 
         val width = videoStream?.get("Width")?.jsonPrimitive?.intOrNull ?: 0
         val height = videoStream?.get("Height")?.jsonPrimitive?.intOrNull ?: 0
-        val is4k = width >= 3800 || height >= 2100
+        val is4k = width >= 3600 || height >= 2000
+        val resolutionBadge = when {
+            is4k -> "4K"
+            width >= 1200 || height >= 700 -> "HD"
+            width > 0 || height > 0 -> "SD"
+            else -> ""
+        }
 
         val rangeType = videoStream?.get("VideoRangeType")?.jsonPrimitive?.content ?: ""
         val range = videoStream?.get("VideoRange")?.jsonPrimitive?.content ?: ""
@@ -342,10 +543,11 @@ object JellyfinMetadataMapper {
         val videoCodec = videoStream?.get("Codec")?.jsonPrimitive?.content ?: ""
 
         val combinedVideoSignals = "$rangeType $range $videoTitle $videoProfile".uppercase(Locale.US)
+        val isHdr10Plus = combinedVideoSignals.contains("HDR10+") || combinedVideoSignals.contains("HDR10PLUS")
         val dynamicRange = when {
             combinedVideoSignals.contains("DOVI") || combinedVideoSignals.contains("DOLBY VISION") -> DynamicRangeType.DOLBY_VISION
             combinedVideoSignals.contains("HLG") -> DynamicRangeType.HLG
-            combinedVideoSignals.contains("HDR") -> DynamicRangeType.HDR10
+            isHdr10Plus || combinedVideoSignals.contains("HDR") -> DynamicRangeType.HDR10
             else -> DynamicRangeType.SDR
         }
         val dvProfile = when {
@@ -356,27 +558,22 @@ object JellyfinMetadataMapper {
         }
         val videoCodecLabel = when (dynamicRange) {
             DynamicRangeType.DOLBY_VISION -> "DOLBY VISION $dvProfile"
-            DynamicRangeType.HDR10 -> if (is4k) "4K HDR10" else "HDR10"
+            DynamicRangeType.HDR10 -> if (isHdr10Plus) {
+                if (is4k) "4K HDR10+" else "HDR10+"
+            } else {
+                if (is4k) "4K HDR10" else "HDR10"
+            }
             DynamicRangeType.HLG -> if (is4k) "4K HLG" else "HLG"
-            DynamicRangeType.SDR -> if (is4k) "4K ${videoCodec.uppercase(Locale.US)}" else "1080P ${videoCodec.uppercase(Locale.US)}"
+            DynamicRangeType.SDR -> when {
+                is4k -> "4K ${videoCodec.uppercase(Locale.US)}"
+                resolutionBadge == "SD" -> "SD ${videoCodec.uppercase(Locale.US)}"
+                else -> "1080P ${videoCodec.uppercase(Locale.US)}"
+            }
         }
 
-        val audioCodec = audioStream?.get("Codec")?.jsonPrimitive?.content ?: ""
-        val audioProfile = audioStream?.get("Profile")?.jsonPrimitive?.content ?: ""
         val audioTitle = audioStream?.get("DisplayTitle")?.jsonPrimitive?.content ?: ""
         val audioChannels = audioStream?.get("Channels")?.jsonPrimitive?.intOrNull ?: 0
-        val combinedAudioSignals = "$audioCodec $audioProfile $audioTitle".uppercase(Locale.US)
-
-        val audioBadge = when {
-            combinedAudioSignals.contains("ATMOS") -> "DOLBY ATMOS"
-            combinedAudioSignals.contains("TRUEHD") -> "DOLBY TRUEHD"
-            combinedAudioSignals.contains("DTS-HD") || combinedAudioSignals.contains("DTS:X") || combinedAudioSignals.contains("MASTER") -> "DTS-HD MA"
-            combinedAudioSignals.contains("DTS") || combinedAudioSignals.contains("DCA") -> "DTS"
-            combinedAudioSignals.contains("EAC3") || combinedAudioSignals.contains("AC3") -> "DOLBY AUDIO"
-            combinedAudioSignals.contains("PCM") -> "PCM"
-            combinedAudioSignals.contains("FLAC") -> "FLAC"
-            else -> "AUDIO BITSTREAM"
-        }
+        val audioBadge = if (audioStream != null) resolveAudioBadge(audioStream) else ""
         val channelsBadge = when (audioChannels) {
             8 -> "7.1"
             6 -> "5.1"
@@ -396,7 +593,8 @@ object JellyfinMetadataMapper {
         val userData = item["UserData"]?.jsonObject
         val playbackPosMs = ticksToMs(userData?.get("PlaybackPositionTicks")?.jsonPrimitive?.longOrNull ?: 0L)
         val isPlayed = userData?.get("Played")?.jsonPrimitive?.booleanOrNull ?: false
-        val (backdropUrl, cardUrl) = extractImages(item, id, baseUrl, token)
+        val extractedImages = extractImages(item, id, baseUrl, token)
+        val tmdbId = item["ProviderIds"]?.jsonObject?.get("Tmdb")?.jsonPrimitive?.content
 
         val ext = container.split(",").firstOrNull()?.trim()?.ifBlank { "mkv" } ?: "mkv"
         val streamUrl = "$baseUrl/Videos/$id/stream.$ext?Static=true&MediaSourceId=$mediaSourceId&api_key=$token"
@@ -425,8 +623,10 @@ object JellyfinMetadataMapper {
             synopsis = synopsis,
             actors = actors.joinToString(", "),
             director = directors.joinToString(", "),
-            backdropUrl = backdropUrl,
-            cardUrl = cardUrl,
+            backdropUrl = extractedImages.backdropUrl,
+            cardUrl = extractedImages.cardUrl,
+            logoUrl = extractedImages.logoUrl,
+            tmdbId = tmdbId,
             streamUrl = streamUrl,
             mediaSourceId = mediaSourceId,
             playbackPositionMs = playbackPosMs,
@@ -434,7 +634,9 @@ object JellyfinMetadataMapper {
             chapters = chapters,
             seriesName = seriesName,
             seasonNumber = seasonNum,
-            episodeNumber = episodeNum
+            episodeNumber = episodeNum,
+            seriesId = seriesId,
+            resolutionBadge = resolutionBadge
         )
     }
 }

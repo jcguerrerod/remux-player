@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/settingsOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F50B0D14"
+    android:clickable="true"
+    android:focusable="false"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:id="@+id/settingsRootSplit"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:paddingStart="52dp"
+        android:paddingTop="40dp"
+        android:paddingEnd="52dp"
+        android:paddingBottom="36dp">
+
+        <!-- Left Column (tvOS Split View Sidebar + Contextual Description Card) -->
+        <LinearLayout
+            android:layout_width="290dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="-0.01"
+                android:text="Settings"
+                android:textColor="@color/tvos_text_primary"
+                android:textSize="26sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="22dp"
+                android:fontFamily="sans-serif"
+                android:lineSpacingExtra="2dp"
+                android:text="Configure video pipeline, audio defaults, subtitles and your Jellyfin server."
+                android:textColor="@color/tvos_text_secondary"
+                android:textSize="11.5sp" />
+
+            <LinearLayout
+                android:id="@+id/llSettingsCategories"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Dynamic Contextual Info Card (tvOS Split View signature) -->
+            <LinearLayout
+                android:id="@+id/llSettingsInfoCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_settings_info_card"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    android:id="@+id/tvSettingsInfoTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Dolby Vision P8.1 Transmute"
+                    android:textColor="@color/tvos_text_primary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvSettingsInfoBody"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:fontFamily="sans-serif"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Converts Profile 7 MEL/FEL streams to Profile 8.1 on-the-fly for native Android TV hardware playback."
+                    android:textColor="@color/tvos_text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Right Column (Grouped tvOS Settings Rows) -->
+        <ScrollView
+            android:id="@+id/svSettingsDetail"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="42dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:overScrollMode="never"
+            android:paddingTop="8dp"
+            android:paddingBottom="24dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/llSettingsDetailContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
+    </LinearLayout>
+</FrameLayout>

@@ -1,56 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Diseño 11: Clean 10dp Pearl Squircle Primary CTA with subtle vertical gradient -->
     <item android:state_focused="true">
-        <layer-list>
-            <item>
-                <shape android:shape="rectangle">
-                    <corners android:radius="24dp" />
-                    <gradient
-                        android:angle="270"
-                        android:startColor="#FFFFFF"
-                        android:endColor="#F2F2F7"
-                        android:type="linear" />
-                    <stroke android:width="2dp" android:color="#FFFFFF" />
-                    <padding
-                        android:left="24dp"
-                        android:top="12dp"
-                        android:right="24dp"
-                        android:bottom="12dp" />
-                </shape>
-            </item>
-        </layer-list>
+        <shape android:shape="rectangle">
+            <corners android:radius="10dp" />
+            <gradient
+                android:angle="270"
+                android:startColor="#FFFFFFFF"
+                android:endColor="#FFE2E6F0" />
+            <stroke android:width="1dp" android:color="#FFFFFFFF" />
+        </shape>
     </item>
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
-            <corners android:radius="24dp" />
-            <solid android:color="#D8D8DF" />
-            <stroke android:width="2dp" android:color="#FFFFFF" />
-            <padding
-                android:left="24dp"
-                android:top="12dp"
-                android:right="24dp"
-                android:bottom="12dp" />
+            <corners android:radius="10dp" />
+            <solid android:color="#FFFFFFFF" />
         </shape>
     </item>
     <item>
-        <layer-list>
-            <item>
-                <shape android:shape="rectangle">
-                    <corners android:radius="24dp" />
-                    <gradient
-                        android:angle="300"
-                        android:startColor="#48FFFFFF"
-                        android:centerColor="#28FFFFFF"
-                        android:endColor="#1AFFFFFF"
-                        android:type="linear" />
-                    <stroke android:width="1.2dp" android:color="#66FFFFFF" />
-                    <padding
-                        android:left="24dp"
-                        android:top="12dp"
-                        android:right="24dp"
-                        android:bottom="12dp" />
-                </shape>
-            </item>
-        </layer-list>
+        <shape android:shape="rectangle">
+            <corners android:radius="10dp" />
+            <gradient
+                android:angle="270"
+                android:startColor="#E6F5F7FA"
+                android:endColor="#E6DCE1EB" />
+        </shape>
     </item>
 </selector>

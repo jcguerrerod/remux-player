@@ -6,6 +6,39 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, TAG, __VA_ARGS__)
 
+namespace {
+
+/**
+ * Fast search for Annex B start codes (0x00 0x00 0x01 or 0x00 0x00 0x00 0x01)
+ * utilizing memchr to skip long non-zero video bitstream payload blocks in hardware.
+ */
+inline size_t find_next_start_code(const uint8_t* data, size_t offset, size_t size, size_t* out_code_len) {
+    while (offset + 2 < size) {
+        const uint8_t* zero_ptr = static_cast<const uint8_t*>(
+            std::memchr(&data[offset], 0x00, size - offset - 2)
+        );
+        if (!zero_ptr) {
+            break;
+        }
+
+        size_t idx = static_cast<size_t>(zero_ptr - data);
+        if (data[idx + 1] == 0x00) {
+            if (data[idx + 2] == 0x01) {
+                if (out_code_len) *out_code_len = 3;
+                return idx;
+            }
+            if (idx + 3 < size && data[idx + 2] == 0x00 && data[idx + 3] == 0x01) {
+                if (out_code_len) *out_code_len = 4;
+                return idx;
+            }
+        }
+        offset = idx + 1;
+    }
+    return size;
+}
+
+} // namespace
+
 HevcNaluParser::HevcNaluParser() {
     std::memset(rpu_scratch_buf_, 0, sizeof(rpu_scratch_buf_));
 }
@@ -24,36 +57,20 @@ size_t HevcNaluParser::process_frame_zero_copy(
     size_t write_idx = 0;
 
     while (read_idx + 3 <= src_size) {
-        // Localización del código de inicio Annex B (0x000001 ó 0x00000001)
         size_t start_code_len = 0;
-        if (src[read_idx] == 0x00 && src[read_idx + 1] == 0x00) {
-            if (src[read_idx + 2] == 0x01) {
-                start_code_len = 3;
-            } else if (read_idx + 3 < src_size && src[read_idx + 2] == 0x00 && src[read_idx + 3] == 0x01) {
-                start_code_len = 4;
-            }
+        size_t start_idx = find_next_start_code(src, read_idx, src_size, &start_code_len);
+        if (start_idx >= src_size || start_code_len == 0) {
+            break;
         }
 
-        if (start_code_len == 0) {
-            read_idx++;
-            continue;
-        }
-
-        size_t nalu_payload_start = read_idx + start_code_len;
+        size_t nalu_payload_start = start_idx + start_code_len;
         if (nalu_payload_start >= src_size) {
             break;
         }
 
-        // Buscar el límite del NALU actual localizando el siguiente start code
-        size_t nalu_payload_end = src_size;
-        for (size_t scan = nalu_payload_start; scan + 2 < src_size; ++scan) {
-            if (src[scan] == 0x00 && src[scan + 1] == 0x00) {
-                if (src[scan + 2] == 0x01 || (scan + 3 < src_size && src[scan + 2] == 0x00 && src[scan + 3] == 0x01)) {
-                    nalu_payload_end = scan;
-                    break;
-                }
-            }
-        }
+        // Buscar el límite del NALU actual localizando el siguiente start code con memchr
+        size_t next_code_len = 0;
+        size_t nalu_payload_end = find_next_start_code(src, nalu_payload_start, src_size, &next_code_len);
 
         size_t nalu_len = nalu_payload_end - nalu_payload_start;
         if (nalu_len == 0) {
@@ -96,7 +113,7 @@ size_t HevcNaluParser::process_frame_zero_copy(
             } else {
                 LOGW("Fallo en transmutación de RPU con libdovi. Pasando RPU original.");
                 if (write_idx + start_code_len + nalu_len <= dst_capacity) {
-                    std::memcpy(&dst[write_idx], &src[read_idx], start_code_len + nalu_len);
+                    std::memcpy(&dst[write_idx], &src[start_idx], start_code_len + nalu_len);
                     write_idx += (start_code_len + nalu_len);
                 }
             }
@@ -108,7 +125,7 @@ size_t HevcNaluParser::process_frame_zero_copy(
         // 3. Paquete regular (Base Layer VCL, VPS, SPS, PPS, SEI) -> Copiar directamente
         size_t total_nalu_bytes = start_code_len + nalu_len;
         if (write_idx + total_nalu_bytes <= dst_capacity) {
-            std::memcpy(&dst[write_idx], &src[read_idx], total_nalu_bytes);
+            std::memcpy(&dst[write_idx], &src[start_idx], total_nalu_bytes);
             write_idx += total_nalu_bytes;
         } else {
             LOGW("Buffer de MediaCodec lleno al procesar NALU %u (bytes %zu)", nal_type, total_nalu_bytes);
@@ -133,35 +150,24 @@ bool HevcNaluParser::extract_csd0(
 
     while (read_idx + 3 <= src_size) {
         size_t start_code_len = 0;
-        if (src[read_idx] == 0x00 && src[read_idx + 1] == 0x00) {
-            if (src[read_idx + 2] == 0x01) {
-                start_code_len = 3;
-            } else if (read_idx + 3 < src_size && src[read_idx + 2] == 0x00 && src[read_idx + 3] == 0x01) {
-                start_code_len = 4;
-            }
+        size_t start_idx = find_next_start_code(src, read_idx, src_size, &start_code_len);
+        if (start_idx >= src_size || start_code_len == 0) {
+            break;
         }
 
-        if (start_code_len == 0) {
-            read_idx++;
-            continue;
+        size_t nalu_start = start_idx + start_code_len;
+        if (nalu_start >= src_size) {
+            break;
         }
 
-        size_t nalu_start = read_idx + start_code_len;
-        size_t nalu_end = src_size;
-        for (size_t scan = nalu_start; scan + 2 < src_size; ++scan) {
-            if (src[scan] == 0x00 && src[scan + 1] == 0x00) {
-                if (src[scan + 2] == 0x01 || (scan + 3 < src_size && src[scan + 2] == 0x00 && src[scan + 3] == 0x01)) {
-                    nalu_end = scan;
-                    break;
-                }
-            }
-        }
+        size_t next_code_len = 0;
+        size_t nalu_end = find_next_start_code(src, nalu_start, src_size, &next_code_len);
 
         uint8_t nal_type = (src[nalu_start] >> 1) & 0x3F;
         // Acumular VPS (32), SPS (33) y PPS (34) para el bloque CSD-0
         if (nal_type == NAL_UNIT_VPS || nal_type == NAL_UNIT_SPS || nal_type == NAL_UNIT_PPS) {
-            size_t nalu_bytes = nalu_end - read_idx;
-            out_csd0.insert(out_csd0.end(), &src[read_idx], &src[read_idx + nalu_bytes]);
+            size_t nalu_bytes = nalu_end - start_idx;
+            out_csd0.insert(out_csd0.end(), &src[start_idx], &src[start_idx + nalu_bytes]);
         }
 
         read_idx = nalu_end;
@@ -179,33 +185,18 @@ size_t HevcNaluParser::process_frame_in_place(uint8_t* data, size_t size) {
 
     while (read_idx + 3 <= size) {
         size_t start_code_len = 0;
-        if (data[read_idx] == 0x00 && data[read_idx + 1] == 0x00) {
-            if (data[read_idx + 2] == 0x01) {
-                start_code_len = 3;
-            } else if (read_idx + 3 < size && data[read_idx + 2] == 0x00 && data[read_idx + 3] == 0x01) {
-                start_code_len = 4;
-            }
+        size_t start_idx = find_next_start_code(data, read_idx, size, &start_code_len);
+        if (start_idx >= size || start_code_len == 0) {
+            break;
         }
 
-        if (start_code_len == 0) {
-            read_idx++;
-            continue;
-        }
-
-        size_t nalu_payload_start = read_idx + start_code_len;
+        size_t nalu_payload_start = start_idx + start_code_len;
         if (nalu_payload_start >= size) {
             break;
         }
 
-        size_t nalu_payload_end = size;
-        for (size_t scan = nalu_payload_start; scan + 2 < size; ++scan) {
-            if (data[scan] == 0x00 && data[scan + 1] == 0x00) {
-                if (data[scan + 2] == 0x01 || (scan + 3 < size && data[scan + 2] == 0x00 && data[scan + 3] == 0x01)) {
-                    nalu_payload_end = scan;
-                    break;
-                }
-            }
-        }
+        size_t next_code_len = 0;
+        size_t nalu_payload_end = find_next_start_code(data, nalu_payload_start, size, &next_code_len);
 
         uint8_t nal_type = (data[nalu_payload_start] >> 1) & 0x3F;
 
@@ -217,9 +208,9 @@ size_t HevcNaluParser::process_frame_in_place(uint8_t* data, size_t size) {
         }
 
         // Mantener NAL válido (Base Layer, RPU NAL 62, SEI, etc.)
-        size_t total_nalu_bytes = (nalu_payload_end - read_idx);
-        if (write_idx != read_idx) {
-            std::memmove(&data[write_idx], &data[read_idx], total_nalu_bytes);
+        size_t total_nalu_bytes = (nalu_payload_end - start_idx);
+        if (write_idx != start_idx) {
+            std::memmove(&data[write_idx], &data[start_idx], total_nalu_bytes);
         }
         write_idx += total_nalu_bytes;
         read_idx = nalu_payload_end;

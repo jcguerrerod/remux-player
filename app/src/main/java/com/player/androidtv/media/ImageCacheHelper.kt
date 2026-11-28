@@ -31,13 +31,36 @@ class ImageCacheHelper {
         override fun sizeOf(key: String, bitmap: Bitmap): Int = (bitmap.byteCount / 1024).coerceAtLeast(1)
     }
 
-    private val cardCache = object : LruCache<String, Bitmap>((maxCacheKb * 0.35f).toInt()) {
+    private val cardCache = object : LruCache<String, Bitmap>((maxCacheKb * 0.25f).toInt()) {
+        override fun sizeOf(key: String, bitmap: Bitmap): Int = (bitmap.byteCount / 1024).coerceAtLeast(1)
+    }
+
+    private val logoCache = object : LruCache<String, Bitmap>((maxCacheKb * 0.15f).toInt()) {
         override fun sizeOf(key: String, bitmap: Bitmap): Int = (bitmap.byteCount / 1024).coerceAtLeast(1)
     }
 
     fun getCachedBackdrop(key: String): Bitmap? = if (key.isEmpty()) null else backdropCache.get(key)
 
     fun getCachedCard(key: String): Bitmap? = if (key.isEmpty()) null else cardCache.get(key)
+
+    fun getCachedLogo(key: String): Bitmap? = if (key.isEmpty()) null else logoCache.get(key)
+
+    fun loadLogo(remoteUrl: String?): Bitmap? {
+        val key = remoteUrl ?: return null
+        logoCache.get(key)?.let { return it }
+        val decoded = decodeSampledBitmap(
+            remoteUrl = remoteUrl,
+            assetPath = null,
+            assets = null,
+            reqWidth = 800,
+            reqHeight = 250,
+            preferredConfig = Bitmap.Config.ARGB_8888
+        )
+        if (decoded != null) {
+            logoCache.put(key, decoded)
+        }
+        return decoded
+    }
 
     fun loadBackdrop(remoteUrl: String?, assetPath: String?, assets: AssetManager): Bitmap? {
         val key = remoteUrl ?: assetPath ?: return null
@@ -76,12 +99,13 @@ class ImageCacheHelper {
     fun clearAll() {
         backdropCache.evictAll()
         cardCache.evictAll()
+        logoCache.evictAll()
     }
 
     private fun decodeSampledBitmap(
         remoteUrl: String?,
         assetPath: String?,
-        assets: AssetManager,
+        assets: AssetManager?,
         reqWidth: Int,
         reqHeight: Int,
         preferredConfig: Bitmap.Config
@@ -92,7 +116,7 @@ class ImageCacheHelper {
                 return decodeFromByteArray(bytes, reqWidth, reqHeight, preferredConfig)
             }
         }
-        if (!assetPath.isNullOrBlank()) {
+        if (!assetPath.isNullOrBlank() && assets != null) {
             try {
                 assets.open(assetPath).use { stream ->
                     val bytes = readStreamBounded(stream) ?: return null

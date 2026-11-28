@@ -1,29 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Episode Card Row inside Bottom Drawer: Graphite Glass + Crisp 2dp White Rim when Focused -->
     <item android:state_focused="true">
-        <layer-list>
-            <item>
-                <shape android:shape="rectangle">
-                    <corners android:radius="14dp" />
-                    <gradient
-                        android:angle="300"
-                        android:startColor="#42FFFFFF"
-                        android:endColor="#24FFFFFF"
-                        android:type="linear" />
-                    <stroke android:width="1.6dp" android:color="#FFFFFF" />
-                </shape>
-            </item>
-        </layer-list>
+        <shape android:shape="rectangle">
+            <corners android:radius="14dp" />
+            <solid android:color="@color/tvos_glass_row_focused" />
+            <stroke android:width="2dp" android:color="@color/tvos_rim_focus" />
+        </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="14dp" />
-            <gradient
-                android:angle="270"
-                android:startColor="#1EFFFFFF"
-                android:endColor="#10FFFFFF"
-                android:type="linear" />
-            <stroke android:width="0.9dp" android:color="#2EFFFFFF" />
+            <solid android:color="@color/tvos_glass_row_idle" />
+            <stroke android:width="1dp" android:color="@color/tvos_rim_subtle" />
         </shape>
     </item>
 </selector>

@@ -1,42 +1,26 @@
 package com.player.androidtv.ui
 
 import android.graphics.Color
-import android.graphics.RenderEffect
-import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
-import android.os.Build
 import android.view.View
-import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 
 /**
- * Shared tvOS Liquid Glass visual helpers (frosted backdrop blur on API 31+,
- * layered specular glass pills, and crisp modal entrance/exit transitions).
+ * Unified tvOS 18 Editorial Glass pill & sheet helper (Propuesta C).
+ *
+ * - Focused option: Crisp White pill (`#F5F6FA`) with dark ink text (`#0C0E12`)
+ * - Selected / Active option (unfocused): Luminous frosted glass (`#36FFFFFF`) with white text
+ * - Unselected option: Editorial Graphite Glass (`#B81E222B`) with soft secondary text (`#C7CAD4`)
  */
 object LiquidGlassHelper {
 
-    private val DECEL_INTERPOLATOR = DecelerateInterpolator(1.6f)
-
-    /**
-     * Applies or clears a real-time frosted Gaussian blur on a UI layer (API 31+).
-     * Safely no-ops on API 26-30 where translucent dark scrims provide depth instead.
-     */
-    fun setBackdropBlur(target: View, enabled: Boolean, radius: Float = 24f) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val effect = if (enabled) {
-                RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
-            } else {
-                null
-            }
-            target.setRenderEffect(effect)
-        }
+    @Suppress("UNUSED_PARAMETER")
+    fun applyFocusScale(view: View, focused: Boolean, scale: Float = 1.0f) {
+        view.animate().cancel()
+        view.scaleX = 1.0f
+        view.scaleY = 1.0f
     }
 
-    /**
-     * Styles a tvOS Liquid Glass capsule pill (navigation tabs, season selectors)
-     * with translucent frosted glass, specular upper rim, and pure white focus fill.
-     */
     fun styleGlassTabPill(
         view: TextView,
         focused: Boolean,
@@ -46,115 +30,75 @@ object LiquidGlassHelper {
         val density = view.resources.displayMetrics.density
         val radiusPx = cornerRadiusDp * density
 
-        if (focused) {
-            val bg = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.WHITE, Color.parseColor("#F2F2F7"))
-            ).apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = radiusPx
-                setStroke((1.5f * density).toInt(), Color.WHITE)
-            }
-            view.background = bg
-            view.setTextColor(Color.BLACK)
-            return
+        val fillColor = when {
+            focused -> Color.parseColor("#F5F6FA")
+            selected -> Color.parseColor("#36FFFFFF")
+            else -> Color.parseColor("#B81E222B")
         }
+        val strokeColor = when {
+            focused -> Color.parseColor("#FFFFFFFF")
+            selected -> Color.parseColor("#80FFFFFF")
+            else -> Color.parseColor("#38FFFFFF")
+        }
+        val strokeWidthPx = if (focused || selected) (1.2f * density).toInt().coerceAtLeast(1) else (1f * density).toInt().coerceAtLeast(1)
 
-        val topFill = if (selected) Color.parseColor("#54FFFFFF") else Color.parseColor("#2EFFFFFF")
-        val bottomFill = if (selected) Color.parseColor("#2BFFFFFF") else Color.parseColor("#14FFFFFF")
-        val strokeColor = if (selected) Color.parseColor("#99FFFFFF") else Color.parseColor("#4DFFFFFF")
-
-        val baseGlass = GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            intArrayOf(topFill, bottomFill)
-        ).apply {
+        val pill = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radiusPx
-            setStroke((1f * density).toInt(), strokeColor)
+            setColor(fillColor)
+            setStroke(strokeWidthPx, strokeColor)
         }
-
-        val sheenHighlight = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(Color.parseColor("#26FFFFFF"), Color.TRANSPARENT)
-        ).apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadii = floatArrayOf(radiusPx, radiusPx, radiusPx, radiusPx, 0f, 0f, 0f, 0f)
-        }
-
-        val layers = LayerDrawable(arrayOf(baseGlass, sheenHighlight)).apply {
-            setLayerInset(1, 1, 1, 1, (14 * density).toInt())
-        }
-        view.background = layers
-        view.setTextColor(if (selected) Color.WHITE else Color.parseColor("#E5E5EA"))
+        view.background = pill
+        view.setTextColor(
+            when {
+                focused -> Color.parseColor("#0C0E12")
+                selected -> Color.WHITE
+                else -> Color.parseColor("#C7CAD4")
+            }
+        )
     }
 
-    /**
-     * Smoothly reveals a Liquid Glass modal sheet with optional background view blur.
-     */
+    @Suppress("UNUSED_PARAMETER")
     fun showModalOverlay(
         overlay: View,
         sheetCard: View,
-        blurTarget: View? = null,
+        anchorView: View? = null,
         onShown: (() -> Unit)? = null
     ) {
-        blurTarget?.let { setBackdropBlur(it, enabled = true, radius = 26f) }
         overlay.animate().cancel()
         sheetCard.animate().cancel()
-
+        overlay.alpha = 1f
         overlay.visibility = View.VISIBLE
-        overlay.alpha = 0f
-        sheetCard.scaleX = 0.94f
-        sheetCard.scaleY = 0.94f
-        sheetCard.alpha = 0f
-
-        overlay.animate()
-            .alpha(1f)
-            .setDuration(190L)
-            .setInterpolator(DECEL_INTERPOLATOR)
-            .start()
-
-        sheetCard.animate()
-            .scaleX(1f)
-            .scaleY(1f)
-            .alpha(1f)
-            .setDuration(220L)
-            .setInterpolator(DECEL_INTERPOLATOR)
-            .withEndAction { onShown?.invoke() }
-            .start()
+        if (sheetCard is LiquidGlassLayout) {
+            sheetCard.animateMaterialize(anchorView, onShown)
+        } else {
+            sheetCard.scaleX = 1f
+            sheetCard.scaleY = 1f
+            sheetCard.translationX = 0f
+            sheetCard.translationY = 0f
+            sheetCard.alpha = 1f
+            sheetCard.visibility = View.VISIBLE
+            onShown?.invoke()
+        }
     }
 
-    /**
-     * Smoothly dismisses a Liquid Glass modal sheet and restores crisp backdrop.
-     */
     fun hideModalOverlay(
         overlay: View,
         sheetCard: View,
-        blurTarget: View? = null,
         onHidden: (() -> Unit)? = null
     ) {
-        blurTarget?.let { setBackdropBlur(it, enabled = false) }
         overlay.animate().cancel()
         sheetCard.animate().cancel()
-
-        sheetCard.animate()
-            .scaleX(0.95f)
-            .scaleY(0.95f)
-            .alpha(0f)
-            .setDuration(150L)
-            .setInterpolator(DECEL_INTERPOLATOR)
-            .start()
-
-        overlay.animate()
-            .alpha(0f)
-            .setDuration(165L)
-            .setInterpolator(DECEL_INTERPOLATOR)
-            .withEndAction {
-                overlay.visibility = View.GONE
-                sheetCard.scaleX = 1f
-                sheetCard.scaleY = 1f
-                sheetCard.alpha = 1f
-                onHidden?.invoke()
-            }
-            .start()
+        overlay.visibility = View.GONE
+        if (sheetCard is LiquidGlassLayout) {
+            sheetCard.animateDematerialize(onHidden)
+        } else {
+            sheetCard.visibility = View.GONE
+            overlay.alpha = 1f
+            sheetCard.scaleX = 1f
+            sheetCard.scaleY = 1f
+            sheetCard.alpha = 1f
+            onHidden?.invoke()
+        }
     }
 }

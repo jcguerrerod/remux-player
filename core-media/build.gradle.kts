@@ -14,6 +14,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -24,15 +25,17 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation(project(":native-pipeline"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
-    // AndroidX Media3 (ExoPlayer)
+    // AndroidX Media3 (ExoPlayer) + FFmpeg Audio Decoder (TrueHD / DTS-HD / FLAC -> Multichannel LPCM)
     api(libs.androidx.media3.exoplayer)
     api(libs.androidx.media3.ui)
     api(libs.androidx.media3.common)
+    api(libs.jellyfin.media3.ffmpeg.decoder)
 
     // Ktor Client
     implementation(libs.ktor.client.core)

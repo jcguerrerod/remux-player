@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Propuesta C: tvOS 18 Editorial Glass Design System Tokens -->
+    <color name="tvos_canvas_bg">#08090E</color>
+    <color name="tvos_ink_dark">#0C0E12</color>
+    <color name="tvos_ink_dark_muted">#4A4E58</color>
+
+    <color name="tvos_white_focus">#F5F6FA</color>
+    <color name="tvos_white_primary_idle">#E6EEF0F5</color>
+
+    <color name="tvos_glass_surface">#E814171F</color>
+    <color name="tvos_glass_elevated">#CC1E222B</color>
+    <color name="tvos_glass_row_idle">#801A1D26</color>
+    <color name="tvos_glass_row_focused">#F2282D38</color>
+    <color name="tvos_glass_watched_idle">#36FFFFFF</color>
+
+    <color name="tvos_rim_subtle">#2EFFFFFF</color>
+    <color name="tvos_rim_medium">#48FFFFFF</color>
+    <color name="tvos_rim_focus">#EBFFFFFF</color>
+
+    <color name="tvos_badge_fill">#24FFFFFF</color>
+    <color name="tvos_badge_stroke">#45FFFFFF</color>
+    <color name="tvos_badge_dark_fill">#1F0C0E12</color>
+    <color name="tvos_badge_dark_stroke">#520C0E12</color>
+
+    <color name="tvos_text_primary">#F5F6FA</color>
+    <color name="tvos_text_secondary">#C7CAD4</color>
+    <color name="tvos_text_tertiary">#8E93A2</color>
+
+    <color name="tvos_progress_track">#42FFFFFF</color>
+    <color name="tvos_progress_fill">#F2FFFFFF</color>
+</resources>

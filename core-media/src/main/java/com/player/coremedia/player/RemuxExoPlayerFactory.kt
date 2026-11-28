@@ -1,9 +1,7 @@
 package com.player.coremedia.player
 
 import android.content.Context
-import android.media.AudioDeviceInfo
 import android.media.AudioFormat
-import android.media.AudioManager
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
@@ -20,17 +18,18 @@ import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.FormatHolder
+import androidx.media3.exoplayer.RendererCapabilities
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioTrackBufferSizeProvider
 import androidx.media3.exoplayer.upstream.DefaultAllocator
-import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo as ExoMediaCodecInfo
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
+import com.player.coremedia.audio.AudioEdidResolver
 
 /**
  * Fábrica de ExoPlayer especializada en 4K UHD Blu-ray Remux para Android TV.
@@ -38,12 +37,33 @@ import androidx.media3.exoplayer.video.VideoRendererEventListener
  * 1. Filtrado SIMD C++20 Zero-Copy de unidades NAL 63 (FEL - Full Enhancement Layer).
  * 2. Transmutación al vuelo de Dolby Vision P7 a P8.1 para decodificadores hardware compatibles.
  * 3. Fallback de capa base HEVC Main10 (BT.2020 / ST 2084 PQ) para decodificadores HDR estándar.
- * 4. Detección dinámica de capacidades HDMI Passthrough (FLAG_HW_AV_SYNC).
+ * 4. Detección real HDMI EDID de passthrough + PCM Float/24-bit sin pérdida + Video Tunneling hardware.
  */
 @OptIn(UnstableApi::class)
 object RemuxExoPlayerFactory {
 
     private const val TAG = "RemuxExoPlayerFactory"
+
+    private val PROBE_ENCODINGS = intArrayOf(
+        AudioFormat.ENCODING_PCM_16BIT,
+        AudioFormat.ENCODING_PCM_FLOAT,
+        AudioFormat.ENCODING_PCM_24BIT_PACKED,
+        AudioFormat.ENCODING_PCM_32BIT,
+        AudioFormat.ENCODING_AC3,
+        AudioFormat.ENCODING_E_AC3,
+        AudioFormat.ENCODING_E_AC3_JOC,
+        AudioFormat.ENCODING_AC4,
+        AudioFormat.ENCODING_DTS,
+        AudioFormat.ENCODING_DTS_HD,
+        AudioFormat.ENCODING_DTS_HD_MA,
+        AudioFormat.ENCODING_DTS_UHD_P1,
+        AudioFormat.ENCODING_DTS_UHD_P2,
+        AudioFormat.ENCODING_DOLBY_TRUEHD,
+        AudioFormat.ENCODING_DOLBY_MAT,
+        AudioFormat.ENCODING_IEC61937,
+        AudioFormat.ENCODING_OPUS,
+        AudioFormat.ENCODING_AAC_LC
+    )
 
     init {
         try {
@@ -65,14 +85,10 @@ object RemuxExoPlayerFactory {
         context: Context,
         dvMode: DolbyVisionProcessingMode = DolbyVisionProcessingMode.P8_TRANSMUTE
     ): ExoPlayer {
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        val hasHdmiOutput = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.any {
-                it.type == AudioDeviceInfo.TYPE_HDMI ||
-                it.type == AudioDeviceInfo.TYPE_HDMI_ARC ||
-                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_HDMI_EARC)
-            } == true
-        } else false
+        val isEmulator = Build.FINGERPRINT.contains("generic") ||
+                Build.MODEL.contains("google_sdk") ||
+                Build.HARDWARE.contains("goldfish") ||
+                Build.HARDWARE.contains("ranchu")
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -81,33 +97,38 @@ object RemuxExoPlayerFactory {
 
         @Suppress("DEPRECATION")
         val baseCaps = AudioCapabilities.getCapabilities(context, audioAttributes, null)
-        val supportedEncodings = mutableSetOf(
-            AudioFormat.ENCODING_PCM_16BIT,
-            AudioFormat.ENCODING_PCM_FLOAT,
-            AudioFormat.ENCODING_AC3,
-            AudioFormat.ENCODING_E_AC3,
-            AudioFormat.ENCODING_DTS,
-            AudioFormat.ENCODING_DTS_HD_MA
+        @Suppress("DEPRECATION")
+        val baseEncodings = PROBE_ENCODINGS.filter { baseCaps.supportsEncoding(it) }.toIntArray()
+        val hdmiOutputs = AudioEdidResolver.queryHdmiOutputs(context)
+        @Suppress("DEPRECATION")
+        val resolvedAudio = AudioEdidResolver.resolve(
+            baseEncodings = baseEncodings,
+            baseMaxChannels = baseCaps.maxChannelCount,
+            hdmiOutputs = hdmiOutputs
         )
-        if (hasHdmiOutput || baseCaps.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)) {
-            supportedEncodings.add(AudioFormat.ENCODING_DOLBY_TRUEHD)
-        }
+
         @Suppress("DEPRECATION")
         val effectiveAudioCapabilities = AudioCapabilities(
-            supportedEncodings.toIntArray(),
-            8
+            resolvedAudio.encodings,
+            resolvedAudio.maxChannelCount
         )
 
         val supportsTrueHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DOLBY_TRUEHD)
-        val supportsDtsHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS_HD_MA)
+        val supportsDtsHd = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS_HD)
         val supportsDts = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_DTS)
+        val supportsEac3Joc = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_E_AC3_JOC)
         val supportsEac3 = effectiveAudioCapabilities.supportsEncoding(AudioFormat.ENCODING_E_AC3)
 
-        Log.d(TAG, "Audio Capabilities (hasHdmi=$hasHdmiOutput): TrueHD=$supportsTrueHd, DTS-HD=$supportsDtsHd, DTS=$supportsDts, E-AC3=$supportsEac3")
+        Log.d(
+            TAG,
+            "Audio EDID (hasHdmi=${resolvedAudio.hasHdmiOutput}, edidReported=${resolvedAudio.hasHdmiEdidEncodings}, maxCh=${resolvedAudio.maxChannelCount}): " +
+                "TrueHD=$supportsTrueHd, DTS-HD=$supportsDtsHd, DTS=$supportsDts, E-AC3-JOC=$supportsEac3Joc, E-AC3=$supportsEac3, Tunneling=${!isEmulator}"
+        )
 
         val trackSelector = DefaultTrackSelector(context)
         val paramsBuilder = trackSelector.buildUponParameters()
             .setExceedRendererCapabilitiesIfNecessary(false)
+            .setTunnelingEnabled(false)
             // Prioritize lossless master formats (TrueHD, DTS-HD MA) over lossy formats
             .setPreferredAudioMimeTypes(
                 MimeTypes.AUDIO_TRUEHD,
@@ -121,15 +142,10 @@ object RemuxExoPlayerFactory {
 
         trackSelector.setParameters(paramsBuilder.build())
 
-        val isEmulator = Build.FINGERPRINT.contains("generic") ||
-                Build.MODEL.contains("google_sdk") ||
-                Build.HARDWARE.contains("goldfish") ||
-                Build.HARDWARE.contains("ranchu")
-
         val renderersFactory = object : DefaultRenderersFactory(context) {
             init {
                 setEnableDecoderFallback(true)
-                setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+                setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
             }
 
             override fun buildVideoRenderers(
@@ -155,45 +171,85 @@ object RemuxExoPlayerFactory {
                     private var isCurrentStreamDv = false
                     private var isCurrentStreamDvP7 = false
 
+                    private fun isDolbyVisionFormat(format: Format): Boolean {
+                        val codecs = format.codecs ?: ""
+                        return format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION ||
+                            codecs.contains("dvhe") ||
+                            codecs.contains("dvh1") ||
+                            codecs.contains("hev1.08")
+                    }
+
+                    private fun adaptDvFormatIfNeeded(
+                        selector: MediaCodecSelector,
+                        format: Format
+                    ): Format {
+                        if (!isDolbyVisionFormat(format)) return format
+                        val codecs = format.codecs ?: ""
+                        val isP8 = codecs.contains("08") || codecs.contains(".08.")
+                        val hasDvDecoder = dvMode != DolbyVisionProcessingMode.FORCE_HDR10 &&
+                            selector.getDecoderInfos(MimeTypes.VIDEO_DOLBY_VISION, false, false).isNotEmpty()
+                        val builder = format.buildUpon()
+                        if (!hasDvDecoder) {
+                            builder.setSampleMimeType(MimeTypes.VIDEO_H265)
+                            builder.setCodecs(if (!isEmulator) "hev1.2.4.L153.B0" else null)
+                        } else if (dvMode == DolbyVisionProcessingMode.P7_MEL_DIRECT) {
+                            builder.setSampleMimeType(MimeTypes.VIDEO_DOLBY_VISION)
+                                .setCodecs(if (isP8) "dvhe.08.06" else "dvhe.07.06")
+                        } else {
+                            builder.setSampleMimeType(MimeTypes.VIDEO_DOLBY_VISION)
+                                .setCodecs("dvhe.08.06")
+                        }
+                        return builder.build()
+                    }
+
+                    override fun onEnabled(joining: Boolean, mayRenderStartOfStream: Boolean) {
+                        super.onEnabled(joining, mayRenderStartOfStream)
+                        Log.i(TAG, "Video renderer enabled (hardwareTunneling=${configuration.tunneling})")
+                    }
+
                     override fun supportsFormat(
                         mediaCodecSelector: MediaCodecSelector,
                         format: Format
                     ): Int {
-                        val isDv = format.codecs?.contains("dvhe") == true ||
-                                format.codecs?.contains("hev1.08") == true ||
-                                format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION
-
-                        if (isDv) {
-                            if (dvMode == DolbyVisionProcessingMode.FORCE_HDR10) {
-                                val hevcDecoders = mediaCodecSelector.getDecoderInfos(
-                                    MimeTypes.VIDEO_H265,
-                                    false,
-                                    false
-                                )
-                                if (hevcDecoders.isNotEmpty()) {
-                                    return androidx.media3.exoplayer.RendererCapabilities.create(C.FORMAT_HANDLED)
-                                }
-                            } else {
-                                val dvDecoders = mediaCodecSelector.getDecoderInfos(
-                                    MimeTypes.VIDEO_DOLBY_VISION,
-                                    false,
-                                    false
-                                )
-                                if (dvDecoders.isNotEmpty()) {
-                                    return androidx.media3.exoplayer.RendererCapabilities.create(C.FORMAT_HANDLED)
-                                }
-
-                                val hevcDecoders = mediaCodecSelector.getDecoderInfos(
-                                    MimeTypes.VIDEO_H265,
-                                    false,
-                                    false
-                                )
-                                if (hevcDecoders.isNotEmpty()) {
-                                    return androidx.media3.exoplayer.RendererCapabilities.create(C.FORMAT_HANDLED)
-                                }
-                            }
+                        if (!isDolbyVisionFormat(format)) {
+                            return super.supportsFormat(mediaCodecSelector, format)
                         }
-                        return super.supportsFormat(mediaCodecSelector, format)
+
+                        val adapted = adaptDvFormatIfNeeded(mediaCodecSelector, format)
+                        val superCaps = super.supportsFormat(mediaCodecSelector, adapted)
+                        if (RendererCapabilities.getFormatSupport(superCaps) == C.FORMAT_HANDLED) {
+                            return superCaps
+                        }
+
+                        // Permissive fallback if a 4K DV profile triggers conservative level mismatch,
+                        // while preserving real TUNNELING_SUPPORTED detection from the hardware decoder.
+                        val targetMime = adapted.sampleMimeType ?: MimeTypes.VIDEO_H265
+                        val decoders = mediaCodecSelector.getDecoderInfos(targetMime, false, false)
+                        if (decoders.isNotEmpty()) {
+                            val tunnelingDecoders = if (!isEmulator) {
+                                mediaCodecSelector.getDecoderInfos(targetMime, false, true)
+                            } else {
+                                emptyList()
+                            }
+                            val tunnelingSupport = if (tunnelingDecoders.isNotEmpty()) {
+                                RendererCapabilities.TUNNELING_SUPPORTED
+                            } else {
+                                RendererCapabilities.TUNNELING_NOT_SUPPORTED
+                            }
+                            val hwSupport = if (decoders.any { it.hardwareAccelerated }) {
+                                RendererCapabilities.HARDWARE_ACCELERATION_SUPPORTED
+                            } else {
+                                RendererCapabilities.HARDWARE_ACCELERATION_NOT_SUPPORTED
+                            }
+                            return RendererCapabilities.create(
+                                C.FORMAT_HANDLED,
+                                RendererCapabilities.ADAPTIVE_SEAMLESS,
+                                tunnelingSupport,
+                                hwSupport,
+                                RendererCapabilities.DECODER_SUPPORT_PRIMARY
+                            )
+                        }
+                        return superCaps
                     }
 
                     override fun getDecoderInfos(
@@ -201,41 +257,19 @@ object RemuxExoPlayerFactory {
                         format: Format,
                         requiresSecureDecoder: Boolean
                     ): List<ExoMediaCodecInfo> {
-                        val isDv = format.codecs?.contains("dvhe") == true ||
-                                format.codecs?.contains("hev1.08") == true ||
-                                format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION
-
-                        if (isDv) {
-                            if (dvMode == DolbyVisionProcessingMode.FORCE_HDR10) {
-                                val hevcDecoders = mediaCodecSelector.getDecoderInfos(
-                                    MimeTypes.VIDEO_H265,
-                                    requiresSecureDecoder,
-                                    false
-                                )
-                                if (hevcDecoders.isNotEmpty()) {
-                                    return hevcDecoders.sortedBy { if (it.hardwareAccelerated) 0 else 1 }
-                                }
-                            } else {
-                                val dvDecoders = mediaCodecSelector.getDecoderInfos(
-                                    MimeTypes.VIDEO_DOLBY_VISION,
-                                    requiresSecureDecoder,
-                                    false
-                                )
-                                if (dvDecoders.isNotEmpty()) {
-                                    return dvDecoders
-                                }
-
-                                val hevcDecoders = mediaCodecSelector.getDecoderInfos(
-                                    MimeTypes.VIDEO_H265,
-                                    requiresSecureDecoder,
-                                    false
-                                )
-                                if (hevcDecoders.isNotEmpty()) {
-                                    return hevcDecoders.sortedBy { if (it.hardwareAccelerated) 0 else 1 }
-                                }
-                            }
+                        if (!isDolbyVisionFormat(format)) {
+                            return super.getDecoderInfos(mediaCodecSelector, format, requiresSecureDecoder)
                         }
-                        return super.getDecoderInfos(mediaCodecSelector, format, requiresSecureDecoder)
+
+                        val adapted = adaptDvFormatIfNeeded(mediaCodecSelector, format)
+                        val superList = super.getDecoderInfos(mediaCodecSelector, adapted, requiresSecureDecoder)
+                        if (superList.isNotEmpty()) {
+                            return superList
+                        }
+
+                        val targetMime = adapted.sampleMimeType ?: MimeTypes.VIDEO_H265
+                        return mediaCodecSelector.getDecoderInfos(targetMime, requiresSecureDecoder, false)
+                            .sortedBy { if (it.hardwareAccelerated) 0 else 1 }
                     }
 
                     override fun onInputFormatChanged(formatHolder: FormatHolder): DecoderReuseEvaluation? {
@@ -243,48 +277,12 @@ object RemuxExoPlayerFactory {
                         if (format != null) {
                             val codecs = format.codecs ?: ""
                             val mime = format.sampleMimeType ?: ""
-                            isCurrentStreamDv = mime == MimeTypes.VIDEO_DOLBY_VISION ||
-                                    codecs.contains("dvhe") || codecs.contains("hev1.08")
+                            isCurrentStreamDv = isDolbyVisionFormat(format)
                             val isP8 = isCurrentStreamDv && (codecs.contains("08") || codecs.contains(".08."))
                             isCurrentStreamDvP7 = isCurrentStreamDv && !isP8
 
                             if (isCurrentStreamDv) {
-                                val builder = format.buildUpon()
-                                when (dvMode) {
-                                    DolbyVisionProcessingMode.FORCE_HDR10 -> {
-                                        builder.setSampleMimeType(MimeTypes.VIDEO_H265)
-                                        builder.setCodecs(if (!isEmulator) "hev1.2.4.L153.B0" else null)
-                                    }
-                                    DolbyVisionProcessingMode.P7_MEL_DIRECT -> {
-                                        val dvDecoders = mediaCodecSelector.getDecoderInfos(
-                                            MimeTypes.VIDEO_DOLBY_VISION,
-                                            false,
-                                            false
-                                        )
-                                        if (dvDecoders.isNotEmpty()) {
-                                            builder.setSampleMimeType(MimeTypes.VIDEO_DOLBY_VISION)
-                                                .setCodecs(if (isP8) "dvhe.08.06" else "dvhe.07.06")
-                                        } else {
-                                            builder.setSampleMimeType(MimeTypes.VIDEO_H265)
-                                                .setCodecs(if (!isEmulator) "hev1.2.4.L153.B0" else null)
-                                        }
-                                    }
-                                    DolbyVisionProcessingMode.P8_TRANSMUTE -> {
-                                        val dvDecoders = mediaCodecSelector.getDecoderInfos(
-                                            MimeTypes.VIDEO_DOLBY_VISION,
-                                            false,
-                                            false
-                                        )
-                                        if (dvDecoders.isNotEmpty()) {
-                                            builder.setSampleMimeType(MimeTypes.VIDEO_DOLBY_VISION)
-                                                .setCodecs("dvhe.08.06")
-                                        } else {
-                                            builder.setSampleMimeType(MimeTypes.VIDEO_H265)
-                                                .setCodecs(if (!isEmulator) "hev1.2.4.L153.B0" else null)
-                                        }
-                                    }
-                                }
-                                formatHolder.format = builder.build()
+                                formatHolder.format = adaptDvFormatIfNeeded(mediaCodecSelector, format)
                                 Log.i(TAG, "[$dvMode] onInputFormatChanged DV adaptado a: ${formatHolder.format?.sampleMimeType} (${formatHolder.format?.codecs}), isP7=$isCurrentStreamDvP7")
                             } else {
                                 Log.i(TAG, "onInputFormatChanged Formato Estándar/SDR: $mime (${format.codecs})")

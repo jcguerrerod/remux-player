@@ -1,54 +1,87 @@
-# Android TV 4K UHD Remux Player (Dolby Vision P7 -> P8.1 Zero-Copy)
+# 4K UHD Remux Player for Android TV
 
-Reproductor multimedia nativo de ultra-alto rendimiento para Android TV, especializado en la reproducción **Direct Play** de archivos 4K Blu-ray Remux desde un servidor Jellyfin sin transcodificación.
+A native, high-performance **Android TV** media player inspired by **Apple TV+ (tvOS 18)**, engineered for zero-transcoding **Direct Play** of 4K Blu-ray Remuxes (`MKV` / `HEVC` / `Dolby Vision` / `TrueHD Atmos` / `DTS-HD MA`) from a self-hosted **Jellyfin** server.
 
-## Arquitectura del Sistema
-
-```
-├── libdovi-ffi/            # Crate en Rust (C-ABI) para transmutación al vuelo de RPU DV
-├── native-pipeline/        # C++20 Core NDK: Demuxer, NALU Parser, MediaCodec Sink, ASS Engine
-├── core-media/             # Orquestador Kotlin: Bitstream AudioTrack Direct, Jellyfin REST Client
-└── app/                    # UI Leanback para Android TV
-```
-
-### Características Técnicas Clave
-1. **Conversión al Vuelo Dolby Vision Perfil 7 a Perfil 8.1 (Zero-Copy)**:
-   - Descarte estricto de paquetes **NAL Unit 63** (`FEL - Full Enhancement Layer`) para prevenir cuellos de botella térmicos y de bus de memoria en Smart TVs con SoCs de 1.5 - 2 GB RAM.
-   - Intercepción de **NAL Unit 62** (`Dolby Vision RPU`) y transmutación al vuelo a Perfil 8.1 (`dvhe.08`) mediante `libdovi` (escrita en Rust y vinculada estáticamente).
-   - Inyección directa en el buffer físico mapeado de hardware de `AMediaCodec_dequeueInputBuffer` sin copias intermedias.
-2. **Bandera Dolby Vision Nativa en Panel**:
-   - Configuración explícita de `MediaFormat` (`video/dolby-vision`, perfil 32 `DolbyVisionProfileDvheSt`, color-standard BT.2020, color-transfer SMPTE ST 2084 / PQ).
-3. **Pipeline de Audio HD Bitstream Directo**:
-   - Salida `AudioTrack` en modo Direct / IEC 61937 (`FLAG_HW_AV_SYNC`, `ENCODING_DOLBY_TRUEHD`, `ENCODING_DTS_HD_MA`, `ENCODING_E_AC3_JOC`).
-   - Verificación dinámica de soporte HDMI EDID contra receptores AVR / Soundbars.
-4. **Motor de Subtítulos PGS Blu-ray (`libass` + OpenGL ES 3.0)**:
-   - Renderizado tipográfico idéntico a subtítulos PGS comerciales de Blu-ray: fuente estilo *DejaVu Sans* / *Gotham*, relleno blanco opaco (`#FFFFFF`), contorno perimetral nítido de 2.5px, sombra perimetral de 1.5px y margen vertical de 65px (safe area para 2.39:1 y 16:9).
-5. **Cliente Jellyfin Anti-Transcoding**:
-   - Reporte forzado de `DeviceProfile` con `DirectPlay` para HEVC `dvhe.08` y códecs de audio HD, garantizando que el servidor Jellyfin transmita el archivo original vía HTTP sin tocar la CPU ni GPU.
+![Home — Movies](docs/screenshots/01_home_movies.png)
 
 ---
 
-## Compilación y Despliegue
+## Highlights
 
-### Requisitos Previos
-- Android NDK r26 o superior.
-- Rust toolchain con `cargo-ndk`:
-  ```bash
-  rustup target add aarch64-linux-android
-  cargo install cargo-ndk
-  ```
-- CMake 3.22.1+
+- **Apple TV+ (tvOS 18) Cinema UI** — Centered ClearLogo hero, symmetrical top segmented dock (`Movies · TV Shows · Settings`), official monochrome format marks (`4K`, `HDR10`, `Dolby Vision`, `Dolby Atmos`, `DTS-HD MA`, `7.1`), panoramic bottom drawers for Details & Episodes, and a full **tvOS Split View Settings** screen.
+- **Dolby Vision Profile 7 → Profile 8.1 Transmutation (Zero-Copy)** — Rust (`libdovi-ffi`) + C++20 NDK pipeline (`native-pipeline`) that drops NAL Unit 63 (`FEL`) and transmutes NAL Unit 62 (`RPU`) on-the-fly to `dvhe.08` for hardware MediaCodec playback on consumer Android TV SoCs.
+- **Lossless 7.1 Audio Pipeline** — Media3 / ExoPlayer with Jellyfin's **FFmpeg audio decoder extension** (`audio/true-hd`, `DTS-HD MA`, `FLAC`, `LPCM`) and explicit differentiation between **TrueHD Atmos (Lossless)** and **DD+ Atmos (E-AC3)** in audio track selection, details, and quality ranking.
+- **Apple TV Scrubbing & Trickplay** — Smooth `1×` to `5×` forward/rewind scrubbing with step-down directional control (`5× → 4× → 3× → 2× → 1×`), origin-position tick marker, and live Jellyfin Trickplay scene preview cards.
+- **True Live Transparent Player Menus** — SurfaceFlinger-composited semi-transparent popups for Audio, Subtitles, Chapters, and Dolby Vision mode that keep 4K video playing live underneath.
+- **Smart Track Memory & Auto Frame Rate (AFR)** — Automatically selects the original theatrical lossless audio track by default, remembers per-movie and per-series audio/subtitle choices (including `Off`), and matches TV display refresh rates (`23.976 / 24 / 25 / 50 / 60 Hz`).
 
-### 1. Compilación de la librería Rust `libdovi-ffi`
-```bash
-cd libdovi-ffi
-cargo ndk -t arm64-v8a build --release
+---
+
+## UI Showcase
+
+### Catalog & Panoramic Drawers
+
+| Home — Movies | Panoramic Details Drawer |
+| :---: | :---: |
+| ![Home Movies](docs/screenshots/01_home_movies.png) | ![Details Drawer](docs/screenshots/02_details_drawer.png) |
+
+| Home — TV Shows | Panoramic Episodes Drawer |
+| :---: | :---: |
+| ![Home TV Shows](docs/screenshots/03_home_tv_shows.png) | ![Episodes Drawer](docs/screenshots/04_episodes_drawer.png) |
+
+### 4K Direct Play Player & Live Menus
+
+| Minimalist Player HUD | Apple TV `1×–5×` Trickplay Scrubbing |
+| :---: | :---: |
+| ![Player HUD](docs/screenshots/05_player_hud.png) | ![Player Scrubbing](docs/screenshots/06_player_scrubbing.png) |
+
+| Live Audio Track Selector (`TrueHD Atmos` vs `DD+ Atmos`) |
+| :---: |
+| ![Player Audio Menu](docs/screenshots/07_player_audio_menu.png) |
+
+### tvOS Split View Settings
+
+| Video & Display | Audio & Subtitles |
+| :---: | :---: |
+| ![Settings Video](docs/screenshots/08_settings_video.png) | ![Settings Audio](docs/screenshots/09_settings_audio.png) |
+
+---
+
+## Architecture
+
+```text
+remux-player-android-tv/
+├── app/                # Android TV UI (Kotlin, ViewBinding, tvOS Split View Settings, Player HUD)
+├── core-media/         # Jellyfin Direct Play REST client, Metadata Mapper, ExoPlayer factory, Audio EDID & AFR
+├── native-pipeline/    # C++20 Android NDK: HEVC NALU parser, MediaCodec sink, native subtitle pipeline
+├── libdovi-ffi/        # Rust C-ABI crate wrapping libdovi for on-the-fly Dolby Vision RPU transmutation
+└── docs/screenshots/   # 1080p emulator captures
 ```
-Esto generará el archivo `target/aarch64-linux-android/release/libdovi_ffi.a`.
 
-### 2. Compilación del Proyecto Android
-Desde la raíz del proyecto:
+### Tech Stack
+
+- **Android TV / UI:** Kotlin, AndroidX, Media3 ExoPlayer, ViewBinding, Coroutines
+- **Media & Decoding:** `media3-ffmpeg-decoder` (7.1 TrueHD / DTS-HD / FLAC), Jellyfin Trickplay Engine, Android Display Mode AFR
+- **Native / Systems:** C++20 (Android NDK + CMake), Rust (`libdovi-ffi` static library via `cargo-ndk`)
+- **Networking & Security:** Ktor HTTP Client, `kotlinx.serialization`, URL & token validation (`TokenVault`, `NetworkUrlSecurity`)
+
+---
+
+## Build & Test
+
+### Prerequisites
+- JDK 17+ and Android SDK (API 34+)
+- Android NDK r26+ and CMake 3.22.1+
+- *(Optional, only if rebuilding the Rust crate)* Rust toolchain + `cargo-ndk` (`rustup target add aarch64-linux-android`)
+
+### Run Unit Tests & Build Debug APK
 ```bash
-./gradlew assembleRelease
+./gradlew :core-media:testDebugUnitTest :app:assembleDebug
 ```
-El APK resultante para Android TV se encontrará en `app/build/outputs/apk/release/app-release.apk`.
+
+### Build Release APK
+```bash
+./gradlew :app:assembleRelease
+```
+
+The generated APK is located at `app/build/outputs/apk/debug/app-debug.apk` (or `release/app-release.apk`).
